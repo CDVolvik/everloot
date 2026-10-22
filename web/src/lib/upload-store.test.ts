@@ -154,6 +154,61 @@ describe("upload store, cloud mode", () => {
     expect(await store.putUpload("u-1", "install-1", payload)).toBe(false);
   });
 
+  test("each half of a failed store names itself in the log, with the body that says why", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r2Down = fakeFetch([[R2, "PUT", () => new Response("<Code>AccessDenied</Code>", { status: 403 })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: r2Down.fn, now }).putUpload("u-1", "install-1", payload)).toBe(false);
+    expect(log).toHaveBeenLastCalledWith("upload u-1: R2 put failed (403): <Code>AccessDenied</Code>");
+    // A row the table refuses is refused again, so it is tried once.
+    const refused = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => Response.json({ code: "22P05", message: "unsupported Unicode escape sequence" }, { status: 400 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: refused.fn, now }).putUpload("u-2", "install-1", payload)).toBe(false);
+    expect(refused.calls.filter((c) => c.method === "POST")).toHaveLength(1);
+    expect(log).toHaveBeenLastCalledWith(expect.stringMatching(/^upload u-2: R2 object stored but index insert failed \(400\): .*22P05/));
+    log.mockRestore();
+  });
+
+  test.each([
+    ["a 5xx", () => new Response("upstream", { status: 503 })],
+    ["a dropped connection", () => { throw new TypeError("fetch failed"); }],
+  ])("an index insert that fails with %s is tried once more", async (_, first) => {
+    let posts = 0;
+    const { fn, calls } = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => (++posts === 1 ? first() : new Response(null, { status: 201 }))],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(true);
+    const inserts = calls.filter((c) => c.method === "POST");
+    expect(inserts).toHaveLength(2);
+    expect(inserts[1].body).toBe(inserts[0].body);
+  });
+
+  test("a 409 on the second try is the first try's row, so the upload is stored", async () => {
+    let posts = 0;
+    const { fn } = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => {
+        if (++posts === 1) throw new TypeError("fetch failed");
+        return Response.json({ code: "23505" }, { status: 409 });
+      }],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(true);
+  });
+
+  test("an index insert that fails twice is not persisted", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fn, calls } = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => new Response("upstream", { status: 503 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(false);
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(2);
+    expect(log).toHaveBeenCalledWith("upload u-1: R2 object stored but index insert failed (503): upstream");
+    log.mockRestore();
+  });
+
   test("the corpus reads indexed objects, skips a corrupt one, and caches", async () => {
     const { fn, calls } = fakeFetch([
       ["https://sb.example/rest/v1/uploads", "GET", () => Response.json([{ object_key: "uploads/a.json" }, { object_key: "uploads/b.json" }])],

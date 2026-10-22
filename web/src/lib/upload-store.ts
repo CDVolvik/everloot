@@ -233,31 +233,52 @@ export function createUploadStore(opts: {
     const key = `uploads/${now().toISOString().slice(0, 10)}/${uploadId}.json`;
     try {
       const put = await r2Fetch(key, { method: "PUT", body, headers: { "content-type": "application/json" } });
-      if (!put.ok) return false;
-      const index = await doFetch(rest("uploads"), {
-        method: "POST",
-        headers: restHeaders({ prefer: "return=minimal" }),
-        body: JSON.stringify({
-          id: uploadId,
-          install_id: installId,
-          record_count: rawRecordsOf(payload).length,
-          bytes: body.length,
-          object_key: key,
-        }),
-      });
-      if (!index.ok) {
-        // The status alone does not say what went wrong: PostgREST puts the reason (a column, a constraint, a
-        // type) in the body. Without it in the log, the 400 behind a 503 cannot be read.
-        const detail = await index.text().catch(() => "");
-        console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status}): ${detail.slice(0, 500)}`);
+      if (!put.ok) {
+        // Both halves answer the same 503, so each names itself in the log.
+        const detail = await put.text().catch(() => "");
+        console.error(`upload ${uploadId}: R2 put failed (${put.status}): ${detail.slice(0, 500)}`);
         return false;
       }
+      const row = JSON.stringify({
+        id: uploadId,
+        install_id: installId,
+        record_count: rawRecordsOf(payload).length,
+        bytes: body.length,
+        object_key: key,
+      });
+      if (!(await insertIndex(uploadId, row))) return false;
       cached = null; completionCached = null; censusCached = null;
       return true;
     } catch (err) {
       console.error(`upload ${uploadId}: store failed`, err);
       return false;
     }
+  }
+
+  /**
+   * The index row for an object already in R2. Readers find objects only through this table, so an object without
+   * its row is never read. A failure that can pass (the network, a 5xx) is tried once more, and a 409 on that second
+   * try means the first one landed. A refused row is not retried: it would be refused again.
+   */
+  async function insertIndex(uploadId: string, row: string): Promise<boolean> {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      let index: Response;
+      try {
+        index = await doFetch(rest("uploads"), { method: "POST", headers: restHeaders({ prefer: "return=minimal" }), body: row });
+      } catch (err) {
+        if (attempt === 1) continue;
+        console.error(`upload ${uploadId}: R2 object stored but index insert failed`, err);
+        return false;
+      }
+      if (index.ok || (attempt === 2 && index.status === 409)) return true;
+      if (attempt === 1 && index.status >= 500) continue;
+      // The status alone does not say what went wrong: PostgREST puts the reason (a column, a constraint, a
+      // type) in the body. Without it in the log, the 400 behind a 503 cannot be read.
+      const detail = await index.text().catch(() => "");
+      console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status}): ${detail.slice(0, 500)}`);
+      return false;
+    }
+    return false;
   }
 
   function grantsOf(payload: unknown): string[] {
