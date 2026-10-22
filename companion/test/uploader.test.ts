@@ -5,6 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import { findEverlootFiles } from "../src/savedvariables";
 import { createSentState } from "../src/sent-state";
 import { uploadFile } from "../src/uploader";
+import { emptySettledList, encodeIds } from "../../kb/src/settled-list";
 
 /** A SavedVariables file in the exact shape the addon writes. */
 function luaFile(rows: { kind: string; lua: string }[]): string {
@@ -173,5 +174,33 @@ describe("uploading", () => {
     const api = intake(() => Response.json({ ok: false, error: "Upload rate limited. Keep your file and retry later." },
       { status: 429, headers: { "retry-after": "120" } }));
     await expect(uploadFile(file, { endpoint: "https://everloot.example", fetch: api.send, state })).rejects.toThrow(/rate limited/i);
+  });
+});
+
+describe("settled facts", () => {
+  const BUILD = "1.60.1.70450";
+  const withBuild = (text: string) => text.replace('["installId"]', `["clientBuild"] = "${BUILD}",
+["installId"]`);
+  const other = { kind: "loot", lua: `["eventId"] = "epoch:77", ["capturedAt"] = "2026-10-09T00:00:00Z", ["sourceNpcId"] = 43, ["sourceEvidence"] = "loot-api", ["items"] = {{["itemId"] = 5, ["count"] = 1}}` };
+  const list = { ...emptySettledList(BUILD), dataAsOf: "2026-10-20T00:00:00.000Z", loot: { npc: encodeIds([42]), obj: [] } };
+
+  test("rows of a settled fact are skipped, marked handled, and counted; the rest are sent", async () => {
+    const { file, state } = workspace(withBuild(luaFile([loot(1), loot(2), other])));
+    const fake = intake();
+    const settled = vi.fn(async () => list);
+    const r = await uploadFile(file, { endpoint: "https://everloot.app", fetch: fake.send, state, settled });
+    expect(settled).toHaveBeenCalledWith(BUILD);
+    expect(r).toMatchObject({ sent: 1, skipped: 2 });
+    expect(fake.bodies.flatMap((b) => b.records.map((x) => x.eventId))).toEqual(["epoch:77"]);
+    for (const id of ["epoch:1", "epoch:2", "epoch:77"]) expect(state.has("abcd-1234-ef56-7890", id)).toBe(true);
+    // Weighed once: the next run has nothing left to consider.
+    expect(await uploadFile(file, { endpoint: "https://everloot.app", fetch: fake.send, state, settled })).toMatchObject({ sent: 0, skipped: 0, batches: 0 });
+  });
+
+  test("nothing is skipped for a file without a build, a list of another build, or no list", async () => {
+    for (const [text, given] of [[luaFile([loot(1)]), list], [withBuild(luaFile([loot(1)])), { ...list, build: "1.61.0.71000" }], [withBuild(luaFile([loot(1)])), null]] as const) {
+      const { file, state } = workspace(text);
+      expect(await uploadFile(file, { endpoint: "https://everloot.app", fetch: intake().send, state, settled: given })).toMatchObject({ sent: 1, skipped: 0 });
+    }
   });
 });

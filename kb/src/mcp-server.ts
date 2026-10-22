@@ -1,4 +1,5 @@
 import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
+import { answerCoverage, type CoverageLoader } from "./coverage-tool.js";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, GAME_DATA_CREDIT, LICENCE, MCP_CREDIT, SITE, type EntityKind } from "@everloot/protocol";
@@ -534,7 +535,7 @@ function professionArg(profession: string): string {
 }
 
 /** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
-export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader }
+export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader; coverage?: CoverageLoader }
 
 /** A tool's answer: the text every client gets, and the structured content of the tool's output schema. */
 export type ToolAnswer = Answer;
@@ -674,6 +675,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       const url = view ? ECOSYSTEM_URL : undefined;
       return { text: withMore(handleEcosystemProjects(view, args, now), url), structured: { ...ecosystemProjectsStructured(view, args, now), ...(url ? { url } : {}) } };
     },
+    coverage: (args) => answerCoverage(args, options.coverage),
     population: (args) => answerPopulation(args, options.census, answerFooter),
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };

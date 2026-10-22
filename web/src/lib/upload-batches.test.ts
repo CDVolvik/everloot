@@ -69,3 +69,13 @@ test.skipIf(!("census_seen" in recordSchemas))("census rows reach the preview as
   const session = prepareUpload({ addonVersion: "0.3.3", records: [seen(1, "Player-4242-00000001"), seen(2, "Player-4242-00000002"), seen(3, "Player-4242-00000001"), self] }, {}, []);
   expect(session.census).toEqual({ seen: 2, self: 1 });
 });
+test("skip leaves settled rows out of the batches and returns their event ids; named and legacy rows are never skipped", () => {
+  const sighting = (i: number, npcId: number) => ({ kind: "npc_sighting", installId: "install-batches", eventId: `epoch:npc${i}`, capturedAt: row(1).capturedAt, npcId, name: "Marshal Dughan", mapId: 1429, x: 42, y: 65 });
+  const records = [sighting(1, 1), sighting(2, 2), sighting(3, 1), row(1), { ...sighting(4, 1), eventId: undefined }];
+  const skip = vi.fn((r: Readonly<Record<string, unknown>>) => r.kind === "npc_sighting" && r.npcId === 1);
+  const session = prepareUpload({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450", records }, {}, [], undefined, skip);
+  expect(session.skipped).toEqual(["epoch:npc1", "epoch:npc3"]);
+  expect(session.counts).toEqual({ npc_sighting: 1, loot: 1 });
+  expect(session.held.legacy).toBe(1);
+  expect(prepareUpload({ addonVersion: "0.2.6", records }, {}, []).skipped).toEqual([]);
+});

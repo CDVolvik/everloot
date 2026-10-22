@@ -773,6 +773,16 @@ export const MCP_TOOLS = {
     outputSchema: { ...uploadsAnswer, page: goldLedger.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
+  coverage: {
+    title: "Database coverage by zone, type and field",
+    description:
+      "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field: coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.",
+    inputSchema: {
+      zone: z.number().int().positive().optional().describe("Released UiMap zone id, such as 1429 for Elwynn Forest. Omit for all released zones."),
+      type: z.enum(["quests", "npcs", "pins", "vendors", "drops", "rares", "entrances", "bosses", "treasures"]).optional().describe("Coverage type. Omit for all types."),
+    },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
   population: {
     title: "Who plays what: population by race, class, faction and level",
     description:
@@ -847,8 +857,8 @@ export const MCP_TOOL_LIST = MCP_TOOL_NAMES.map((name) => ({ name, ...MCP_TOOLS[
 /**
  * What every tool returns: one text content block. Answers built on player data end with the
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
- * their sources inside the text instead. Every tool also declares an outputSchema and returns
- * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
+ * their sources inside the text instead. Tools with an outputSchema also return structuredContent
+ * of that shape (STRUCTURED_TOOLS lists them; coverage is text only).
  * When one everloot.app page shows the answer, its structured `url` holds it and the text carries a
  * `More: <url>` line, last before the data age and credit lines.
  */
@@ -861,7 +871,7 @@ export const CHATGPT_TOOLS: readonly McpToolName[] = ["search", "fetch"];
 export const PLAYER_DATA_TOOLS: readonly McpToolName[] = [
   "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
   "world_map_near", "entity_relations", "collection_gap", "completion_progress", "guild_board", "auction_history",
-  "market_value", "gold_ledger", "population",
+  "market_value", "gold_ledger", "population", "coverage",
 ];
 
 /**

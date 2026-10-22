@@ -17,6 +17,7 @@ import CoveragePage from "./page";
 import ZoneCoveragePage from "./[zone]/page";
 import { COVERAGE_BUILD, loadCoverageExpected } from "@/lib/coverage-compute";
 import { writeCoverage } from "@/lib/coverage-store";
+import { plateauDetail, plateauMeasured, plateauShare, plateauVerdict } from "./plateau";
 
 const sighting = (i: number, npcId: number, name: string, mapId: number) => ({
   kind: "npc_sighting", installId: `install-${i}`, eventId: `e:${i}:${npcId}`, capturedAt: "2026-10-01T00:00:00.000Z",
@@ -108,4 +109,29 @@ test("the cron writer skips a run that added nothing and writes coverage/<build>
   expect(body).toMatchObject({ schema: "everloot.coverage/1", build: COVERAGE_BUILD, dataAsOf: "2026-10-19T00:00:00.000Z" });
   expect(JSON.stringify(body)).not.toContain("Guard Orin");
   expect(await writeCoverage({ added: 0, rebuild: true, dataAsOf: null }, { cloud, fetch: fetcher })).toMatchObject({ written: true });
+});
+
+test("the index states the plateau for quests, pins, vendors and drops, with how and when it was measured", async () => {
+  store.loadCorpus.mockResolvedValue(corpus([...westfall, ...durotar]));
+  const page = await html(CoveragePage(search({})));
+  // Without the expected file nothing is claimed: [?], never "not yet" or "reached".
+  expect(page).toContain("Plateau: [?].");
+  expect(page).toContain('href="#plateau"');
+  expect(page).toContain('id="plateau"');
+  for (const h of ["Confirmed", "Settled", "Newly confirmed", "At plateau"]) expect(page).toContain(`>${h}<`);
+  expect(page).toContain("at least 90% are confirmed, 75% are settled, and fewer than 0.5% became confirmed in the 28 days");
+  expect(page).toContain("Data as of 2026-10-20 00:00 UTC, from 4 installs; 4 installs reported in the 28 days from 2026-09-22.");
+  expect(page).not.toContain("Unagreed Name");
+});
+
+test("the plateau's shares round down, so 90% is never shown before it is met", () => {
+  expect(plateauShare(0.8999)).toBe("89.9%");
+  expect(plateauShare(0.9)).toBe("90%");
+  expect(plateauShare(0.00499)).toBe("0.4%");
+  expect(plateauShare(null)).toBe("[?]");
+  expect(plateauVerdict(null)).toBe("[?]");
+  expect(plateauVerdict(false)).toBe("not yet");
+  expect(plateauDetail({ type: "pins", denominator: 10, confirmed: 9, settled: 8, recheck: 1, newlyConfirmed: 0, shares: { confirmed: 0.9, settled: 0.8, newlyConfirmed: 0 }, atPlateau: true }))
+    .toBe("9 confirmed, 8 settled, 0 newly confirmed in 28 days, 1 to recheck, of 10 expected");
+  expect(plateauMeasured({ dataAsOf: null, windowStart: null, installs: 1, windowInstalls: 0 })).toBe("Data age unrecorded, from 1 install; the 28-day window is [?] without a data date.");
 });

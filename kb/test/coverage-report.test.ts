@@ -53,6 +53,28 @@ test("recheck is explicit and linked Recorder installs do not confirm each other
   expect(linked.rows.find(r => r.type === "npc" && r.field === "name")?.state).toBe("reported");
 });
 
+test("a recheck scope puts only the facts it names to recheck: neither confirmed nor settled, here or in the plateau, and the notes say so", () => {
+  const records = Array.from({ length: 5 }, (_, i) => npc(i, { capturedAt: "2026-09-01T00:00:00Z" }));
+  const scope = { since: "2026-10-20T00:00:00Z", source: "https://example.test/hotfix", type: "npcs" as const, ids: [10] };
+  const report = run(records, { recheck: [scope] });
+  for (const field of ["name", "level"]) expect(report.rows.find(r => r.type === "npc" && r.field === field)?.state).toBe("recheck");
+  // The scope names NPCs, so the pin keeps its own state.
+  expect(report.rows.find(r => r.type === "npc_pin")?.state).toBe("settled");
+  expect(report.notes.join("\n")).toMatch(/1 scopes from kb\/curated\/recheck\.json.*neither confirmed nor settled.*fact fields are in recheck/);
+  const pins = report.plateau!.types.find(t => t.type === "pins")!;
+  expect(pins).toMatchObject({ confirmed: 1, settled: 1 });
+  const npcs = report.plateau!.types.find(t => t.type === "npcs")!;
+  expect(npcs.recheck).toBeGreaterThanOrEqual(2);
+  expect(npcs.settled).toBe(0);
+  // Another zone's or another NPC's scope leaves it alone; a scope from before the reports changes nothing.
+  for (const other of [{ ...scope, ids: [11] }, { ...scope, type: "npcs" as const, ids: undefined, zones: [1411] }, { ...scope, since: "2026-08-01T00:00:00Z" }]) {
+    expect(run(records, { recheck: [other] }).rows.find(r => r.type === "npc" && r.field === "name")?.state).toBe("settled");
+  }
+  const md = formatCoverageReport(report);
+  expect(md).toContain("## Plateau");
+  expect(md).toMatch(/\| pins \| (yes|no|\[\?\]) \|/);
+});
+
 test("expected file contains only zone/type/field counts, no entity ids or baseline names", () => {
   const report = run();
   const text = JSON.stringify(report.expected);
