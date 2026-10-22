@@ -23,10 +23,12 @@
 import { z } from "zod";
 import { POSITION_TOLERANCE, type CoverageType, type RecheckScope } from "./coverage.js";
 import { measureDropRate } from "./drop-rate-settling.js";
-import { lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
+import { lootWindowsFromRecords, recheckLootRecords, rollupDrops } from "./drop-rollup.js";
 import { SETTLE_EXTRA_VOTERS, SETTLE_WINDOW_DAYS, tallyVotes, WORLD_AGREEMENT, type VoteRow } from "./fact-states.js";
 import { instanceFactsFromRecords } from "./instances.js";
-import { objectSightingRowsFromRecords, objectSpawns, SPAWN_RADIUS } from "./object-spawns.js";
+import { objectSightingRowsFromRecords, objectSpawnRowsFromRecords, objectSpawns, SPAWN_RADIUS } from "./object-spawns.js";
+import { busiestMap, npcZones, scopeSince as matchScope } from "./recheck-scopes.js";
+import { isSpotChecked } from "./spot-check.js";
 import { isPinPosition, worldFactsFromRecords } from "./world-pages.js";
 
 export const SETTLED_SCHEMA = "everloot.settled/1";
@@ -91,6 +93,8 @@ export interface SettledInput {
   asOf: string | null;
   build: string;
   recheck?: readonly RecheckScope[];
+  /** The ISO week the weekly spot check picks with (`isSpotChecked`), `isoWeek(new Date())` from the cron; none without it. */
+  week?: string;
 }
 
 /** The list for a build nobody has looked at yet: nothing is skipped. */
@@ -317,16 +321,9 @@ function settledAt(rows: readonly Placed[], asOf: string | null, since: string |
   return third !== undefined && third <= now - SETTLE_WINDOW_DAYS * DAY ? [mx, my] : null;
 }
 
-/** The latest date of a recheck scope that covers a fact of these types, on these maps, with these ids. */
+/** The latest date of a recheck scope that covers a fact of these types, on these maps, with these ids (recheck-scopes.ts). */
 function scopeSince(scopes: readonly RecheckScope[], types: readonly CoverageType[], maps: readonly number[], refs: readonly number[]): string | null {
-  let best: string | null = null;
-  for (const s of scopes) {
-    if (s.type && !types.includes(s.type)) continue;
-    if (s.zones?.length && !maps.some((m) => s.zones!.includes(m))) continue;
-    if (s.ids?.length && !refs.some((r) => s.ids!.includes(r))) continue;
-    if (best === null || time(s.since)! > time(best)!) best = s.since;
-  }
-  return best;
+  return matchScope(scopes, { types, zones: maps, ids: refs });
 }
 
 const round = (v: number) => Math.round(v * 100) / 100;
@@ -342,6 +339,8 @@ export function computeSettled(input: SettledInput): SettledFile {
   const add = (map: Map<number, Set<number>>, k: number, m: number) => map.set(k, (map.get(k) ?? new Set<number>()).add(m));
   const list = { schema: SETTLED_SCHEMA, build: input.build, dataAsOf: asOf } as const;
   if (!asOf) return { ...emptySettledList(input.build), values };
+  // The weekly spot check (spot-check.ts) leaves about 2% of settled facts out, so uploaders send them again.
+  const checked = (key: string, zone: number | null) => input.week !== undefined && isSpotChecked({ key, zone }, input.week, scopes);
 
   type World = ReturnType<typeof worldFactsFromRecords>;
   const npcs: (World["npcs"][number] & { capturedAt?: string })[] = [];
@@ -354,6 +353,8 @@ export function computeSettled(input: SettledInput): SettledFile {
     for (const r of one.quests) questRows.push({ ...r, ...c });
     for (const r of one.vendors) vendorRows.push({ ...r, ...c });
   }
+  // Where each NPC is counted (the score's rule), for the spot check's zone.
+  const npcZone = npcZones(npcs.map((r) => ({ npcId: r.npcId, mapId: r.mapId, installId: r.installId, pin: isPinPosition(r.positionKind) })));
 
   // NPCs: name and traits settled, then each map whose pin is settled.
   for (const [npcId, rows] of groupBy(npcs.filter((r) => r.installId.trim()), (r) => r.npcId)) {
@@ -370,11 +371,11 @@ export function computeSettled(input: SettledInput): SettledFile {
       if (settledValue(list.map((r) => ({ installId: r.installId, value: "listed", ...when(r) })), asOf, s)) roles.push(role);
       else open = true;
     }
-    if (open) continue;
+    if (open || checked(`npc:${npcId}`, npcZone.get(npcId) ?? null)) continue;
     const pins = groupBy(rows.filter((r) => isPinPosition(r.positionKind) && r.x >= 0 && r.x <= 100 && r.y >= 0 && r.y <= 100), (r) => r.mapId);
     for (const [mapId, list] of pins) {
       const pin = settledAt(list, asOf, scopeSince(scopes, rare ? ["pins", "rares"] : ["pins"], [mapId], [npcId]));
-      if (!pin) continue;
+      if (!pin || checked(`pin:${npcId}:${mapId}`, mapId)) continue;
       add(npcMaps, npcId, mapId);
       values[`npc:${npcId}@${mapId}`] = {
         kind: "npc", name: String(name.value), ...(level ? { level: Number(level.value) } : {}), ...(creatureType ? { creatureType: String(creatureType.value) } : {}),
@@ -409,6 +410,11 @@ export function computeSettled(input: SettledInput): SettledFile {
       side = a.size >= SETTLE_VOTERS && h.size >= SETTLE_VOTERS ? "both" : a.size >= SETTLE_VOTERS && !h.size ? "alliance" : h.size >= SETTLE_VOTERS && !a.size ? "horde" : undefined;
       if (!side) continue;
     }
+    const lead = (k: "giverNpcId" | "turnInNpcId") => {
+      const id = tallyVotes(ids(k)).groups.sort((x, y) => y.voters.size - x.voters.size)[0]?.value;
+      return typeof id === "number" ? npcZone.get(id) ?? null : null;
+    };
+    if (checked(`quest:${questId}`, lead("giverNpcId") ?? lead("turnInNpcId"))) continue;
     quests.add(questId);
     values[`quest:${questId}`] = {
       kind: "quest", title: String(title.value), level: Number(level.value), ...(giver ? { giver: Number(giver.value) } : {}), ...(turnIn ? { turnIn: Number(turnIn.value) } : {}),
@@ -428,27 +434,35 @@ export function computeSettled(input: SettledInput): SettledFile {
       if (!price || !stock) { open = true; break; }
       items.push([itemId, Number(price.value), Number(stock.value)]);
     }
-    if (open || !items.length) continue;
+    if (open || !items.length || checked(`vendor:${vendorNpcId}`, npcZone.get(vendorNpcId) ?? null)) continue;
     vendors.add(vendorNpcId);
     values[`vendor:${vendorNpcId}`] = { kind: "vendor", items: items.sort((x, y) => x[0] - y[0]) };
   }
 
   // Loot: a source with enough windows whose every item at 3% or more has a settled rate. Recorder windows, which
   // carry no loot-api source, are not in the rates and never settle a source.
-  const windows = lootWindowsFromRecords(input.records as unknown[]);
+  // A source under a recheck scope counts only the windows after its date, as the public rates do.
+  const windows = lootWindowsFromRecords(recheckLootRecords(input.records as unknown[], scopes));
   const windowCount = new Map<string, number>();
   for (const w of windows) {
     const k = w.sourceNpcId !== undefined ? `npc:${w.sourceNpcId}` : `obj:${w.sourceObjectId}`;
     windowCount.set(k, (windowCount.get(k) ?? 0) + 1);
   }
+  const objectSeen = new Map<number, Map<number, Set<string>>>();
+  for (const r of [...objectSpawnRowsFromRecords(input.records as unknown[]), ...objectSightingRowsFromRecords(input.records as unknown[])]) {
+    if (typeof r.mapId !== "number") continue;
+    const byMap = objectSeen.get(r.objectId) ?? new Map<number, Set<string>>();
+    byMap.set(r.mapId, (byMap.get(r.mapId) ?? new Set<string>()).add(r.installId.trim()));
+    objectSeen.set(r.objectId, byMap);
+  }
+  const objectZone = (id: number) => busiestMap(objectSeen.get(id) ?? new Map());
   const bySource = groupBy(rollupDrops(windows).rates, (r) => (r.sourceNpcId !== undefined ? `npc:${r.sourceNpcId}` : `obj:${r.sourceObjectId}`));
   for (const [source, rates] of bySource) {
     const npc = source.startsWith("npc:");
     const sourceId = Number(source.slice(4));
     if ((windowCount.get(source) ?? 0) < LOOT_SOURCE_MIN_WINDOWS) continue;
-    // Drop rates have no recheck cut-off yet: a scoped source stays out of the list until its scope is removed.
-    if (rates.some((r) => scopeSince(scopes, ["drops"], npc ? mapsOf.get(sourceId) ?? [] : [], [sourceId, r.itemId]) !== null)) continue;
     if (!rates.every((r) => r.rate < LOOT_SOURCE_MIN_RATE || (r.public && measureDropRate(r, asOf).settled))) continue;
+    if (checked(`loot:${source}`, npc ? npcZone.get(sourceId) ?? null : objectZone(sourceId))) continue;
     (npc ? lootNpc : lootObj).add(sourceId);
     values[`loot:${source}`] = { kind: "loot", items: rates.map((r) => r.itemId).sort((x, y) => x - y) };
   }

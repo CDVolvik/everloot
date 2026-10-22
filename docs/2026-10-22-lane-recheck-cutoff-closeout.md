@@ -148,14 +148,16 @@ reverted, and is in the appendix for the coordinator.
 
 ## What is not built, and what remains
 
-- **The settled list's spot check and the drop cut-off there** (appendix), for the coordinator to apply: it makes
+- **The settled list's spot check and the drop cut-off there** (appendix), applied on 2026-10-22: it makes
   `computeSettled` leave out an entry when `isSpotChecked({ key, zone }, week, scopes)` with the keys `npc:<id>`,
   `pin:<npc>:<map>`, `quest:<id>`, `vendor:<id>` and `loot:npc|obj:<id>`, the zones placed by the score's rule; takes the
   week as an input (the cron passes `isoWeek(new Date())`; without it nothing is spot-checked, so the list stays a pure
   function and its tests cannot flake on a 2% pick); lets a scoped loot source settle again on its windows after the
-  date instead of staying out until the scope is removed; and replaces the local scope loop with the shared one. Its
-  `scopeSince` still passes every map an NPC was seen on as the zones, where the score uses the busiest one; aligning
-  that is a further step.
+  date instead of staying out until the scope is removed; and replaces the local scope loop with the shared one. The
+  cron also rewrites the list once per ISO week on an idle run, so the sample rotates without new uploads: the heartbeat
+  records the week it last wrote, and a failed rewrite leaves the old week so the next run retries it. Its `scopeSince`
+  still passes every map an NPC was seen on as the zones, where the score uses the busiest one; aligning that is a
+  further step.
 - **The MCP tools** (`npc_page`, `quest_page`, `vendor_page`, `item_page`, `object_page`, `world_map_near`) build their
   facts in `kb/src/mcp-server.ts` without scopes, so they do not apply the cut-off yet. That file is lane E's. The fix
   is to attach the scopes in the fact builders (`recheck` on the world facts, `itemFactsFromRecords(records, scopes)`).
@@ -167,7 +169,7 @@ reverted, and is in the appendix for the coordinator.
 
 ## Appendix: the proposed settled-list change
 
-Applies to `main` at the time of this lane with `git apply`. Not part of this pull request.
+Applied to `main` on 2026-10-22; `writeSettled` takes an optional `week` so its test does not depend on the calendar week.
 
 ```diff
 diff --git a/kb/src/settled-list.ts b/kb/src/settled-list.ts

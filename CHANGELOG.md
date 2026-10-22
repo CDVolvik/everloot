@@ -15,6 +15,11 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site and knowledge base: the settled list leaves out about 2% of settled facts each ISO week (the spot check), so
+  the desktop app re-sends them and a hotfix that never changed a build still reaches the corpus. A loot source under
+  a recheck scope counts only its windows after the scope's date and settles again, instead of staying out until the
+  scope is removed. The cron rewrites the list once per ISO week even when no uploads arrive, so the spot check keeps
+  rotating across an idle week; the heartbeat keeps the week it last wrote, and a failed rewrite is retried next run.
 - Site: an upload whose R2 PUT rejects on the network logs `R2 put failed` and the error, like a refused PUT,
   rather than the generic `store failed`, so the half behind a 503 is named in the log.
 - Site: the snapshot cron stops rewriting the whole corpus when nothing arrived. One query asks whether an
