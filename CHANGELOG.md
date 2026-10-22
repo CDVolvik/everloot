@@ -15,6 +15,8 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site: an upload whose R2 PUT rejects on the network logs `R2 put failed` and the error, like a refused PUT,
+  rather than the generic `store failed`, so the half behind a 503 is named in the log.
 - Site: the snapshot cron stops rewriting the whole corpus when nothing arrived. One query asks whether an
   upload is newer than the snapshot; if not, the snapshot and the completion rollup are skipped, the market fold
   runs only when the UTC day changed, and `/api/health` reads the last successful run from a heartbeat instead

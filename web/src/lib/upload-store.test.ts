@@ -145,6 +145,14 @@ describe("upload store, cloud mode", () => {
     expect(calls).toHaveLength(1);
   });
 
+  test("an R2 put whose fetch rejects names the R2 half, not the store", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fn } = fakeFetch([[R2, "PUT", () => { throw new TypeError("fetch failed"); }]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(false);
+    expect(log).toHaveBeenLastCalledWith("upload u-1: R2 put failed", expect.any(TypeError));
+    log.mockRestore();
+  });
+
   test("an index failure is not persisted, because the reader only sees indexed uploads", async () => {
     const { fn } = fakeFetch([
       [R2, "PUT", () => new Response(null, { status: 200 })],

@@ -34,8 +34,9 @@ Ask these in order. The first yes decides.
 3. **Is it a player's observation from the addon, or from a Polestar Recorder file converted on the upload
    page?** Raw upload to the uploads bucket under
    `uploads/<date>/<id>.json`, one index row in Supabase. It becomes public only through the corpus
-   snapshot, with install ids removed, and a fact is stated only once three installs agree. Named records
-   go public only with the player's own sharing choice or an officer grant that is checked on every read.
+   snapshot, with a per-install pseudonym in place of the install id, and a fact is stated only once three
+   installs agree. Named records go public only with the player's own sharing choice or an officer grant that
+   is checked on every read.
    Market scans, the census and every future record kind follow this same path: a kind in the protocol,
    intake checks, raw in R2, rollup in the cron, publication through the release and the APIs.
 4. **Is it per-person or per-key state?** Supabase: sessions, grants, suppressions, keys, quotas,
