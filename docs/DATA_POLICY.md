@@ -487,7 +487,9 @@ maintainer has checked and added to `kb/curated/ecosystem.json`.
 A Classic 1.12 baseline, pfQuest's database (built from the VMaNGOS and CMaNGOS emulator databases,
 GPL-2.0 and GPL-3.0), is used on a maintainer's machine to check what Forever players have confirmed and
 where they have not looked yet. It is never published and never mixed into the CC BY-SA data: only what
-players' uploads confirm is published.
+players' uploads confirm is published. Decided 2026-10-21 by Carlos: the coverage page, the API and the MCP tool may
+show counts and percentages whose denominator comes from the baseline (how many facts of a kind a zone is expected
+to hold), but never a baseline name, id or row.
 
 **Facts we write ourselves**, in our own words, each with the page it came from and the date.
 

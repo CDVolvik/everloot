@@ -18,6 +18,7 @@ import {
 } from "./site-data.js";
 import { branchFor, decide, olderOpen, titleFor, type Action, type PrRef } from "./plan.js";
 import { prBody, terminalSummary } from "./render.js";
+import { addRecheckScopes, RECHECK_FILE, scopesFromEntry } from "./recheck.js";
 
 export const PRODUCT_ID = /^[a-z0-9_]+$/;
 
@@ -177,6 +178,8 @@ async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], 
     const bodyFile = join(opts.outDir, cfg.product, "pr-body.md");
     writeFileSync(bodyFile, `${body}\n`);
     const entryPath = writeChangeEntry(root, entry);
+    // Moved zones and entrances put their pins and entrances to recheck (kb/curated/recheck.json).
+    const recheck = addRecheckScopes(resolve(opts.repoRoot), root, scopesFromEntry(entry));
 
     const files = generatedFiles(root);
     const differing = opts.force ? differingFiles(root, resolve(opts.repoRoot), files) : undefined;
@@ -184,7 +187,7 @@ async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], 
     return {
       product: cfg.product, action: action.kind, ...("number" in action ? { pr: action.number } : {}),
       version: got.build.version, buildId: got.build.buildId, branch, title: titleFor(got.build.version),
-      paths: [...files, rel(entryPath), ...(importChanged ? [RAID_TS] : [])], remove, bodyFile,
+      paths: [...files, rel(entryPath), ...(importChanged ? [RAID_TS] : []), ...(recheck ? [RECHECK_FILE] : [])], remove, bodyFile,
       summary: `${terminalSummary(entry)}${differing ? `\nregenerated files differing from the committed ones (extractedAt ignored): ${differing.length ? differing.join(", ") : "none"}` : ""}`,
       ...(differing ? { differing } : {}),
     };

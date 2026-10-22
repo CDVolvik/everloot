@@ -131,6 +131,8 @@ const SHOWS_ART = new Set([
   "web/src/lib/site-card.ts", "web/src/lib/item-icons.ts",
   // The same names and quest titles for the entity tokens on a wiki page.
   "web/src/lib/wiki-names.ts",
+  // The coverage score's expected counts (coverage-expected.json, counts only) sit beside the names in the private bucket.
+  "web/src/lib/coverage-compute.ts",
 ]);
 
 test("nothing outside the pages that show the art can read the asset URL or the manifest modules", () => {

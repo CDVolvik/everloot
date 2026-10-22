@@ -33,6 +33,7 @@ import { formatNameGaps, runNameGaps } from "./name-gaps.js";
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
+import { addRecheckScopes, RECHECK_FILE, scopesFromClientDiff } from "./build-watch/recheck.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -125,6 +126,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     facts into <out>/<product>-<build>-<config>-private/ (private bucket only). Needs Python with Pillow. Never
     commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
+  recheck-scopes <diff.json> --since <ISO time> --source <build or post url> [--root ..]
+    (adds recheck scopes to kb/curated/recheck.json from a client-diff: changed QuestV2 rows put their quests to
+    recheck, changed UiMap rows the pins on those maps; a scope already there is not added twice)
   client-coverage <snapshot.sqlite> [--out coverage.md]   (rows, encrypted blocks and needed fields per client table)
   client-scan [--product wow_classic_beta] [--manifest <path|url>] [--out data/client-scan]
     (measures the product's current CDN build against every table WoWDBDefs knows: which exist in the
@@ -495,6 +499,16 @@ async function main(): Promise<number> {
       console.log(`${diff.from.product} ${diff.from.version} -> ${diff.to.product} ${diff.to.version}${diff.crossProduct ? " (different products)" : ""}`);
       for (const t of diff.tables) console.log(`${t.table}: ${t.added.length} added, ${t.removed.length} removed, ${t.changed.length} changed`);
       for (const w of diff.warnings) console.log(`warning: ${w}`);
+      return 0;
+    }
+    case "recheck-scopes": {
+      const since = flags.get("since"), source = flags.get("source");
+      if (args.length < 1 || !since || !source || !Number.isFinite(Date.parse(since))) break;
+      const root = flags.get("root") || "..";
+      const scopes = scopesFromClientDiff(JSON.parse(readFileSync(args[0], "utf8")), { since, source });
+      const added = addRecheckScopes(root, root, scopes);
+      for (const s of scopes) console.log(`${s.type}: ${(s.ids ?? s.zones ?? []).length} ${s.ids ? "ids" : "zones"} since ${s.since}`);
+      console.log(added ? `-> ${RECHECK_FILE}` : `${RECHECK_FILE} already holds these scopes`);
       return 0;
     }
     case "client-catalog": {
