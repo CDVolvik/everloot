@@ -8,6 +8,7 @@ import { CLIENT_TAXONOMY as T, itemsHref, subclassLabel } from "@/lib/items";
 import { npcRows, publicQuests, publicVendors } from "@/lib/world-lists";
 import { loadCatalog } from "@/lib/completion-lists";
 import { publicZones } from "@/lib/zones";
+import { instanceRows } from "@/lib/instances";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
 import { asOfLine, EVIDENCE_KEY } from "@/lib/evidence";
@@ -70,6 +71,7 @@ export default async function DatabasePage() {
     { href: "/database/quest-chains", label: "Quest chains", count: listed(catalog?.chains.length) },
     { href: "/database/drops", label: "Loot observations", count: seen(live) },
     { href: "/database/zones", label: "Zones", count: n(publicZones().length) },
+    { href: "/database/instances", label: "Dungeons and raids", count: n(instanceRows().size) },
     { href: "/tools/guild-board", label: "Guilds", count: "uploads" },
   ];
 

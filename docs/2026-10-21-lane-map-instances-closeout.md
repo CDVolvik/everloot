@@ -95,6 +95,7 @@ all go through it. `treasurePins` is the one treasure list for the zone pages an
 
 ## What comes next
 
-Part 2 (stacked on this PR) adds the treasure dates and the full difficulty name list. Still open: the
-instance index in the sitemap and on `/database` (other owners' files), and the tooltip facts, which the game files
-can supply as unconfirmed values once the extraction is rerun and the data policy names them.
+Part 2 adds the treasure dates and the full difficulty name list; part 3 lists the instance pages in the sitemap
+and on `/database`. Still open: the tooltip facts. The client snapshot on disk already holds the class masks, the
+set ids and the item effects, so they need no new extraction, only the item builder and the data policy's list of
+approved tooltip facts.

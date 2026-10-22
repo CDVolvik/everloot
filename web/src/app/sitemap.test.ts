@@ -63,6 +63,12 @@ test("changefreq and priority are gone", () => {
   }
 });
 
+test("the instance index and each instance page the game files place are listed, never a held-back one", () => {
+  expect(byPath.has("/database/instances")).toBe(true);
+  expect(byPath.has("/database/instances/36-deadmines")).toBe(true);
+  expect([...byPath.keys()].filter((p) => p.startsWith("/database/instances/")).length).toBeGreaterThan(10);
+});
+
 test("the zone index is listed; a zone page only once something is on it, and never a held-back one", async () => {
   const paths = async () => (await sitemap()).map((e) => new URL(e.url).pathname);
   expect(byPath.has("/database/zones")).toBe(true);
