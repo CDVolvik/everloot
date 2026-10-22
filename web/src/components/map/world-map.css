@@ -98,6 +98,8 @@
 }
 .wm-pin-dungeon > span { background: rgb(var(--accent)); border-radius: 9999px; }
 .wm-pin-raid > span { background: rgb(var(--warning)); }
+/* A treasure: a hollow square, apart from the raid's filled one. */
+.wm-pin-chest > span { background: rgb(var(--panel)); border: 2px solid rgb(var(--fg)); border-radius: 2px; width: 10px; height: 10px; }
 .wm-pin-npc > span { background: rgb(var(--fg-2)); border-radius: 9999px; width: 9px; height: 9px; }
 .wm-pin-vendor > span { background: rgb(var(--fg)); transform: rotate(45deg); width: 10px; height: 10px; }
 .wm-pin-vendor.wm-selected > span { transform: rotate(45deg) scale(1.5); }

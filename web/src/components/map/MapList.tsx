@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge, EmptyState } from "@/components/ui";
 import { mapHref, zoneHref, type CategoryState, type MapItems, type MapZone } from "@/lib/map-view";
+import { confirmedLine } from "@/lib/report-labels";
 
 /** Player-observed points listed by name; the rest are on the map. The page inlines no more than these. */
 export const LIST_LIMIT = 100;
@@ -66,6 +67,7 @@ export default function MapList({ zones, shown, show, pinTotal, spoilers, thumbs
                     <span className="text-fg">{p.names.join(", ")}</span>
                     {" · "}{p.raid ? "raid" : "dungeon"}
                     {" · "}<span className="font-mono text-xs text-muted">{Math.round(p.worldX)}, {Math.round(p.worldY)}</span>
+                    {p.confirmed ? <>{" · "}{confirmedLine(p.confirmed, p.lastSeen)}</> : null}
                     {" · "}<ShowButton onClick={() => onShow(`e${p.id}`)} />
                   </span>
                 </li>
@@ -109,6 +111,26 @@ export default function MapList({ zones, shown, show, pinTotal, spoilers, thumbs
               {more > 0 && <li className="text-muted">and {more} more on the map.</li>}
             </ul>
           ) : <EmptyState message="No NPC or vendor position has 3 agreeing installs yet on this continent." />}
+        </section>
+      )}
+
+      {show.chest && (
+        <section aria-labelledby="map-list-treasures">
+          <h2 id="map-list-treasures" className={heading}>Treasure</h2>
+          <p className="mb-2 text-xs text-muted">Objects players saw on the minimap, at the object&apos;s own position. A spot shows once 3 installs agree on it.</p>
+          {shown.treasures.length ? (
+            <ul className="space-y-2 text-fg-2">
+              {shown.treasures.map((t) => (
+                <li key={t.id}>
+                  <Link href={`/database/objects/${t.objectId}`} className="text-accent hover:underline underline-offset-4">{t.name ?? `Object ${t.objectId}`}</Link>
+                  {" · "}{t.zoneName}{" "}
+                  <Link href={mapHref({ mapId: t.mapId, x: t.zoneX, y: t.zoneY })} className="font-mono text-xs text-muted hover:underline underline-offset-4">{t.zoneX}, {t.zoneY}</Link>
+                  {" · "}{t.reporters} installs
+                  {" · "}<ShowButton onClick={() => onShow(t.id)} />
+                </li>
+              ))}
+            </ul>
+          ) : <EmptyState message="No treasure spot has 3 agreeing installs yet on this continent." />}
         </section>
       )}
     </div>

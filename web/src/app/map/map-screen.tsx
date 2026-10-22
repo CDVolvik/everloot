@@ -11,7 +11,8 @@ import { dataAgeLabel } from "@/lib/data-age";
 import {
   categoryCounts, continentPath, parseDeepLink, parseMapUrl, parseViewState, parseZoneLink, visibleItems, type MapItems,
 } from "@/lib/map-view";
-import { CONTINENTS, continentCandidates, continentMap, continentPinSet, observedFacts, WORLD_MAP } from "@/lib/world-map";
+import { CONTINENTS, continentCandidates, continentMap, continentPinSet, continentTreasureCandidates, observedFacts, WORLD_MAP } from "@/lib/world-map";
+import { instanceHref, instanceRows, loadSightings } from "@/lib/instances";
 import { publicZones, zoneHref } from "@/lib/zones";
 import WorldMapView from "@/components/WorldMapView";
 import { LIST_LIMIT } from "@/components/map/MapList";
@@ -88,11 +89,14 @@ export async function renderMapScreen(query: MapQuery, pageContinent: number | n
   const path = continentPath(continentId);
   const title = pageContinent === null ? TITLE : continentTitle(pageContinent);
 
-  const corpus = await uploadStore.loadCorpus();
+  const [corpus, sightings] = await Promise.all([uploadStore.loadCorpus(), loadSightings()]);
   const records = corpus.unreachable ? [] : corpus.records;
+  const seen = sightings.unreachable ? {} : sightings;
   const map = continentMap(continentId, mapBoundsFromRecords(records), WORLD_MAP, spoilers);
   const facts = observedFacts(records);
-  const all = continentPinSet(continentId, facts, spoilers);
+  const all = continentPinSet(continentId, facts, spoilers, WORLD_MAP, seen);
+  // Each instance's page, for an entrance card's Open instance page.
+  const instancePages = Object.fromEntries([...instanceRows(seen).values()].map((r) => [r.instanceMapId, instanceHref(r.instanceMapId, r.name)]));
   const vb = map.viewBox;
   // The game's own map pictures under the outlines, only when the asset URL is set and the upload has them.
   // A held-back zone's picture follows its outline: none unless spoilers are on.
@@ -109,7 +113,9 @@ export async function renderMapScreen(query: MapQuery, pageContinent: number | n
   const full: MapItems = { zones: map.zones, ...all };
   const url = parseMapUrl(query);
   const shownPins = visibleItems(full, { ...url.show, npc: true, vendor: true }, spoilers).pins;
-  const items: MapItems = { ...full, flightLines: [], pins: shownPins.slice(0, LIST_LIMIT) };
+  // The instance ids only open a card's instance page, so they come with the pins answer and not the page.
+  const entrances = full.entrances.map(({ instanceMapIds: _ids, ...e }) => e);
+  const items: MapItems = { ...full, entrances, flightLines: [], pins: shownPins.slice(0, LIST_LIMIT) };
   const focus = zoneId ?? link?.mapId ?? null;
   const scope = focus !== null ? map.zones.find((z) => z.mapId === focus) ?? null : null;
   const zonePages = Object.fromEntries(publicZones().filter((z) => z.continentId === continentId).map((z) => [z.mapId, zoneHref(z.mapId, z.name)]));
@@ -167,8 +173,9 @@ export async function renderMapScreen(query: MapQuery, pageContinent: number | n
             counts: categoryCounts(full, spoilers, scope),
             pins: { npc: shownPins.filter((p) => p.kind === "npc").length, vendor: shownPins.filter((p) => p.kind === "vendor").length },
           }}
-          candidates={continentCandidates(continentId, facts, spoilers)}
+          candidates={[...continentCandidates(continentId, facts, spoilers), ...continentTreasureCandidates(continentId, seen)]}
           zonePages={zonePages}
+          instancePages={instancePages}
           spoilers={spoilers}
           spoilerHref={switchHref}
           art={art}

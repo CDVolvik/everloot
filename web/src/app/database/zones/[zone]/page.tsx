@@ -10,15 +10,15 @@ import {
 import { GAME_NAME_TITLE } from "@/components/EntityRelations";
 import { loadQuestNames, loadSiteAssets } from "@/lib/game-assets";
 import { CLIENT_LAYER } from "@/lib/items";
-import { loadInstanceFacts, loadItemFacts, loadWorldFacts } from "@/lib/rollup-compute";
-import { objectNames } from "@/lib/names";
-import { bossLabel } from "../../../../../../kb/src/instances";
+import { loadWorldFacts } from "@/lib/rollup-compute";
+import { bossLine, entranceLinks, instanceHref, loadSightings } from "@/lib/instances";
+import { confirmedLine } from "@/lib/report-labels";
 import { pageMetadata } from "@/lib/seo";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { WORLD_MAP } from "@/lib/world-map";
 import {
   hasConfirmed, hasContent, parseZoneSegment, zoneByMapId, zoneContents, zoneHref, zoneMapHref,
-  type ZoneEntrance, type ZoneNpc, type ZoneQuest, type ZoneSightings, type ZoneTreasure,
+  type ZoneEntrance, type ZoneNpc, type ZoneQuest, type ZoneTreasure,
 } from "@/lib/zones";
 import { zoneLore } from "@/lib/zone-lore";
 
@@ -27,13 +27,6 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ zone: string }> };
 
 const link = "text-accent hover:underline underline-offset-4";
-
-/** What players' clients saw of dungeons and treasures, with the agreed object names; nothing when storage is down. */
-async function loadSightings(): Promise<ZoneSightings> {
-  const [instances, items] = await Promise.all([loadInstanceFacts(), loadItemFacts()]);
-  if (instances.unreachable || items.unreachable) return {};
-  return { instances, sightings: instances.sightings, objectNames: objectNames(items) };
-}
 
 /** Resolves the segment to a released zone, or null; a held-back zone is the same as one that does not exist. */
 function find(segment: string) {
@@ -107,14 +100,17 @@ export default async function ZonePage(props: Props) {
     { key: "turnin", header: "Turn-in", cell: (q) => npcLink(q.turnInNpcId) },
   ];
   const entranceColumns: Column<ZoneEntrance>[] = [
-    { key: "name", header: "Name", cell: (e) => e.names.join(", ") },
+    // Each instance entered here links to its own page.
+    { key: "name", header: "Name", cell: (e) => entranceLinks(e).map(({ name, id }, i) => (
+      <span key={name}>{i > 0 && ", "}{id ? <Link href={instanceHref(id, name)} className={link}>{name}</Link> : name}</span>
+    )) },
     { key: "kind", header: "Type", cell: (e) => <Badge tone="neutral">{e.raid ? "Raid" : "Dungeon"}</Badge> },
     { key: "at", header: "Entrance", numeric: true, cell: (e) => position(e.x, e.y) },
-    { key: "bosses", header: "Bosses", cell: (e) => (e.bosses.length ? e.bosses.map(bossLabel).join(", ") : "–") },
+    { key: "bosses", header: "Bosses", cell: (e) => (e.bosses.length ? e.bosses.map(bossLine).join("; ") : "–") },
     { key: "src", header: "Source", cell: (e) => (
       <span className="inline-flex flex-wrap items-center gap-1">
         {e.files && <Badge tone="files" />}
-        {e.confirmed !== null && <Badge tone="confirmed">Confirmed by {e.confirmed} installs</Badge>}
+        {e.confirmed !== null && <Badge tone="confirmed">{confirmedLine(e.confirmed, e.lastSeen)}</Badge>}
       </span>
     ) },
   ];

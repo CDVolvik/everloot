@@ -36,6 +36,38 @@ export function tooltipId(value: string): number | null {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/**
+ * What an item card says about the lines the game files we read do not give: the stat amounts, who may use it, its
+ * set and its Equip and Use effects. Each value is a fact only once 3 installs agree on it, as everywhere else; null
+ * is no such fact. No upload record carries these yet, so today every one is null.
+ */
+export interface ItemCardFacts {
+  /** "Classes: Warrior", "Requires Tailoring (150)": the restriction lines, as the game prints them. */
+  restrictions: string[] | null;
+  setName: string | null;
+  /** "Equip: …" and "Use: …" lines, as the game prints them. */
+  effects: string[] | null;
+}
+
+export const NO_ITEM_FACTS: ItemCardFacts = { restrictions: null, setName: null, effects: null };
+
+/**
+ * The card's lines for `ItemCardFacts`. A value nobody agreed on reads `[?]`, never a blank or a missing line, so a
+ * reader can tell "not known" from "none". `hasStats` is true when the files' own lines already name the stats (as
+ * `+[?] Stamina`); without them the amounts get one line of their own.
+ */
+export function itemFactLines(facts: ItemCardFacts, hasStats: boolean): string[] {
+  return [
+    ...(hasStats ? [] : [`Stats: ${PLACEHOLDER}`]),
+    ...(facts.restrictions?.length ? facts.restrictions : [`Restrictions: ${PLACEHOLDER}`]),
+    `Set: ${facts.setName ?? PLACEHOLDER}`,
+    ...(facts.effects?.length ? facts.effects : [`Equip and Use: ${PLACEHOLDER}`]),
+  ];
+}
+
+/** The files' stat lines: `+[?] Stamina`, the way `itemTipText` writes them. */
+const STAT_LINE = /^\+\S+ /;
+
 export async function loadTooltip(type: TooltipType, id: number): Promise<TooltipResult> {
   const url = `${SITE}/database/${PAGE[type]}/${id}`;
   const card = (c: { title: string; lines: string[]; color?: string | null; icon?: string | null; partial?: boolean; gameData?: TooltipResponse["gameData"] }): TooltipResult => ({
@@ -59,11 +91,13 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     const assets = await loadSiteAssets();
     const tip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
     const lines = [...(tip?.lines ?? [])];
-    if (tip?.partial) lines.push(`${PLACEHOLDER} marks a value the game files do not give us yet.`);
+    lines.push(...itemFactLines(NO_ITEM_FACTS, lines.some((l) => STAT_LINE.test(l))));
+    lines.push(`${PLACEHOLDER} marks a value the game files do not give us yet.`);
     if (!page.name && !tip) lines.push(NO_NAME);
     if (page.drops.length) lines.push(`Dropped by ${plural(page.drops.length, "source", "sources")} players looted (3 or more installs).`);
     return card({
-      title: page.name ?? tip?.name ?? `Item ${id}`, lines, color: tip?.color, icon: tip?.icon, partial: tip?.partial,
+      // The lines above always hold a placeholder, so the card is always partial.
+      title: page.name ?? tip?.name ?? `Item ${id}`, lines, color: tip?.color, icon: tip?.icon, partial: true,
       gameData: tip && assets ? { label: assets.label, build: assets.version, credit: CREDIT } : null,
     });
   }

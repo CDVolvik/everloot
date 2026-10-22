@@ -62,7 +62,7 @@ describe("rares seen through a vignette", () => {
 describe("instance entrances", () => {
   test("an entrance is confirmed at 3 voters, at the median, with the agreed name and type", () => {
     const rows = instanceFactsFromRecords(read(three.map((id, i) => entrance(id, 42 + i)))).entrances;
-    expect(confirmedEntrances(rows)).toEqual([{ instanceMapId: 36, name: "Deadmines", instanceType: "party", mapId: 1436, x: 43, y: 71.6, reporters: 3 }]);
+    expect(confirmedEntrances(rows)).toEqual([{ instanceMapId: 36, name: "Deadmines", instanceType: "party", mapId: 1436, x: 43, y: 71.6, reporters: 3, lastSeen: "2025-10-09T08:53:30.000Z" }]);
   });
 
   test("2 voters, or one voter under three ids, confirm nothing", () => {
@@ -80,7 +80,7 @@ describe("bosses per instance", () => {
   test("a boss is listed at 3 voters with its kills and agreed creature ids; wipes are not kills", () => {
     const rows = read([...three.map((id) => encounter(id)), encounter(three[0]!, false, 9)]);
     expect(instanceBosses(instanceFactsFromRecords(rows).encounters).get(36)).toEqual([
-      { encounterId: 1144, name: "Edwin VanCleef", kills: 3, npcIds: [639], reporters: 3 },
+      { encounterId: 1144, name: "Edwin VanCleef", kills: 3, npcIds: [639], reporters: 3, lastSeen: "2025-10-09T08:53:30.000Z" },
     ]);
   });
 

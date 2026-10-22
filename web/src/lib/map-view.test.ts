@@ -18,6 +18,7 @@ const items: MapItems = {
     { id: "n2", kind: "npc", npcId: 2, name: "B", mapId: 2, zoneName: "Held", x: 0, y: 0, zoneX: 1, zoneY: 1, reporters: 3, heldBack: true },
     { id: "v1", kind: "vendor", npcId: 3, name: "C", mapId: 1, zoneName: "Open", x: 0, y: 0, zoneX: 1, zoneY: 1, reporters: 3, heldBack: false },
   ],
+  treasures: [],
   flightMasters: [
     { id: "f1", name: "Open Post", x: 1, y: 1, heldBack: false },
     { id: "f2", name: "Held Post", x: 2, y: 2, heldBack: true },
@@ -57,7 +58,7 @@ describe("categories and the spoiler switch", () => {
     expect(visibleItems(items, off("vendor"), true).pins.map((p) => p.kind)).toEqual(["npc", "npc"]);
     expect(visibleItems(items, off("flight"), true).flightMasters).toEqual([]);
     expect(visibleItems(items, off("path"), true).flightLines).toEqual([]);
-    expect(visibleItems(raidToo, allCategories(false), true)).toEqual({ zones: [], entrances: [], pins: [], flightMasters: [], flightLines: [] });
+    expect(visibleItems(raidToo, allCategories(false), true)).toEqual({ zones: [], entrances: [], pins: [], treasures: [], flightMasters: [], flightLines: [] });
   });
 
   test("filtering does not change the input", () => {
@@ -342,7 +343,8 @@ describe("continent pages and the card's links", () => {
 
   test("a pins answer is read only when it has every list", () => {
     const body = { ok: true, entrances: [], flightMasters: [], flightLines: [], pins: [], extra: 1 };
-    expect(readPinSet(body)).toEqual({ entrances: [], flightMasters: [], flightLines: [], pins: [] });
+    // An answer cached before treasures were drawn reads as having none.
+    expect(readPinSet(body)).toEqual({ entrances: [], flightMasters: [], flightLines: [], pins: [], treasures: [] });
     expect(readPinSet({ ...body, pins: null })).toBeNull();
     expect(readPinSet(null)).toBeNull();
     expect(readPinSet("nope")).toBeNull();
