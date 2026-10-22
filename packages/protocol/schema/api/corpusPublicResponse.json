@@ -64,7 +64,8 @@
           "map_bounds",
           "instance_entrance",
           "encounter",
-          "object_sighting"
+          "object_sighting",
+          "item_fact"
         ]
       }
     },

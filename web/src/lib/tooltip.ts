@@ -4,8 +4,8 @@ import { objectPage } from "../../../kb/src/object-page";
 import { npcPage, questPage } from "../../../kb/src/world-pages";
 import { attribution } from "./data-guard";
 import { loadItemTips, loadSiteAssets } from "./game-assets";
-import { loadWorldFacts, loadItemFacts } from "./rollup-compute";
-import { PLACEHOLDER, tipLines } from "./item-names";
+import { loadWorldFacts, loadItemFacts, loadReportedItemFacts } from "./rollup-compute";
+import { PLACEHOLDER, tipLines, withReported } from "./item-names";
 import { loadObjectFacts } from "./objects";
 import { CREDIT } from "./talents/assets";
 
@@ -90,7 +90,9 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     // The game's icon and tooltip text are Blizzard's; docs/DATA_POLICY.md ("Third extension") lets one item's
     // into a card, under the same rules as its page.
     const assets = await loadSiteAssets();
-    const tip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
+    const filesTip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
+    // The numbers 3 installs' tooltips agree on, as on the item page.
+    const tip = filesTip && withReported(filesTip, await loadReportedItemFacts(id));
     // The files' lines and the reasons for their placeholders; without the files, every line is a placeholder.
     const lines = tip ? tipLines(tip) : [...itemFactLines(NO_ITEM_FACTS, false), NO_FILES];
     if (!page.name && !tip) lines.push(NO_NAME);

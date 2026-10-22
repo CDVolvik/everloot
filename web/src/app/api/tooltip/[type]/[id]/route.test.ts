@@ -2,9 +2,9 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { tooltipResponse } from "@everloot/protocol";
 
 const mocks = vi.hoisted(() => ({
-  items: vi.fn(), world: vi.fn(), objects: vi.fn(), assets: vi.fn(), tips: vi.fn(),
+  items: vi.fn(), world: vi.fn(), reported: vi.fn(), objects: vi.fn(), assets: vi.fn(), tips: vi.fn(),
 }));
-vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: mocks.items, loadWorldFacts: mocks.world }));
+vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: mocks.items, loadWorldFacts: mocks.world, loadReportedItemFacts: mocks.reported }));
 vi.mock("@/lib/objects", () => ({ loadObjectFacts: mocks.objects }));
 vi.mock("@/lib/game-assets", () => ({ loadSiteAssets: mocks.assets, loadItemTips: mocks.tips }));
 
@@ -27,6 +27,35 @@ beforeEach(() => {
   mocks.objects.mockReset().mockResolvedValue({ rates: [], names: [], unreachable: false, dataAsOf: null, measuredZeros: [{ sourceObjectId: 7, kills: 12, reporters: 3, public: true }] });
   mocks.assets.mockReset().mockResolvedValue({ base: "https://assets.everloot.app/b", version: "70450", label: "Found in game files, unconfirmed" });
   mocks.tips.mockReset().mockResolvedValue(new Map());
+  mocks.reported.mockReset().mockResolvedValue({ shown: [], contested: [], unreachable: false });
+});
+
+test("the numbers 3 installs' tooltips agree on fill the card; a contested line keeps its [?] and says why", async () => {
+  const { WHY } = await import("@/lib/item-names");
+  mocks.tips.mockResolvedValue(new Map([[19019, {
+    name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: null, label: "x", partial: true,
+    lines: ["One-Hand · Sword", "[?] - [?] Damage · Speed 1.90", "([?] damage per second)", "[?] Armor", "+[?] Agility", "+[?] Stamina", "Requires Level 60"],
+    why: [WHY.damage, WHY.armor, WHY.stats],
+  }]]));
+  mocks.reported.mockResolvedValue({
+    shown: [
+      { fact: "armor", value: 70, reporters: 3, build: "1.60.1.70450", lastSeen: "2026-11-05T12:00:00.000Z" },
+      { fact: "agility", value: 5, reporters: 5, build: "1.60.1.70450", lastSeen: null },
+      { fact: "fire_resistance", value: 8, reporters: 3, build: "1.60.1.70450", lastSeen: "2026-11-06T12:00:00.000Z" },
+    ],
+    contested: ["stamina"], unreachable: false,
+  });
+  const body = tooltipResponse.parse(await (await call("item", "19019")).json());
+  expect(body.lines).toEqual([
+    "One-Hand · Sword", "[?] - [?] Damage · Speed 1.90", "([?] damage per second)", "70 Armor", "+5 Agility", "+[?] Stamina", "+8 Fire Resistance", "Requires Level 60",
+    WHY.damage, WHY.stats,
+    "[?] Stamina: installs disagree on the number, so none is shown until 3 agree on one.",
+    "70 Armor: reported by 3 installs, last seen 2026-11-05, build 1.60.1.70450.",
+    "+5 Agility: reported by 5 installs, last seen [?], build 1.60.1.70450.",
+    "+8 Fire Resistance: reported by 3 installs, last seen 2026-11-06, build 1.60.1.70450.",
+  ]);
+  expect(body.partial).toBe(true);
+  expect(mocks.reported).toHaveBeenCalledWith(19019);
 });
 
 test("an item card carries the page's name, the licence and the page URL, and parses as the protocol's shape", async () => {

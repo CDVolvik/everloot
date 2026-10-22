@@ -29,6 +29,12 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Addon, protocol and site: item numbers players see. When the game shows an item's tooltip, the addon records
+  its armor, block, damage per second, stats and resistances for the plain item, with the client build (record
+  kind `item_fact`, protocol package 1.15.0, record protocol 1.8.0). The item page, the site's hover card and the
+  embeddable card show a number in place of its `[?]` once three installs on the newest build agree, with the
+  installs, the build and when it was last seen; a line installs disagree on stays `[?]` and says so. MCP tools
+  are unchanged. Not yet run in the Forever client.
 - Addon and desktop app: item tooltips show where an item drops. The Desktop App writes the public drop rates
   (three installs looted the source) into the `EverlootPrices` file beside the prices, at most once a day; the
   tooltip and `/everloot price` show up to three sources as drops of loot windows, with installs and the upload

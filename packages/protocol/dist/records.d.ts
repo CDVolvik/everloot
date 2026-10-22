@@ -18,6 +18,7 @@ export declare const RULES: {
     readonly gold_snapshot: readonly ["peak gold cannot be below current gold"];
     readonly map_bounds: readonly ["map bounds need a width and a height"];
     readonly talent_snapshot: readonly ["talent points must equal the sum of node ranks", "talent node ids must be unique"];
+    readonly item_fact: readonly ["an item fact other than damage_per_second is a whole number"];
 };
 export declare const INSTALL_ID: z.ZodString;
 /** What the game calls a creature (`UnitCreatureType`), in English. The addon sends only these exact names. */
@@ -559,6 +560,52 @@ export declare const mapBounds: z.ZodObject<{
 /** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
 export declare const CLIENT_BUILD: z.ZodString;
 /**
+ * The tooltip numbers a player can see and the game files do not give: armour, block, the weapon's damage per
+ * second, each stat and each resistance. The addon reads them with `GetItemStats` on the plain item (no enchant,
+ * no random suffix), whose keys do not depend on the client's language.
+ */
+export declare const ITEM_FACTS: readonly ["armor", "block", "damage_per_second", "health", "mana", "agility", "strength", "intellect", "spirit", "stamina", "defense_rating", "dodge_rating", "parry_rating", "block_rating", "hit_rating", "crit_rating", "haste_rating", "expertise_rating", "resilience_rating", "attack_power", "mana_regeneration", "spell_power", "holy_resistance", "fire_resistance", "nature_resistance", "frost_resistance", "shadow_resistance", "arcane_resistance"];
+/** One number on an item's tooltip, as the player's own client showed it: anonymous, like `item_seen`. */
+export declare const itemFact: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"item_fact">;
+    itemId: z.ZodNumber;
+    fact: z.ZodEnum<{
+        agility: "agility";
+        arcane_resistance: "arcane_resistance";
+        armor: "armor";
+        attack_power: "attack_power";
+        block: "block";
+        block_rating: "block_rating";
+        crit_rating: "crit_rating";
+        damage_per_second: "damage_per_second";
+        defense_rating: "defense_rating";
+        dodge_rating: "dodge_rating";
+        expertise_rating: "expertise_rating";
+        fire_resistance: "fire_resistance";
+        frost_resistance: "frost_resistance";
+        haste_rating: "haste_rating";
+        health: "health";
+        hit_rating: "hit_rating";
+        holy_resistance: "holy_resistance";
+        intellect: "intellect";
+        mana: "mana";
+        mana_regeneration: "mana_regeneration";
+        nature_resistance: "nature_resistance";
+        parry_rating: "parry_rating";
+        resilience_rating: "resilience_rating";
+        shadow_resistance: "shadow_resistance";
+        spell_power: "spell_power";
+        spirit: "spirit";
+        stamina: "stamina";
+        strength: "strength";
+    }>;
+    value: z.ZodNumber;
+    clientBuild: z.ZodString;
+}, z.core.$strip>;
+/**
  * One talent build: one spec group of one character, no name. `loadoutString` is Blizzard's own export from
  * C_Traits.GenerateImportString when the client allowed it; `exportStatus` says how that went.
  */
@@ -933,6 +980,45 @@ export declare const recordSchemas: {
         x: z.ZodNumber;
         y: z.ZodNumber;
         instanceMapId: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>;
+    readonly item_fact: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"item_fact">;
+        itemId: z.ZodNumber;
+        fact: z.ZodEnum<{
+            agility: "agility";
+            arcane_resistance: "arcane_resistance";
+            armor: "armor";
+            attack_power: "attack_power";
+            block: "block";
+            block_rating: "block_rating";
+            crit_rating: "crit_rating";
+            damage_per_second: "damage_per_second";
+            defense_rating: "defense_rating";
+            dodge_rating: "dodge_rating";
+            expertise_rating: "expertise_rating";
+            fire_resistance: "fire_resistance";
+            frost_resistance: "frost_resistance";
+            haste_rating: "haste_rating";
+            health: "health";
+            hit_rating: "hit_rating";
+            holy_resistance: "holy_resistance";
+            intellect: "intellect";
+            mana: "mana";
+            mana_regeneration: "mana_regeneration";
+            nature_resistance: "nature_resistance";
+            parry_rating: "parry_rating";
+            resilience_rating: "resilience_rating";
+            shadow_resistance: "shadow_resistance";
+            spell_power: "spell_power";
+            spirit: "spirit";
+            stamina: "stamina";
+            strength: "strength";
+        }>;
+        value: z.ZodNumber;
+        clientBuild: z.ZodString;
     }, z.core.$strip>;
     readonly guild_snapshot: z.ZodObject<{
         installId: z.ZodString;
@@ -1519,6 +1605,44 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     x: z.ZodNumber;
     y: z.ZodNumber;
     instanceMapId: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"item_fact">;
+    itemId: z.ZodNumber;
+    fact: z.ZodEnum<{
+        agility: "agility";
+        arcane_resistance: "arcane_resistance";
+        armor: "armor";
+        attack_power: "attack_power";
+        block: "block";
+        block_rating: "block_rating";
+        crit_rating: "crit_rating";
+        damage_per_second: "damage_per_second";
+        defense_rating: "defense_rating";
+        dodge_rating: "dodge_rating";
+        expertise_rating: "expertise_rating";
+        fire_resistance: "fire_resistance";
+        frost_resistance: "frost_resistance";
+        haste_rating: "haste_rating";
+        health: "health";
+        hit_rating: "hit_rating";
+        holy_resistance: "holy_resistance";
+        intellect: "intellect";
+        mana: "mana";
+        mana_regeneration: "mana_regeneration";
+        nature_resistance: "nature_resistance";
+        parry_rating: "parry_rating";
+        resilience_rating: "resilience_rating";
+        shadow_resistance: "shadow_resistance";
+        spell_power: "spell_power";
+        spirit: "spirit";
+        stamina: "stamina";
+        strength: "strength";
+    }>;
+    value: z.ZodNumber;
+    clientBuild: z.ZodString;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;

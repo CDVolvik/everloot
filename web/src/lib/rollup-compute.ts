@@ -2,6 +2,7 @@ import { popularAddonsFromRecords, type AddonRollup } from "../../../kb/src/addo
 import { censusFromRows, type CensusView } from "../../../kb/src/census";
 import { itemFactsFromRecords } from "../../../kb/src/drop-rollup";
 import { observedEdges, type Edge } from "../../../kb/src/edges";
+import { itemFactRowsFromRecords, reportedItemFacts, type ItemFactState } from "../../../kb/src/item-facts";
 import type { ItemFacts } from "../../../kb/src/item-page";
 import { craftedItemsFromRecords } from "../../../kb/src/item-source";
 import { instanceFactsFromRecords, type InstanceFacts } from "../../../kb/src/instances";
@@ -35,6 +36,8 @@ interface AggregateSet {
   /** Entrances players zoned in from and the encounters inside, and objects seen on the minimap. */
   instances: InstanceFacts;
   sightings: ObjectSpawnRow[];
+  /** Item tooltip numbers players reported (`item_fact`), by item id. */
+  itemFacts: ReturnType<typeof itemFactRowsFromRecords>;
   /** Items 3 installs saw a recipe make. */
   crafted: Set<number>;
   addons: AddonRollup;
@@ -80,6 +83,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       world: { ...worldFactsFromRecords(corpus.records), pending: items.pending },
       instances: instanceFactsFromRecords(corpus.records),
       sightings: objectSightingRowsFromRecords(corpus.records),
+      itemFacts: itemFactRowsFromRecords(corpus.records),
       crafted: craftedItemsFromRecords(corpus.records),
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
@@ -127,6 +131,13 @@ export async function loadInstanceFacts(): Promise<InstanceFacts & { sightings: 
   const agg = await loadAggregates();
   if (!agg) return { entrances: [], encounters: [], sightings: [], unreachable: true, dataAsOf: null };
   return { ...agg.instances, sightings: agg.sightings, unreachable: false, dataAsOf: agg.dataAsOf };
+}
+
+/** One item's tooltip numbers 3 installs agree on, and the lines they disagree on (kb/src/item-facts.ts). */
+export async function loadReportedItemFacts(itemId: number): Promise<ItemFactState & { unreachable: boolean }> {
+  const agg = await loadAggregates();
+  if (!agg) return { shown: [], contested: [], unreachable: true };
+  return { ...reportedItemFacts(agg.itemFacts.get(itemId), agg.dataAsOf ? new Date(agg.dataAsOf) : new Date()), unreachable: false };
 }
 
 /** Items players have seen a recipe make (3 installs), for the item lists' Source column. */

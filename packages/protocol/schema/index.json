@@ -1,5 +1,5 @@
 {
-  "protocol": "1.7.0",
+  "protocol": "1.8.0",
   "kinds": [
     "achievement_catalog",
     "achievement_owned",
@@ -17,6 +17,7 @@
     "gold_snapshot",
     "guild_snapshot",
     "instance_entrance",
+    "item_fact",
     "item_seen",
     "loot",
     "loot_award",
@@ -50,6 +51,7 @@
     "gold_snapshot",
     "guild_snapshot",
     "instance_entrance",
+    "item_fact",
     "item_seen",
     "loot",
     "loot_award",
