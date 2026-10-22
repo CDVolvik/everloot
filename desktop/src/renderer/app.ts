@@ -2,7 +2,8 @@ import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
 import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
 import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type ChatProgress, type EverlootApi, type PriceLookup, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
-import { PROVIDER_PRESETS, presetFor, type ProviderKind } from "../shared/providers";
+import { PROVIDER_PRESETS, presetFor, type ModelChoice, type ProviderKind } from "../shared/providers";
+import { inkOn } from "../../../web/src/lib/chat/catalogue";
 import { WEBSITE_LINKS, websiteUrl } from "../shared/website";
 
 declare global { interface Window { everloot: EverlootApi } }
@@ -40,6 +41,9 @@ let flash = "";
 /** The provider picked in the Chat page's form before it is saved; the form re-renders around it. */
 let pickKind: ProviderKind = "anthropic";
 let pickOpen = false;
+/** Each provider's models as the provider listed them, once asked (api.chatModels); the catalogue's until then. */
+const liveModels: Partial<Record<ProviderKind, ModelChoice[]>> = {};
+const askedModels = new Set<ProviderKind>();
 /** The answer being written while a chat question is out; null otherwise. */
 let live: ChatProgress | null = null;
 /** The Market page's last price lookup; null before the first. */
@@ -173,10 +177,10 @@ function chat(): string {
 function modelMenu(c: ChatInfo): string {
   const groups = c.providers.map((p) => {
     const preset = presetFor(p.kind);
-    const models = [...(preset?.models ?? []).map((m) => ({ id: m.id, label: m.label }))];
+    const models = modelsOf(p.kind).map((m) => ({ id: m.id, label: m.label }));
     if (!models.some((m) => m.id === p.model)) models.unshift({ id: p.model, label: p.model });
     const on = (id: string) => c.provider?.kind === p.kind && c.provider.model === id;
-    return `<optgroup label="${esc(preset?.label ?? p.kind)}">${models.map((m) => `<option value="${esc(`${p.kind}|${m.id}`)}" ${on(m.id) ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</optgroup>`;
+    return `<optgroup label="${esc(preset?.name ?? p.kind)}">${models.map((m) => `<option value="${esc(`${p.kind}|${m.id}`)}" ${on(m.id) ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</optgroup>`;
   }).join("");
   const current = c.provider ? "" : `<option value="" selected>${c.mode === "plain search" ? "Search only, no model" : esc(`config.json: ${c.mode}`)}</option>`;
   return `<select id="modelPick" class="model-pick" aria-label="Model" ${c.busy ? "disabled" : ""}>${current}${groups}<option value="add">Add a provider key…</option>${c.providers.length ? `<option value="manage">Manage saved keys…</option>` : ""}</select>`;
@@ -188,12 +192,46 @@ function liveAnswer(): string {
   return `${live?.text ? esc(live.text) : ""}${doing ? `<div class="meta">${doing}</div>` : ""}`;
 }
 
+/** A provider's monogram tile on its own colour; render() paints it, since the page's CSP allows no inline styles. */
+function tile(kind: ProviderKind, small = false): string {
+  const p = presetFor(kind);
+  return p ? `<span class="tile${small ? " tile-sm" : ""}" aria-hidden="true" data-tile="${esc(p.colour)}">${esc(p.mark)}</span>` : "";
+}
+
+const modelsOf = (kind: ProviderKind): ModelChoice[] => liveModels[kind] ?? presetFor(kind)?.models ?? [];
+
+/** The provider form's model list, the pick kept when the new list still has it. */
+function modelSelect(kind: ProviderKind, picked = ""): string {
+  const models = modelsOf(kind);
+  if (!models.length) return "";
+  const on = models.some((m) => m.id === picked) ? picked : models[0].id;
+  return `<select name="model" class="grow">${models.map((m) => `<option value="${esc(m.id)}" ${m.id === on ? "selected" : ""}>${esc(m.label)}${m.note ? ` · ${esc(m.note)}` : ""}</option>`).join("")}<option value="">Another model id…</option></select>`;
+}
+
+/**
+ * Asks the provider, through the main side, which models it serves now, once per provider; the open form's list and
+ * the model menu are swapped in place when it answers, so nothing typed in the form is lost.
+ */
+function loadModels(kind: ProviderKind, again = false): void {
+  if (askedModels.has(kind) && !again) return;
+  askedModels.add(kind);
+  void api.chatModels(kind).then((models) => {
+    if (!models) return;
+    liveModels[kind] = models;
+    const select = main.querySelector<HTMLSelectElement>('#providerForm select[name="model"]');
+    if (select && pickOpen && pickKind === kind) select.outerHTML = modelSelect(kind, select.value);
+    const menu = main.querySelector<HTMLSelectElement>("#modelPick");
+    if (menu && data.chat && !data.chat.busy && document.activeElement !== menu) menu.outerHTML = modelMenu(data.chat);
+  }).catch(() => { askedModels.delete(kind); });
+}
+
 /** Opens the provider form on a provider, or on the first one not saved yet (OpenRouter first: one key, cheap and free models). */
 function openProviderForm(kind: ProviderKind | null): void {
   const saved = new Set(data.chat?.providers.map((p) => p.kind));
   const order: ProviderKind[] = ["openrouter", "anthropic", "opencode", "ollama", "custom"];
   pickKind = kind ?? order.find((k) => !saved.has(k)) ?? "openrouter";
   pickOpen = true; flash = "";
+  loadModels(pickKind);
   render();
   main.querySelector<HTMLElement>("#providerKind")?.focus();
 }
@@ -210,18 +248,17 @@ function providerForm(c: ChatInfo): string {
   const preset = presetFor(pickKind) ?? PROVIDER_PRESETS[0];
   const saved = c.providers.some((p) => p.kind === preset.kind);
   const kinds = PROVIDER_PRESETS.map((p) => `<option value="${p.kind}" ${p.kind === preset.kind ? "selected" : ""}>${esc(p.label)}${c.providers.some((s) => s.kind === p.kind) ? " · saved" : ""}</option>`).join("");
+  const name = (kind: ProviderKind) => esc(presetFor(kind)?.name ?? kind);
   const list = c.providers.length
-    ? `<div class="saved-keys"><span class="muted small">Saved here:</span>${c.providers.map((p) => `<span class="chip">${esc(presetFor(p.kind)?.label ?? p.kind)} <button type="button" class="link" data-removekind="${p.kind}" aria-label="Remove ${esc(presetFor(p.kind)?.label ?? p.kind)}">remove</button></span>`).join("")}</div>`
+    ? `<div class="saved-keys"><span class="muted small">Saved here:</span>${c.providers.map((p) => `<span class="chip chip-key">${tile(p.kind, true)}${name(p.kind)} <button type="button" class="link" data-removekind="${p.kind}" aria-label="Remove ${name(p.kind)}">remove</button></span>`).join("")}</div>`
     : "";
-  const models = preset.models.length
-    ? `<select name="model" class="grow">${preset.models.map((m, i) => `<option value="${esc(m.id)}" ${i === 0 ? "selected" : ""}>${esc(m.label)} · ${esc(m.note)}</option>`).join("")}<option value="">Another model id…</option></select>`
-    : "";
+  const models = modelSelect(preset.kind);
   return `<form id="providerForm" class="panel" autocomplete="off">
     ${list}
-    <div class="field"><label for="providerKind">Provider</label><select name="kind" id="providerKind">${kinds}</select></div>
+    <div class="field"><label for="providerKind">Provider</label><div class="tile-row">${tile(preset.kind)}<select name="kind" id="providerKind">${kinds}</select></div></div>
     ${preset.kind === "custom" ? `<div class="field"><label for="providerUrl">Server</label><input name="baseUrl" id="providerUrl" placeholder="https://host/v1" spellcheck="false"></div>` : ""}
     ${preset.keyFile ? `<div class="field"><label for="providerKey">Key</label><input type="password" name="key" id="providerKey" placeholder="${saved ? "saved; paste a new one to replace it" : preset.kind === "custom" ? "optional" : "paste the key"}" spellcheck="false"><span class="hint">${esc(preset.keyHint)}</span></div>` : ""}
-    <div class="field"><label for="providerModel">Model</label>${models}<input name="modelText" id="providerModel" placeholder="${preset.models.length ? "only if you picked Another model id" : preset.kind === "ollama" ? "the model you pulled, like qwen3:8b" : "model id"}" spellcheck="false"></div>
+    <div class="field"><label for="providerModel">Model</label>${models}<input name="modelText" id="providerModel" placeholder="${modelsOf(preset.kind).length ? "only if you picked Another model id" : preset.kind === "ollama" ? "the model you pulled, like qwen3:8b" : "model id"}" spellcheck="false"></div>
     <p class="muted small">${esc(preset.dataNote)} The key is written to a file in your data folder and named from <code>config.json</code>; it goes to that provider only, with your questions and the tool results.</p>
     <div class="row"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn" id="cancelProvider">Cancel</button></div>
   </form>`;
@@ -689,7 +726,7 @@ function settings(s: AppState): string {
   const keys = c?.providers.length
     ? c.providers.map((p) => {
       const inUse = c.provider?.kind === p.kind;
-      return `<div class="set-row"><div class="grow"><b>${esc(presetFor(p.kind)?.label ?? p.kind)}</b><div class="muted small">${esc(p.model)}${inUse ? ' · <span class="ok">in use</span>' : ""}</div></div>
+      return `<div class="set-row">${tile(p.kind)}<div class="grow"><b>${esc(presetFor(p.kind)?.name ?? p.kind)}</b><div class="muted small">${esc(p.model)}${inUse ? ' · <span class="ok">in use</span>' : ""}</div></div>
         ${inUse ? "" : `<button type="button" class="btn" data-usekind="${p.kind}" data-usemodel="${esc(p.model)}">Use</button>`}<button type="button" class="btn" data-removekind="${p.kind}">Remove</button></div>`;
     }).join("")
     : `<p class="muted small">${c && c.mode !== "plain search" ? `In use: ${esc(c.mode)}, from config.json written by hand.` : "No model yet: Chat and /ask answer with Everloot's top search hits as they are."}</p>`;
@@ -829,6 +866,7 @@ function render(): void {
     : page === "addon" ? addon(s) : page === "changes" ? changes() : page === "log" ? log(s) : settings(s);
   // The page's CSP allows no inline style attributes; bar heights go through the DOM instead.
   for (const el of main.querySelectorAll<HTMLElement>("[data-h]")) el.style.height = `${el.dataset.h}%`;
+  for (const el of main.querySelectorAll<HTMLElement>("[data-tile]")) { el.style.background = el.dataset.tile!; el.style.color = inkOn(el.dataset.tile!); }
   const realmBox = main.querySelector("#realmAdd") as HTMLInputElement | null;
   if (realmBox && realmDraft) realmBox.value = realmDraft;
   if (page === "characters" && drawerTab) reopenDrawer(drawerTab);
@@ -846,7 +884,7 @@ function render(): void {
 async function load(p: Page): Promise<void> {
   try {
     if (p === "overview") { [data.addon, data.changes] = await Promise.all([api.addonInfo(), api.changes().catch((e) => { data.changesError = msg(e); return undefined; })]); data.market = await api.marketInfo(); }
-    else if (p === "chat" || p === "settings") data.chat = await api.chatInfo();
+    else if (p === "chat" || p === "settings") { data.chat = await api.chatInfo(); for (const own of data.chat.providers) loadModels(own.kind); }
     else if (p === "characters") data.characters = await api.charactersInfo();
     else if (p === "upload") [data.upload, data.backups] = await Promise.all([api.uploadInfo(), api.backups()]);
     else if (p === "market") data.market = await api.marketInfo();
@@ -1080,7 +1118,7 @@ async function onChange(ev: Event): Promise<void> {
   const el = ev.target as HTMLInputElement;
   if (el.id === "censusConsent") { censusChoice = el.checked; return; }
   if (el.id === "agree") { agreed = el.checked; render(); return; }
-  if (el.id === "providerKind") { pickKind = el.value as ProviderKind; render(); return; }
+  if (el.id === "providerKind") { pickKind = el.value as ProviderKind; loadModels(pickKind); render(); return; }
   if (el.id === "modelPick") {
     const v = el.value;
     if (v === "add") { openProviderForm(null); return; }
@@ -1145,6 +1183,8 @@ async function onSubmit(ev: SubmitEvent): Promise<void> {
     if (!model && f.has("model")) { flash = "!Type the model id, or pick one from the list"; render(); return; }
     try {
       data.chat = await api.chatSetProvider({ kind: pickKind, key: text("key"), model, baseUrl: text("baseUrl") });
+      // A new key may see other models: ask again.
+      loadModels(pickKind, true);
       pickOpen = false; flash = `Saved. Chat now runs ${data.chat.mode}.`;
     } catch (e) { flash = `!${msg(e)}`; }
     render();

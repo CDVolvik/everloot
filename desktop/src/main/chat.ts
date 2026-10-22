@@ -5,7 +5,7 @@ import { readJsonFile } from "./json-file";
 import type { ChatInfo, ChatMessage, ChatProgress, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
 import type { LocalTool } from "./local-tools";
-import { DEFAULT_MODEL, ownProvider, ownProviders, removeProvider, setProvider, useModel } from "./providers";
+import { DEFAULT_MODEL, modelsFor, ownProvider, ownProviders, removeProvider, setProvider, useModel } from "./providers";
 import type { ProviderChoice, ProviderKind } from "../shared/providers";
 
 const MAX_MESSAGES = 100;
@@ -57,6 +57,7 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
     setProvider(choice: ProviderChoice): ChatInfo { setProvider(dataFolder, choice); error = null; return info(); },
     useModel(kind: ProviderKind, model: string): ChatInfo { useModel(dataFolder, kind, model); error = null; return info(); },
     removeProvider(kind?: ProviderKind): ChatInfo { removeProvider(dataFolder, kind); return info(); },
+    models: (kind: ProviderKind) => modelsFor(dataFolder, kind),
     async send(text: string, onProgress?: (progress: ChatProgress) => void): Promise<ChatInfo> {
       const question = text.trim().slice(0, 2000);
       if (!question || busy) return info();

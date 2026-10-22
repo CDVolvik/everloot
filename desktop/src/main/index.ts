@@ -422,6 +422,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!presetFor(String(kind)) || typeof model !== "string") throw new Error("Pick a model");
     return chat.useModel(kind as ProviderKind, model.slice(0, 200));
   });
+  ipcMain.handle("chatModels", (_e, kind: unknown) => (presetFor(String(kind)) ? chat.models(kind as ProviderKind) : null));
 
 
   // A stray rejection or exception becomes a line on the Log page instead of Electron's dialog; the jobs keep running.

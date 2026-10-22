@@ -2,14 +2,41 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { testKey } from "@/lib/chat/agent";
-import { CHAT_PROVIDERS, chatProvider, type ChatProviderKind, type ChatProviderPreset } from "@/lib/chat/providers";
+import { inkOn, listModels } from "@/lib/chat/catalogue";
+import { CHAT_PROVIDERS, chatProvider, type ChatModel, type ChatProviderKind, type ChatProviderPreset } from "@/lib/chat/providers";
 import { loadProviders, maskKey, recordCheck, removeProvider, saveProvider, setDefault, setModel, type SavedProvider } from "@/lib/chat/store";
 
 const field = "w-full rounded-control border border-edge bg-canvas px-3 py-2 text-fg placeholder:text-muted focus:border-accent";
 const small = "btn min-h-11 px-3 text-sm";
 const OTHER = "__other__";
 
-const providerName = (kind: ChatProviderKind) => chatProvider(kind)?.label.replace(/ \(.*\)$/, "") ?? kind;
+const providerName = (kind: ChatProviderKind) => chatProvider(kind)?.name ?? kind;
+/** The cards shown open; the other providers wait under "More providers" until one is saved. */
+const FIRST: ChatProviderKind[] = ["openrouter", "anthropic", "ollama"];
+
+/** The provider's monogram on its own colour, in place of a logo (no third-party logo file is shipped). */
+function ProviderTile({ preset }: { preset: ChatProviderPreset }) {
+  return (
+    <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-control border border-line text-sm font-bold tracking-tight"
+      style={{ background: preset.colour, color: inkOn(preset.colour) }}>{preset.mark}</span>
+  );
+}
+
+/**
+ * The models the provider serves now, read from the provider (lib/chat/catalogue.ts listModels), or the catalogue's
+ * shortlist until it answers or when it cannot. OpenRouter's list is public; the others need the saved key, and a
+ * local Ollama is asked only once it is set up.
+ */
+function useModels(preset: ChatProviderPreset, key: string | null, open: boolean): ChatModel[] {
+  const [live, setLive] = useState<ChatModel[] | null>(null);
+  useEffect(() => {
+    if (!open || (key === null && preset.list !== "openrouter")) return;
+    let gone = false;
+    void listModels(preset, key ?? "").then((m) => { if (!gone) setLive(m); });
+    return () => { gone = true; };
+  }, [preset, key, open]);
+  return live ?? preset.models;
+}
 
 /** Every model the saved providers offer, the saved one first when it is not a preset. */
 export function modelOptions(providers: SavedProvider[]) {
@@ -32,17 +59,17 @@ function statusOf(preset: ChatProviderPreset, saved: SavedProvider | undefined):
 }
 
 /** A model picker: the provider's presets and "Another model id…", or a free text box when it has no presets. */
-function ModelPicker({ preset, value, onPick, name }: { preset: ChatProviderPreset; value: string; onPick?: (model: string) => void; name?: string }) {
+function ModelPicker({ preset, models, value, onPick, name }: { preset: ChatProviderPreset; models: ChatModel[]; value: string; onPick?: (model: string) => void; name?: string }) {
   const id = useId();
-  const listed = preset.models.some((m) => m.id === value);
-  const [other, setOther] = useState(preset.models.length === 0 || (value !== "" && !listed));
-  const [choice, setChoice] = useState(listed ? value : preset.models[0]?.id ?? "");
+  const listed = models.some((m) => m.id === value);
+  const [other, setOther] = useState(models.length === 0 || (value !== "" && !listed));
+  const [choice, setChoice] = useState(listed ? value : models[0]?.id ?? "");
   const [text, setText] = useState(listed ? "" : value);
   const label = `${providerName(preset.kind)} model`;
   return (
     <div className="space-y-1">
       <label htmlFor={`${id}-model`} className="block text-fg-2">Model</label>
-      {preset.models.length > 0 && (
+      {models.length > 0 && (
         <select id={`${id}-model`} name={name} className={field} value={other ? OTHER : choice} aria-label={label}
           onChange={(e) => {
             if (e.target.value === OTHER) return setOther(true);
@@ -50,15 +77,15 @@ function ModelPicker({ preset, value, onPick, name }: { preset: ChatProviderPres
             setChoice(e.target.value);
             onPick?.(e.target.value);
           }}>
-          {preset.models.map((m) => <option key={m.id} value={m.id}>{m.label} · {m.note}</option>)}
+          {models.map((m) => <option key={m.id} value={m.id}>{m.label}{m.note ? ` · ${m.note}` : ""}</option>)}
           <option value={OTHER}>Another model id…</option>
         </select>
       )}
       {other && (
         <div className="flex flex-wrap gap-2">
-          <input id={preset.models.length ? `${id}-other` : `${id}-model`} name={name ? `${name}Text` : undefined} spellCheck={false} value={text}
-            aria-label={preset.models.length ? `${label} id` : label} onChange={(e) => setText(e.target.value)}
-            className={`${field} min-w-0 flex-1`} placeholder={preset.models.length ? "A model id from the provider" : "The model you pulled, like qwen3:8b"} />
+          <input id={models.length ? `${id}-other` : `${id}-model`} name={name ? `${name}Text` : undefined} spellCheck={false} value={text}
+            aria-label={models.length ? `${label} id` : label} onChange={(e) => setText(e.target.value)}
+            className={`${field} min-w-0 flex-1`} placeholder={models.length ? "A model id from the provider" : "The model you pulled, like qwen3:8b"} />
           {onPick && <button type="button" className={small} onClick={() => onPick(text.trim())}>Use model</button>}
         </div>
       )}
@@ -73,26 +100,29 @@ function ProviderCard({ preset, saved, isDefault, busy, onSave, onTest, onRemove
   const [editing, setEditing] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const id = useId();
-  const name = providerName(preset.kind);
+  const name = preset.name;
+  const tagline = /\((.*)\)$/.exec(preset.label)?.[1];
   const state = statusOf(preset, saved);
   const needsKey = preset.keyPattern !== null;
+  const models = useModels(preset, saved?.key ?? null, Boolean(saved) || editing);
   // Back to the button that opened the form, once it is rendered again.
   const close = () => { setEditing(false); setTimeout(() => opener.current?.focus(), 0); };
 
   return (
     <section aria-labelledby={`${id}-name`} className="space-y-3 rounded-card border border-line bg-panel p-4">
       <div className="flex items-start gap-3">
-        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-control border border-line font-mono text-xs font-semibold text-fg">{preset.mark}</span>
+        <ProviderTile preset={preset} />
         <div className="min-w-0 flex-1">
           <h3 id={`${id}-name`} className="flex flex-wrap items-center gap-2 font-semibold text-fg">
             {name}
             {isDefault && <span className="rounded-full border border-line px-2 text-xs font-normal text-fg-2">Default</span>}
           </h3>
+          {tagline && <p className="text-xs text-muted">{tagline}</p>}
           <p className={state.bad ? "text-fg" : "text-muted"}>{state.text}</p>
         </div>
       </div>
 
-      {saved && !editing && <ModelPicker key={saved.model} preset={preset} value={saved.model} onPick={onModel} />}
+      {saved && !editing && <ModelPicker key={`${saved.model}|${models.length}`} preset={preset} models={models} value={saved.model} onPick={onModel} />}
 
       {editing ? (
         <form className="space-y-3" autoComplete="off" aria-label={needsKey ? `${saved ? "Replace" : "Add"} ${name} key` : `Set up ${name}`}
@@ -104,7 +134,7 @@ function ProviderCard({ preset, saved, isDefault, busy, onSave, onTest, onRemove
               <p id={`${id}-hint`} className="text-xs text-muted">{preset.keyHint}</p>
             </div>
           )}
-          {!saved && <ModelPicker preset={preset} value="" name="model" />}
+          {!saved && <ModelPicker key={models.length} preset={preset} models={models} value="" name="model" />}
           <div className="flex flex-wrap gap-2">
             <button type="submit" className="btn btn-primary min-h-11 px-4 text-sm">{needsKey ? "Save key" : "Use Ollama"}</button>
             <button type="button" className={small} onClick={close}>Cancel</button>
@@ -183,6 +213,22 @@ export default function ChatKeys() {
   }
 
   const active = providers[0] ?? null;
+  const open = (p: ChatProviderPreset) => FIRST.includes(p.kind) || providers.some((s) => s.kind === p.kind);
+  const shown = CHAT_PROVIDERS.filter(open);
+  const more = CHAT_PROVIDERS.filter((p) => !open(p));
+
+  const card = (preset: ChatProviderPreset) => {
+    const saved = providers.find((p) => p.kind === preset.kind);
+    return (
+      <li key={preset.kind}>
+        <ProviderCard preset={preset} saved={saved} isDefault={!!saved && active?.kind === preset.kind} busy={testing !== null}
+          onSave={(form) => onSave(preset.kind, form)}
+          onTest={() => void onTest(saved!)}
+          onRemove={() => attempt(() => { setProviders(removeProvider(localStorage, preset.kind)); return `${providerName(preset.kind)} removed from this browser.`; })}
+          onModel={(model) => attempt(() => { setProviders(setModel(localStorage, preset.kind, model)); return `${providerName(preset.kind)} uses ${model}.`; })} />
+      </li>
+    );
+  };
 
   return (
     <div className="space-y-4 text-sm">
@@ -208,20 +254,16 @@ export default function ChatKeys() {
         </fieldset>
       )}
 
-      <ul aria-label="Chat providers" className="space-y-3">
-        {CHAT_PROVIDERS.map((preset) => {
-          const saved = providers.find((p) => p.kind === preset.kind);
-          return (
-            <li key={preset.kind}>
-              <ProviderCard preset={preset} saved={saved} isDefault={!!saved && active?.kind === preset.kind} busy={testing !== null}
-                onSave={(form) => onSave(preset.kind, form)}
-                onTest={() => void onTest(saved!)}
-                onRemove={() => attempt(() => { setProviders(removeProvider(localStorage, preset.kind)); return `${providerName(preset.kind)} removed from this browser.`; })}
-                onModel={(model) => attempt(() => { setProviders(setModel(localStorage, preset.kind, model)); return `${providerName(preset.kind)} uses ${model}.`; })} />
-            </li>
-          );
-        })}
-      </ul>
+      <ul aria-label="Chat providers" className="space-y-3">{shown.map(card)}</ul>
+
+      {more.length > 0 && (
+        <details className="group space-y-3">
+          <summary className="min-h-11 cursor-pointer py-2 font-semibold text-fg">
+            More providers <span className="font-normal text-muted">· {more.map((p) => p.name).join(", ")}</span>
+          </summary>
+          <ul aria-label="More chat providers" className="space-y-3">{more.map(card)}</ul>
+        </details>
+      )}
 
       <p role="status" aria-live="polite" className="min-h-5 text-fg-2">{status}</p>
     </div>

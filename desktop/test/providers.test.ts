@@ -1,9 +1,9 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { loadProviders } from "../../companion/src/providers/config";
-import { ownProvider, ownProviders, removeProvider, setProvider, useModel } from "../src/main/providers";
+import { modelsFor, ownProvider, ownProviders, removeProvider, setProvider, useModel } from "../src/main/providers";
 import { PROVIDER_PRESETS } from "../src/shared/providers";
 
 const dirs: string[] = [];
@@ -130,4 +130,28 @@ test("every preset's first model is a valid id and every OpenCode model listed i
     for (const m of p.models) expect(m.id).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/);
     if (p.kind === "opencode") for (const m of p.models) { expect(m.id).toMatch(/-free$/); expect(m.note).toContain("zero retention"); }
   }
+});
+
+test("the picker's models come from the provider with its saved key, to that provider alone; a failure means the catalogue", async () => {
+  const d = dir();
+  const send = vi.fn(async (_url: string, _init?: RequestInit) => Response.json({ data: [{ id: "deepseek-flash" }, { id: "deepseek-v4-pro" }] }));
+  // No key saved yet: nothing is asked.
+  expect(await modelsFor(d, "deepseek", send as never)).toBeNull();
+  expect(send).not.toHaveBeenCalled();
+  setProvider(d, { kind: "deepseek", key: "sk-deepseekdeepseekdeepseek" });
+  expect((await modelsFor(d, "deepseek", send as never))?.map((m) => m.id)).toEqual(["deepseek-flash", "deepseek-v4-pro"]);
+  expect(send.mock.calls[0][0]).toBe("https://api.deepseek.com/models");
+  expect(send.mock.calls[0][1]?.headers).toEqual({ authorization: "Bearer sk-deepseekdeepseekdeepseek" });
+  expect(config(d).providers[0]).toMatchObject({ type: "openai-compatible", baseUrl: "https://api.deepseek.com", kind: "deepseek" });
+  expect(await modelsFor(d, "deepseek", (async () => Response.json({}, { status: 401 })) as never)).toBeNull();
+  // A custom server is asked at the address the player gave it.
+  setProvider(d, { kind: "custom", baseUrl: "http://box:8080/v1", model: "local-1" });
+  await modelsFor(d, "custom", send as never);
+  expect(send.mock.calls.at(-1)?.[0]).toBe("http://box:8080/v1/models");
+});
+
+test("every catalogue provider the website lists is here too, and the Chinese families are offered direct", () => {
+  const kinds = PROVIDER_PRESETS.map((p) => p.kind);
+  for (const k of ["deepseek", "moonshot", "qwen", "minimax", "siliconflow", "baidu", "xiaomi", "zai", "tencent", "byteplus", "stepfun", "internlm"]) expect(kinds).toContain(k);
+  for (const p of PROVIDER_PRESETS) if (p.kind !== "anthropic" && p.kind !== "custom") expect(p.baseUrl).toMatch(/^https?:\/\//);
 });
