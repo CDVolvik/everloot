@@ -39,8 +39,8 @@ test("legacy watermark updates do not turn a partial index into a complete inven
     return Response.json({ records: [] });
   }) as typeof globalThis.fetch;
   const store = createUploadStore({ cloud, localDir: "unused", fetch });
-  expect(await store.writeSnapshot()).toEqual({ uploads: 3, added: 1 });
-  expect(await store.writeSnapshot()).toEqual({ uploads: 3, added: 0 });
+  expect(await store.writeSnapshot()).toMatchObject({ uploads: 3, added: 1 });
+  expect(await store.writeSnapshot()).toMatchObject({ uploads: 3, added: 0 });
 });
 
 test("snapshot reads request an uncompressed representation for a strong conditional validator", async () => {
@@ -56,5 +56,5 @@ test("snapshot reads request an uncompressed representation for a strong conditi
     }
     return Response.json([]);
   }) as typeof globalThis.fetch;
-  await expect(createUploadStore({ cloud, localDir: "unused", fetch }).writeSnapshot()).resolves.toEqual({ uploads: 0, added: 0 });
+  await expect(createUploadStore({ cloud, localDir: "unused", fetch }).writeSnapshot()).resolves.toMatchObject({ uploads: 0, added: 0 });
 });

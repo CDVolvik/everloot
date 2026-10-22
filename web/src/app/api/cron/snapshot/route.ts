@@ -30,7 +30,9 @@ export async function GET(req: Request) {
   }
   const rebuild = new URL(req.url).searchParams.get("rebuild") === "1";
   try {
-    const result = await uploadStore.writeSnapshot({ rebuild });
+    const work = rebuild ? { idle: false, retryRollups: false, dataAsOf: null } : await uploadStore.snapshotWork();
+    const idle = work.idle && !rebuild;
+    const result = idle ? { added: 0, skipped: true, dataAsOf: work.dataAsOf } : await uploadStore.writeSnapshot({ rebuild });
     await intakeQuota.prune();
     // Key retention (lib/api-keys.ts) runs only once the data guard's tables exist; a failure is retried next run.
     if (guardOn()) {
@@ -44,7 +46,7 @@ export async function GET(req: Request) {
     // and the next run retries the same uploads.
     let market: { added: number; scans: number } | null = null;
     try {
-      market = await uploadStore.writeMarket({ rebuild });
+      market = await uploadStore.writeMarket(idle && !work.retryRollups ? { idle: true } : { rebuild });
     } catch (err) {
       console.error("market rollup failed", err);
     }
@@ -52,11 +54,14 @@ export async function GET(req: Request) {
     // The completion rollup has its own watermark too, and runs after the market so it cannot starve it.
     let completion: { added: number; remaining: number; trimmed: number; rebuilding: boolean } | null = null;
     try {
-      completion = await uploadStore.writeCompletion({ rebuild, authority: () => sharingStore.loadState() });
+      completion = idle && !work.retryRollups
+        ? { added: 0, remaining: 0, trimmed: 0, rebuilding: false }
+        : await uploadStore.writeCompletion({ rebuild, authority: () => sharingStore.loadState() });
     } catch (err) {
       console.error("completion rollup failed", err);
     }
     if (!completion) return NextResponse.json({ ok: false, error: "completion rollup failed", rebuild, ...result, market }, { status: 500 });
+    await uploadStore.writeCronRun(completion.remaining > 0 || completion.rebuilding, result.dataAsOf);
     return NextResponse.json({ ok: true, rebuild, ...result, market, completion });
   } catch (err) {
     console.error("snapshot failed", err);
