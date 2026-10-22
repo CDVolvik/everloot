@@ -231,8 +231,15 @@ export function createUploadStore(opts: {
       }
     }
     const key = `uploads/${now().toISOString().slice(0, 10)}/${uploadId}.json`;
+    let put: Response;
     try {
-      const put = await r2Fetch(key, { method: "PUT", body, headers: { "content-type": "application/json" } });
+      put = await r2Fetch(key, { method: "PUT", body, headers: { "content-type": "application/json" } });
+    } catch (err) {
+      // A rejection means the network, not an answer; name the half that failed like the status log below.
+      console.error(`upload ${uploadId}: R2 put failed`, err);
+      return false;
+    }
+    try {
       if (!put.ok) {
         // Both halves answer the same 503, so each names itself in the log.
         const detail = await put.text().catch(() => "");
