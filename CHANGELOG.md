@@ -29,6 +29,11 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Addon and desktop app: item tooltips show where an item drops. The Desktop App writes the public drop rates
+  (three installs looted the source) into the `EverlootPrices` file beside the prices, at most once a day; the
+  tooltip and `/everloot price` show up to three sources as drops of loot windows, with installs and the upload
+  date. With the file in the game, a missing price or drop source is said in one grey line. Nothing new is
+  written to SavedVariables. Design: `docs/design/specs/2026-10-21-addon-value-loop-design.md`.
 - Knowledge base: `npm run kb -- name-gaps`, a local report of the items, quests, item sets and spells that
   still print as an id, each with the reason and what would fill it (a rule decision, the addon's uploads, or no
   source yet). Ids only, never names.

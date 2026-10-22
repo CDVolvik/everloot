@@ -31,6 +31,10 @@ its preview. `/everloot addons off` stops it and deletes every recorded addon ro
 
 A scan that gets no answer from the auction house in 30 seconds stops and gives the cooldown back.
 Tooltip prices show the date the companion last fetched them and flag them as stale after two days.
+Below the prices, the tooltip shows where the item drops when three installs looted the source: each rate as
+drops of loot windows, with its installs and the date of the uploads behind it, from the drop rates the Desktop
+App writes into the same `EverlootPrices` file. Once that file is in the game, a missing price or drop source is
+said in one grey line; nothing is written to your SavedVariables. `addon/tests/drops_contract.py` holds the rules.
 Nothing in the addon calls a buy, bid or post API; `addon/tests/market_contract.py` traps them.
 
 Each scan records your faction (`faction`) and which house it read (`house`): Alliance or Horde from the
@@ -280,6 +284,7 @@ addon/
 │   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json
 │   ├── raid.lua        /everloot raid: buffs missing per group, and a raid share code; display only
 │   ├── prices.lua      item tooltips: your latest scan and the companion's community prices
+│   ├── drops.lua       item tooltips: where an item drops, from the public rates in the same file
 │   └── gph.lua         gold per hour sessions, kept in your file only
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```
