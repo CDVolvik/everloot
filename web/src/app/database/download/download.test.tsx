@@ -15,7 +15,7 @@ import { OPEN_DATA_EXCLUDED, OPEN_DATA_VERIFY } from "../../../../../kb/src/open
 
 const sha = (c: string) => c.repeat(64);
 /** The text as React writes it into markup. */
-const escaped = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+const escaped = (s: string) => renderToStaticMarkup(<>{s}</>);
 const manifest = OpenDataManifest.parse({
   schema: "everloot.open-data/1", generatedAt: "2026-10-22T04:57:00.000Z", dataAsOf: "2026-10-22T01:30:00.000Z",
   method: { agreement: 3, text: "3 or more installs agree." }, source: { records: 5120, installs: 41, kinds: ["npc_sighting"] },
