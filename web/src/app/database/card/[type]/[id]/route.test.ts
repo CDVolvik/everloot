@@ -14,7 +14,7 @@ import { GET } from "./route";
 
 const three = (make: (installId: string) => object) => ["a", "b", "c"].map(make);
 const call = (type: string, id: string) => GET(new Request(`https://everloot.app/database/card/${type}/${id}`), { params: Promise.resolve({ type, id }) });
-const TIP = { name: "Destiny", color: "#a335ee", quality: "Epic", icon: "https://assets.everloot.app/b/icons/7.webp", lines: ["Two-Hand", "+[?] Strength"], partial: true, label: "Found in game files, unconfirmed · build 70450" };
+const TIP = { name: "Destiny", color: "#a335ee", quality: "Epic", icon: "https://assets.everloot.app/b/icons/7.webp", lines: ["Two-Hand", "+[?] Strength"], partial: true, why: ["[?] stat amounts: reason."], label: "Found in game files, unconfirmed · build 70450" };
 
 beforeEach(() => {
   mocks.items.mockReset().mockResolvedValue({ rates: [], npcs: [], unreachable: false, names: three((installId) => ({ installId, itemId: 19019, name: "Thunderfury" })) });
@@ -41,7 +41,7 @@ test("an item the name rule shows gets its page's box: the game's lines, its qua
   const { card } = await res.json();
   // No quality in the client layer for this one: the name keeps its own colour.
   expect(card).toMatchObject({ type: "item", id: 647, title: "Destiny", quality: null, color: "#a335ee", icon: TIP.icon });
-  expect(card.lines).toEqual(["Two-Hand", "+[?] Strength", "[?] marks a value the game files do not give us yet."]);
+  expect(card.lines).toEqual(["Two-Hand", "+[?] Strength", "[?] stat amounts: reason."]);
   expect(card.foot).toBe("Name from the Warcraft Wiki · Found in game files, unconfirmed · build 70450");
   expect(mocks.tips).toHaveBeenCalledWith(expect.anything(), [647]);
 });

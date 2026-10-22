@@ -53,13 +53,35 @@ export interface ItemTipText {
   lines: string[];
   /** True when a line holds the placeholder for a value the tables do not give (damage, armor, stat amounts). */
   partial: boolean;
+  /** Why each kind of placeholder is there, in plain words: one line per kind the tooltip holds. */
+  why: string[];
 }
 
-/** The tooltip of an item as the game lays it out, from what the record holds. Damage, armor and stat amounts are not in the tables: `[?]`. */
+/** What a placeholder stands for, by kind. A reason says what the files lack, never only that a value is unknown. */
+export const WHY = {
+  stats: `${PLACEHOLDER} stat amounts: this build's item tables name the stats but hold no amounts; the game works them out from tables we do not read.`,
+  armor: `${PLACEHOLDER} armor: this build's item tables hold no armor value; the game works it out from tables we do not read.`,
+  damage: `${PLACEHOLDER} damage: the game works it out from its weapon damage tables, the weapon speed and its own rounding. No range is shown until one is checked against the game's own tooltip.`,
+  effect: `${PLACEHOLDER} in a Use, Equip or Chance on hit line: a value the spell tables we read do not give.`,
+  restriction: `${PLACEHOLDER} in a restriction: the game files give the requirement but not its name.`,
+  set: `${PLACEHOLDER} set: the game files list the item in a set but give the set no name.`,
+  older: `${PLACEHOLDER} restrictions, set and Use and Equip lines: the item file the site reads was written before these were read from the game files.`,
+} as const;
+
+/** The tooltip's lines and then the reasons for its placeholders, as every item card shows them. */
+export const tipLines = (t: Pick<ItemTipText, "lines" | "why">): string[] => [...t.lines, ...t.why];
+
+/**
+ * The tooltip of an item as the game lays it out, from what the record holds. Damage, armor and stat amounts are not
+ * in the tables: `[?]`, with the reason under the lines. A record from before 2026-10-22 has no restriction, set or
+ * Use and Equip lines, and gets `[?]` for those.
+ */
 export function itemTipText(r: ItemRecord): ItemTipText {
   const lines: string[] = [];
+  const why = new Set<string>();
   if (BINDING[r.b]) lines.push(BINDING[r.b]);
-  if (r.u === 1) lines.push("Unique");
+  if (r.lc) lines.push(r.lc);
+  else if (r.u === 1) lines.push("Unique");
   const slot = SLOT[r.s];
   const k = kind(r.c, r.sc);
   if (slot || k) lines.push([slot, k].filter(Boolean).join(" · "));
@@ -75,9 +97,25 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   // A stat kind this file has no word for is left out rather than printed as "unknown stat 51".
   const stats = r.st.filter((s) => STAT[s]);
   for (const s of stats) lines.push(`+${PLACEHOLDER} ${STAT[s]}`);
+  if (stats.length) why.add(WHY.stats);
+  if (armor) why.add(WHY.armor);
+  if (weapon) why.add(WHY.damage);
+  const known = r.cr !== undefined && r.rq !== undefined && r.fx !== undefined;
+  // Classes and races, then the level, then the skill, spell and reputation, then the effects and the set, as the game orders them.
+  lines.push(...(r.cr ?? []));
   if (r.r > 1) lines.push(`Requires Level ${r.r}`);
+  lines.push(...(r.rq ?? []));
+  if ([r.lc ?? "", ...(r.cr ?? []), ...(r.rq ?? [])].some((l) => l.includes(PLACEHOLDER))) why.add(WHY.restriction);
   if (r.l > 0) lines.push(`Item Level ${r.l}`);
+  lines.push(...(r.fx ?? []));
+  if (r.fx?.some((l) => l.includes(PLACEHOLDER))) why.add(WHY.effect);
+  if (r.is) lines.push(`Set: ${r.is.n ?? PLACEHOLDER}`);
+  if (r.is && !r.is.n) why.add(WHY.set);
+  if (!known) {
+    lines.push(`Restrictions: ${PLACEHOLDER}`, `Set: ${PLACEHOLDER}`, `Equip and Use: ${PLACEHOLDER}`);
+    why.add(WHY.older);
+  }
   if (r.t) lines.push(`"${r.t}"`);
   if (r.sp > 0) lines.push(`Sell Price: ${formatCopper(r.sp)}`);
-  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: stats.length > 0 || weapon || armor };
+  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: why.size > 0, why: [...why] };
 }

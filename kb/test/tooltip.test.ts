@@ -18,6 +18,15 @@ test("dice give a range, and $m and $M its ends", () => {
   expect(resolveTooltip("$s3 / $m3 / $M3", self).text).toBe("10 to 13 / 10 / 13");
 });
 
+test("a variance gives the game's range around the base; an expression keeps the base", () => {
+  // Minor Mana Potion (base 160, variance 0.25) "restores 140 to 180 mana" (Warcraft Wiki); Frostbolt rank 1 is 19 and 0.105.
+  const potion: SpellFacts = { effects: [eff(0, 160, { variance: 0.25 })], durationMs: null };
+  expect(resolveTooltip("Restores $s1 mana.", potion).text).toBe("Restores 140 to 180 mana.");
+  expect(resolveTooltip("$m1 / $M1 / ${$s1*2}", potion).text).toBe("140 / 180 / 320");
+  expect(resolveTooltip("Causes $s1 Frost damage.", { effects: [eff(0, 19, { variance: 0.10526315867900848 })], durationMs: null }).text).toBe("Causes 18 to 20 Frost damage.");
+  expect(resolveTooltip("$s1", { effects: [eff(0, 160, { variance: 0 })], durationMs: null }).text).toBe("160");
+});
+
 test("arithmetic, divided tokens and proc chance", () => {
   expect(resolveTooltip("${$s1*2} and ${$s1/4}.1 and $/5;s1 and $h%", self).text).toBe("30 and 3.8 and 3 and 20%");
 });

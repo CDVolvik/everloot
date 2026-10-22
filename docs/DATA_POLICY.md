@@ -232,6 +232,13 @@ interface files, is a different thing and is covered by the second extension. Th
   reported (a drop, a vendor offer, an auction scan), never in bulk and never for an id someone types
   into a URL. The one exception is an item the item name rule below names: its name, quality, icon and these facts. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.
+  *Proposed 2026-10-22, in the pull request that adds them (the maintainer review):* the same rules cover
+  the lines the game prints from the ids those tables hold: the item set's name (`ItemSet`), the
+  Unique-Equipped category (`ItemLimitCategory`), the classes and races that may use the item
+  (`ChrClasses`, `ChrRaces`, announced races only), the skill, spell and reputation it requires
+  (`SkillLine`, `SpellName`, `Faction`), and its Use, Equip and Chance on hit lines (`ItemEffect`, with the
+  spell's description resolved like the talents'). Stat amounts, armour and weapon damage stay `[?]`, and
+  the tooltip says why in plain words.
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
   our zone outlines. A held-back zone's picture shows only with spoilers on. A continent's own
   picture always shows (decided 2026-10-19): it is the original world's parchment map, with no names

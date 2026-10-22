@@ -5,7 +5,7 @@ import { npcPage, questPage } from "../../../kb/src/world-pages";
 import { attribution } from "./data-guard";
 import { loadItemTips, loadSiteAssets } from "./game-assets";
 import { loadWorldFacts, loadItemFacts } from "./rollup-compute";
-import { PLACEHOLDER } from "./item-names";
+import { PLACEHOLDER, tipLines } from "./item-names";
 import { loadObjectFacts } from "./objects";
 import { CREDIT } from "./talents/assets";
 
@@ -37,9 +37,10 @@ export function tooltipId(value: string): number | null {
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * What an item card says about the lines the game files we read do not give: the stat amounts, who may use it, its
- * set and its Equip and Use effects. Each value is a fact only once 3 installs agree on it, as everywhere else; null
- * is no such fact. No upload record carries these yet, so today every one is null.
+ * What an item card says, without the game files, about the stat amounts, who may use it, its set and its Equip and
+ * Use effects. With the files, those lines come from them (item-names.ts). Each value here is a fact only once 3
+ * installs agree on it, as everywhere else; null is no such fact. No upload record carries these yet, so today
+ * every one is null.
  */
 export interface ItemCardFacts {
   /** "Classes: Warrior", "Requires Tailoring (150)": the restriction lines, as the game prints them. */
@@ -65,8 +66,8 @@ export function itemFactLines(facts: ItemCardFacts, hasStats: boolean): string[]
   ];
 }
 
-/** The files' stat lines: `+[?] Stamina`, the way `itemTipText` writes them. */
-const STAT_LINE = /^\+\S+ /;
+/** The card's last line when the game files cannot be read: why every line above is a placeholder. */
+const NO_FILES = `${PLACEHOLDER} The game files the card reads are not available right now.`;
 
 export async function loadTooltip(type: TooltipType, id: number): Promise<TooltipResult> {
   const url = `${SITE}/database/${PAGE[type]}/${id}`;
@@ -90,14 +91,12 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     // into a card, under the same rules as its page.
     const assets = await loadSiteAssets();
     const tip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
-    const lines = [...(tip?.lines ?? [])];
-    lines.push(...itemFactLines(NO_ITEM_FACTS, lines.some((l) => STAT_LINE.test(l))));
-    lines.push(`${PLACEHOLDER} marks a value the game files do not give us yet.`);
+    // The files' lines and the reasons for their placeholders; without the files, every line is a placeholder.
+    const lines = tip ? tipLines(tip) : [...itemFactLines(NO_ITEM_FACTS, false), NO_FILES];
     if (!page.name && !tip) lines.push(NO_NAME);
     if (page.drops.length) lines.push(`Dropped by ${plural(page.drops.length, "source", "sources")} players looted (3 or more installs).`);
     return card({
-      // The lines above always hold a placeholder, so the card is always partial.
-      title: page.name ?? tip?.name ?? `Item ${id}`, lines, color: tip?.color, icon: tip?.icon, partial: true,
+      title: page.name ?? tip?.name ?? `Item ${id}`, lines, color: tip?.color, icon: tip?.icon, partial: tip ? tip.partial : true,
       gameData: tip && assets ? { label: assets.label, build: assets.version, credit: CREDIT } : null,
     });
   }

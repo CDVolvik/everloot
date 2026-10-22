@@ -315,7 +315,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
     const eff: EffectFacts[] = (effects.get(id) ?? []).map((e) => ({
       index: num(e.EffectIndex),
       basePoints: typeof e.EffectBasePointsF === "number" ? e.EffectBasePointsF : num(e.EffectBasePoints),
-      dieSides: num(e.EffectDieSides), periodMs: num(e.EffectAuraPeriod), chainTargets: num(e.EffectChainTargets),
+      dieSides: num(e.EffectDieSides), periodMs: num(e.EffectAuraPeriod), chainTargets: num(e.EffectChainTargets), variance: num(e.Variance),
       radiusYards: Math.max(0, ...(Array.isArray(e.EffectRadiusIndex) ? e.EffectRadiusIndex : [e.EffectRadiusIndex]).map((i) => radius.get(num(i)) ?? 0)) || null,
     }));
     const a = aura.get(id);
@@ -456,7 +456,12 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   for (const row of list(get("CreatureFamily"))) if (num(row.IconFileID) > 0) familyIconOf.set(num(row.ID), num(row.IconFileID));
 
   // Items: tooltip facts for every named item (or the allowlist), and their icons.
-  const itemSet = get("ItemSparse") && get("Item") ? buildItemSet(get, opts.items) : null;
+  // Their Use and Equip lines are the spells' descriptions, resolved like the talents'.
+  const describe = (id: number) => {
+    const raw = text(spellRows.get(id)?.Description_lang);
+    return raw ? resolveTooltip(raw, factsFor(id) ?? { effects: [], durationMs: null }, factsFor).text : null;
+  };
+  const itemSet = get("ItemSparse") && get("Item") ? buildItemSet(get, opts.items, describe) : null;
 
   // Icons: one file per file data id, whoever asks for it.
   const wantedIcons = new Set<number>([

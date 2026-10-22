@@ -225,6 +225,8 @@ const ItemRecordSchema = z.object({
   n: z.string(), q: z.number().int(), l: z.number(), r: z.number(), b: z.number(), s: z.number(),
   c: z.number().nullable(), sc: z.number().nullable(), d: z.number(), st: z.array(z.number()), sp: z.number(), u: z.number(),
   t: z.string().optional(), i: z.number().int().positive().optional(),
+  is: z.object({ id: z.number().int().positive(), n: z.string().nullable() }).optional(), lc: z.string().optional(),
+  cr: z.array(z.string()).optional(), rq: z.array(z.string()).optional(), fx: z.array(z.string()).optional(),
 });
 
 /** What an item link shows: plain, serialisable data for the tooltip. */
@@ -236,6 +238,8 @@ export interface ItemTip {
   icon: string | null;
   lines: string[];
   partial: boolean;
+  /** Why the lines hold `[?]`, one line per kind (item-names.ts, WHY). */
+  why: string[];
   /** "found in game files, unconfirmed · build x". */
   label: string;
   /** Item level, required level (0 for both: none) and the bonding enum, for the item lists' columns and filters. */

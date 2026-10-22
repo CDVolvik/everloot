@@ -12,7 +12,7 @@ vi.mock("@/lib/game-assets", async (importOriginal) => ({
   loadItemNames: async () => state.matched,
   loadItemTips: async (_assets: unknown, ids: readonly number[]) => {
     state.tipCalls.push([...ids]);
-    return new Map(ids.map((id) => [id, { name: `Game name ${id}`, color: "#fff", quality: "Common", icon: `https://assets.example.test/b/icons/i${id}.webp`, lines: [], partial: false, label: "found in game files, unconfirmed · build 1.60.1.70450", level: 0, required: 0, binding: 0, ...state.levels.get(id) }]));
+    return new Map(ids.map((id) => [id, { name: `Game name ${id}`, color: "#fff", quality: "Common", icon: `https://assets.example.test/b/icons/i${id}.webp`, lines: [], partial: false, why: [], label: "found in game files, unconfirmed · build 1.60.1.70450", level: 0, required: 0, binding: 0, ...state.levels.get(id) }]));
   },
 }));
 vi.mock("@/lib/rollup-compute", () => ({

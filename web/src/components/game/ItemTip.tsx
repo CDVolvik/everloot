@@ -28,7 +28,7 @@ function Tipped({ tip, size, children }: { tip: Tip; size: number; children: Rea
     return () => document.removeEventListener("keydown", close);
   }, [open]);
   const link = isValidElement<{ "aria-describedby"?: string }>(children) ? cloneElement(children, { "aria-describedby": descId }) : children;
-  const lines = [...tip.lines, ...(tip.partial ? ["[?] marks a value the game files do not give us yet."] : [])];
+  const lines = [...tip.lines, ...tip.why];
   return (
     <span
       id={anchorId}

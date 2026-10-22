@@ -4,7 +4,7 @@ import {
   assetUrl, BANNER_MAP, buildFolder, classAndProfessionIcons, continentArt, creditWhat, emblems, FETCH_TIMEOUT_MS, forgetPrivateReads, iconUrl,
   instanceThumbs, itemIconUrl, itemShard, itemTip, gameNameFor, launchArt, loadingArt, loadItemNames, loadItemSetNames, loadItemTips, loadQuestNames, loadSpellNames, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
 } from "./game-assets";
-import { itemTipText, qualityColor } from "./item-names";
+import { itemTipText, qualityColor, tipLines, WHY } from "./item-names";
 import { cameraBox, zoneArtShown, ZONE_ART_ZOOM, type Box, type Camera } from "./map-view";
 import { itemIndex, memoryStore, shard0, siteManifest } from "./game-assets.fixture";
 
@@ -142,6 +142,40 @@ test("an item tooltip reads like the game's and marks the stat amounts the table
   expect(odd.partial).toBe(false);
   expect(qualityColor(3)).toMatch(/^#/);
   expect(itemTip(shard0["9"], { base: BASE, version: "v", label: "l" }).color).toBe(qualityColor(1));
+});
+
+test("every placeholder kind comes with its reason in plain words, once", () => {
+  expect(itemTipText(shard0["25"]).why).toEqual([WHY.stats, WHY.damage]);
+  expect(itemTipText(shard0["9"]).why).toEqual([]);
+  expect(itemTipText({ ...shard0["9"], c: 4, sc: 1, s: 20 }).why).toEqual([WHY.armor]);
+  expect(tipLines(itemTipText(shard0["25"])).slice(-2)).toEqual([WHY.stats, WHY.damage]);
+  for (const line of Object.values(WHY)) expect(line).toMatch(/^\[\?\] .+: .+\.$/);
+});
+
+test("the set, the Unique-Equipped category, the restrictions and the effects print where the game prints them", () => {
+  const helm = {
+    ...shard0["9"], c: 4, sc: 4, s: 1, r: 60, l: 66, u: 1, t: "Shiny.",
+    is: { id: 1, n: "Synthetic Battlegear" }, lc: "Unique-Equipped: Synthetic Signet (1)",
+    cr: ["Classes: Warrior"], rq: ["Requires Synthetic Guild - Honored"], fx: ["Equip: Synthetic effect.", "Use: Restores [?] health."],
+  };
+  const text = itemTipText(helm);
+  expect(text.lines).toEqual([
+    "Unique-Equipped: Synthetic Signet (1)", "Head · Plate", "[?] Armor", "Classes: Warrior", "Requires Level 60", "Requires Synthetic Guild - Honored",
+    "Item Level 66", "Equip: Synthetic effect.", "Use: Restores [?] health.", "Set: Synthetic Battlegear", '"Shiny."', "Sell Price: 13c",
+  ]);
+  expect(text.why).toEqual([WHY.armor, WHY.effect]);
+  // A requirement the files do not name is marked and explained; so is a set without a name.
+  expect(itemTipText({ ...helm, rq: ["Requires PvP rank [?]"], is: { id: 2, n: null } }).why).toEqual([WHY.armor, WHY.restriction, WHY.effect, WHY.set]);
+});
+
+test("a record from an older shard says its restrictions, set and effects are not known, rather than that it has none", () => {
+  const older = { ...shard0["9"], cr: undefined, rq: undefined, fx: undefined };
+  const text = itemTipText(older);
+  expect(text.lines).toEqual(expect.arrayContaining(["Restrictions: [?]", "Set: [?]", "Equip and Use: [?]"]));
+  expect(text.why).toEqual([WHY.older]);
+  expect(text.partial).toBe(true);
+  // An empty list from a newer shard is "none": no placeholder.
+  expect(itemTipText(shard0["9"]).lines.join(" ")).not.toContain("[?]");
 });
 
 test("a weapon with no stats still marks its damage, and worn armor its armor value, as not in the tables", () => {
