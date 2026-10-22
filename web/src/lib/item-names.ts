@@ -5,6 +5,7 @@ import { ITEM_FACTS } from "@everloot/protocol";
 import { tokens } from "@/design/tokens";
 import { formatCopper } from "../../../kb/src/market";
 import type { ItemRecord } from "../../../kb/src/assets/items";
+import { checkedDamageRange, CHECKED_WEAPONS, type CheckedDamageRange, type CheckedWeapon } from "../../../kb/src/assets/weapon-damage";
 import type { ItemFactName, ItemFactState } from "../../../kb/src/item-facts";
 
 export const PLACEHOLDER = "[?]";
@@ -35,6 +36,9 @@ const ARMOR: Record<number, string> = { 1: "Cloth", 2: "Leather", 3: "Mail", 4: 
 const ARMORED = new Set([1, 2, 3, 4, 6]);
 const NO_ARMOR_SLOT = new Set([4, 19]);
 
+/** ItemSparse.DamageType, the damage school; physical damage prints no school word. */
+const SCHOOL: Record<number, string> = { 0: "", 1: "Holy ", 2: "Fire ", 3: "Nature ", 4: "Frost ", 5: "Shadow ", 6: "Arcane " };
+
 const STAT: Record<number, string> = {
   1: "Health", 3: "Agility", 4: "Strength", 5: "Intellect", 6: "Spirit", 7: "Stamina", 12: "Defense Rating", 13: "Dodge Rating",
   14: "Parry Rating", 15: "Block Rating", 31: "Hit Rating", 32: "Critical Strike Rating", 35: "Resilience Rating", 36: "Haste Rating",
@@ -55,7 +59,10 @@ export interface ItemTipText {
   lines: string[];
   /** True when a line holds the placeholder for a value the tables do not give (damage, armor, stat amounts). */
   partial: boolean;
-  /** Why each kind of placeholder is there, in plain words: one line per kind the tooltip holds. */
+  /**
+   * Why each kind of placeholder is there, in plain words: one line per kind the tooltip holds. A damage range the
+   * files give is printed only once checked in the game, and then a line here says so.
+   */
   why: string[];
 }
 
@@ -70,15 +77,24 @@ export const WHY = {
   older: `${PLACEHOLDER} restrictions, set and Use and Equip lines: the item file the site reads was written before these were read from the game files.`,
 } as const;
 
+/** Where a printed range came from: the game files, and the weapons from its table that were checked in the game, and when. */
+export function damageSource(range: CheckedDamageRange, line: string): string {
+  const days = [...new Set(range.checked.map((c) => c.seen))].sort();
+  const builds = [...new Set(range.checked.map((c) => c.build))].sort();
+  const weapons = `${range.checked.length} ${range.checked.length === 1 ? "weapon" : "weapons"}`;
+  return `${line}: worked out from the game files (${range.table}, the weapon speed and its spread), `
+    + `the way ${weapons} from that table read off the game's own tooltip on ${days.join(", ")} agree, build ${builds.join(", ")}.`;
+}
+
 /** The tooltip's lines and then the reasons for its placeholders, as every item card shows them. */
 export const tipLines = (t: Pick<ItemTipText, "lines" | "why">): string[] => [...t.lines, ...t.why];
 
 /**
- * The tooltip of an item as the game lays it out, from what the record holds. Damage, armor and stat amounts are not
- * in the tables: `[?]`, with the reason under the lines. A record from before 2026-10-22 has no restriction, set or
- * Use and Equip lines, and gets `[?]` for those.
+ * The tooltip of an item as the game lays it out, from what the record holds. Armor and stat amounts are not in the
+ * tables, and a damage range is not confirmed until a weapon from its table is in `checked`: `[?]`, with the reason
+ * under the lines. A record from before 2026-10-22 has no restriction, set or Use and Equip lines, and gets `[?]` for those.
  */
-export function itemTipText(r: ItemRecord): ItemTipText {
+export function itemTipText(r: ItemRecord, checked: readonly CheckedWeapon[] = CHECKED_WEAPONS): ItemTipText {
   const lines: string[] = [];
   const why = new Set<string>();
   if (BINDING[r.b]) lines.push(BINDING[r.b]);
@@ -88,10 +104,15 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   const k = kind(r.c, r.sc);
   if (slot || k) lines.push([slot, k].filter(Boolean).join(" · "));
   // A weapon's damage is not in the 1.60.1 item tables (the client works it out from ItemDamage*), so its
-  // damage and per-second lines carry the placeholder; the speed sits beside the damage, as in the game.
+  // damage line carries the placeholder until the range the files give is confirmed against the game's own
+  // tooltip (CHECKED_WEAPONS); the per-second line is a player-reported number, never the files'. The speed sits
+  // beside the damage, as in the game.
   const weapon = r.c === 2 && r.d > 0;
   const speed = r.d > 0 ? `Speed ${(r.d / 1000).toFixed(2)}` : null;
-  if (weapon) lines.push(`${PLACEHOLDER} - ${PLACEHOLDER} Damage · ${speed}`, `(${PLACEHOLDER} damage per second)`);
+  const school = r.w ? SCHOOL[r.w.ds] : undefined;
+  const range = weapon && school !== undefined ? checkedDamageRange(r, checked) : null;
+  const damage = range ? `${range.min} - ${range.max} ${school}Damage` : `${PLACEHOLDER} - ${PLACEHOLDER} Damage`;
+  if (weapon) lines.push(`${damage} · ${speed}`, `(${PLACEHOLDER} damage per second)`);
   else if (speed) lines.push(speed);
   // Cloth, leather, mail, plate and shields always carry armor in the game; its amount is not in the tables either.
   const armor = r.c === 4 && r.sc !== null && ARMORED.has(r.sc) && !NO_ARMOR_SLOT.has(r.s);
@@ -101,7 +122,7 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   for (const s of stats) lines.push(`+${PLACEHOLDER} ${STAT[s]}`);
   if (stats.length) why.add(WHY.stats);
   if (armor) why.add(WHY.armor);
-  if (weapon) why.add(WHY.damage);
+  if (weapon && !range) why.add(WHY.damage);
   const known = r.cr !== undefined && r.rq !== undefined && r.fx !== undefined;
   // Classes and races, then the level, then the skill, spell and reputation, then the effects and the set, as the game orders them.
   lines.push(...(r.cr ?? []));
@@ -119,7 +140,8 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   }
   if (r.t) lines.push(`"${r.t}"`);
   if (r.sp > 0) lines.push(`Sell Price: ${formatCopper(r.sp)}`);
-  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: why.size > 0, why: [...why] };
+  if (range) why.add(damageSource(range, damage));
+  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: lines.some((l) => l.includes(PLACEHOLDER)), why: [...why] };
 }
 
 /* ---------- The numbers players' tooltips showed (kb/src/item-facts.ts) ---------- */

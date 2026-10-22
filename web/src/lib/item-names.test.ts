@@ -1,5 +1,7 @@
 import { ITEM_FACTS } from "@everloot/protocol";
 import { expect, test } from "vitest";
+import type { ItemRecord } from "../../../kb/src/assets/items";
+import type { CheckedWeapon } from "../../../kb/src/assets/weapon-damage";
 import type { ReportedFact } from "../../../kb/src/item-facts";
 import { shard0 } from "./game-assets.fixture";
 import { factLine, itemTipText, withReported, WHY } from "./item-names";
@@ -50,4 +52,37 @@ test("a line the files did not print goes where the game prints it; a contested 
   expect(settled.lines).toContain("-1 Spirit");
   expect(settled.why.filter((w) => w.startsWith("[?]"))).toEqual([]);
   expect(settled.partial).toBe(false);
+});
+
+// The Cutlass (851) as build 1.60.1.70450's shard holds it. The checks are made up: no weapon has been read off the game yet.
+const cutlass: ItemRecord = {
+  n: "Cutlass", q: 1, l: 15, r: 10, b: 2, s: 13, c: 2, sc: 7, d: 2200, st: [], sp: 0, u: 0, cr: [], rq: [], fx: [],
+  w: { t: "ItemDamageOneHand", dps: 6.957369327545166, dv: 0.6000000238418579, ds: 0 },
+};
+const check = (r: ItemRecord, id: number, game: { min: number; max: number }): CheckedWeapon =>
+  ({ id, n: r.n, l: r.l, q: r.q, d: r.d, w: r.w!, game, seen: "2026-11-04", build: "1.60.1.99999" });
+
+test("a weapon's damage stays [?] with its reason while no weapon has been checked in the game", () => {
+  const tip = itemTipText(cutlass);
+  expect(tip.lines).toContain("[?] - [?] Damage · Speed 2.20");
+  expect(tip.why).toEqual([WHY.damage]);
+});
+
+test("once checks confirm a reading, the files' range prints with where it came from, apart from the reported per second", () => {
+  const checked = [check(cutlass, 851, { min: 10, max: 20 })];
+  const tip = itemTipText(cutlass, checked);
+  expect(tip.lines.slice(0, 4)).toEqual(["Binds when equipped", "One-Hand · Sword", "10 - 20 Damage · Speed 2.20", "([?] damage per second)"]);
+  const source = "10 - 20 Damage: worked out from the game files (ItemDamageOneHand, the weapon speed and its spread), the way 1 weapon from that table read off the game's own tooltip on 2026-11-04 agree, build 1.60.1.99999.";
+  expect(tip.why).toEqual([source]);
+  // The per-second number is the players'; it fills its own line and says so on its own line.
+  const filled = withReported(tip, { shown: [fact({ fact: "damage_per_second", value: 6.8 })], contested: [] });
+  expect(filled.lines.slice(2, 4)).toEqual(["10 - 20 Damage · Speed 2.20", "(6.8 damage per second)"]);
+  expect(filled.why).toEqual([source, "6.8 damage per second: reported by 3 installs, last seen 2026-11-05, build 1.60.1.70450."]);
+  // A wand prints its school; a table no checked weapon came from keeps [?].
+  const wand: ItemRecord = { ...cutlass, n: "Flamestick", s: 26, sc: 19, d: 1800, w: { t: "ItemDamageWand", dps: 13.575119972229004, dv: 0.6000000238418579, ds: 2 } };
+  expect(itemTipText(wand, checked).lines).toContain("[?] - [?] Damage · Speed 1.80");
+  expect(itemTipText(wand, [...checked, check(wand, 5241, { min: 17, max: 32 })]).lines).toContain("17 - 32 Fire Damage · Speed 1.80");
+  // A record without the table's inputs, or an unknown school, keeps [?] too.
+  expect(itemTipText({ ...cutlass, w: undefined }, checked).why).toEqual([WHY.damage]);
+  expect(itemTipText({ ...cutlass, w: { ...cutlass.w!, ds: 9 } }, checked).lines).toContain("[?] - [?] Damage · Speed 2.20");
 });
