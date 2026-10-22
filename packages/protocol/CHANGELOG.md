@@ -15,6 +15,10 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.16.0 (record protocol unchanged, 1.8.0): the route `GET /api/coverage/settled` is in `API_ROUTES`, with its
+  response schema `settledListResponse` (`everloot.settled/1`): per upload row kind, the delta-encoded ids whose
+  facts are settled for one client build. The route already existed; it is now in the OpenAPI document, the API
+  docs and `schema/api/`.
 - 1.15.0 (record protocol 1.8.0), for the numbers an item's tooltip shows that the game files do not hold: the
   record kind `item_fact`, public in the corpus, with `itemId`, `fact` (which line, from `ITEM_FACTS`: armor, block,
   damage_per_second, each stat and each resistance), `value` (a whole number, but damage_per_second has one decimal)

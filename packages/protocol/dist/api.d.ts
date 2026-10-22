@@ -1080,6 +1080,39 @@ export declare const bulkIndex: z.ZodObject<{
     }, z.core.$strip>>;
 }, z.core.$strip>;
 export type BulkIndex = z.infer<typeof bulkIndex>;
+/**
+ * GET /api/coverage/settled: the facts that are settled for one client build (five installs agree, no other report
+ * for 14 days), at the grain of an upload row, so an uploader can leave out the rows that would only repeat them.
+ * Ids only, never values; everything in it is a fact the site already shows.
+ */
+export declare const settledListResponse: z.ZodObject<{
+    schema: z.ZodLiteral<"everloot.settled/1">;
+    build: z.ZodString;
+    dataAsOf: z.ZodNullable<z.ZodString>;
+    npc_sighting: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    quest: z.ZodArray<z.ZodNumber>;
+    vendor: z.ZodArray<z.ZodNumber>;
+    loot: z.ZodObject<{
+        npc: z.ZodArray<z.ZodNumber>;
+        obj: z.ZodArray<z.ZodNumber>;
+    }, z.core.$strip>;
+    instance_entrance: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    encounter: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    object_sighting: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+export type SettledListResponse = z.infer<typeof settledListResponse>;
 export declare const API_SCHEMAS: {
     readonly attribution: z.ZodObject<{
         licence: z.ZodString;
@@ -1395,6 +1428,33 @@ export declare const API_SCHEMAS: {
                 credit: z.ZodOptional<z.ZodString>;
             }, z.core.$loose>>;
         }, z.core.$strip>>;
+    }, z.core.$strip>;
+    readonly settledListResponse: z.ZodObject<{
+        schema: z.ZodLiteral<"everloot.settled/1">;
+        build: z.ZodString;
+        dataAsOf: z.ZodNullable<z.ZodString>;
+        npc_sighting: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
+        quest: z.ZodArray<z.ZodNumber>;
+        vendor: z.ZodArray<z.ZodNumber>;
+        loot: z.ZodObject<{
+            npc: z.ZodArray<z.ZodNumber>;
+            obj: z.ZodArray<z.ZodNumber>;
+        }, z.core.$strip>;
+        instance_entrance: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
+        encounter: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
+        object_sighting: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
     }, z.core.$strip>;
     readonly intakeRequest: z.ZodObject<{
         addonVersion: z.ZodString;

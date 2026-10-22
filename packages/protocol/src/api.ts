@@ -298,6 +298,29 @@ export const bulkIndex = z.object({
 });
 export type BulkIndex = z.infer<typeof bulkIndex>;
 
+const DELTA_IDS = z.array(z.number().int()).describe("Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8.");
+/** Ids each with the maps (or instances) they are settled on, both delta-encoded; `maps[i]` belongs to `ids[i]`. */
+const ID_MAPS = z.object({ ids: DELTA_IDS, maps: z.array(DELTA_IDS).describe("One delta-encoded list per id, in the same order as ids.") });
+
+/**
+ * GET /api/coverage/settled: the facts that are settled for one client build (five installs agree, no other report
+ * for 14 days), at the grain of an upload row, so an uploader can leave out the rows that would only repeat them.
+ * Ids only, never values; everything in it is a fact the site already shows.
+ */
+export const settledListResponse = z.object({
+  schema: z.literal("everloot.settled/1"),
+  build: z.string().describe("The client build the list is for, such as 1.60.1.70450."),
+  dataAsOf: ISO_TIME.nullable().describe("The corpus time the list was made from; null for a build the server has not looked at yet, whose list is empty so nothing is skipped."),
+  npc_sighting: ID_MAPS.describe("NPC ids whose name and traits are settled, each with the maps whose pin is settled."),
+  quest: DELTA_IDS.describe("Quest ids with every reported field settled."),
+  vendor: DELTA_IDS.describe("Vendor NPC ids whose every offer is settled."),
+  loot: z.object({ npc: DELTA_IDS, obj: DELTA_IDS }).describe("Sources whose loot is settled: enough loot windows and a settled rate for every common item."),
+  instance_entrance: ID_MAPS.describe("Instance map ids with the outdoor maps whose entrance is settled."),
+  encounter: ID_MAPS.describe("Encounter ids with the instance map ids they are settled in."),
+  object_sighting: ID_MAPS.describe("Object ids with the maps where every treasure cluster and its name are settled."),
+});
+export type SettledListResponse = z.infer<typeof settledListResponse>;
+
 export const API_SCHEMAS = {
   attribution: attributionSchema,
   gameDataNotice: gameDataNoticeSchema,
@@ -313,6 +336,7 @@ export const API_SCHEMAS = {
   toolAnswerResponse,
   tooltipResponse,
   bulkIndex,
+  settledListResponse,
   intakeRequest,
   intakeReceipt,
   intakeRefused,
@@ -422,6 +446,19 @@ export const API_ROUTES: readonly ApiRoute[] = [
     description: "Every class with its subclasses, each with the slug `/api/items` takes and the number of items in the build, plus the slot and quality slugs. From the game files. Public in the repository too, so it is neither paged nor limited. Cached for an hour.",
     access: "open", data: "game-files",
     responses: { "200": { description: "The tree.", schema: "itemCategoriesResponse" } },
+  },
+  {
+    method: "GET", path: "/api/coverage/settled",
+    summary: "The facts that are settled for one client build, so an uploader can skip repeating them",
+    description: "Per upload row kind, the ids whose facts are settled (five installs agree and no other value was reported for 14 days), sorted and delta-encoded. Only facts the site already shows are in it, and never their values. The Desktop App and the upload page leave those rows out of an upload. A build the server has not looked at yet gets an empty list, so nothing is skipped on a new patch. `ETag` and `If-None-Match` let a client revalidate its copy for nothing; a 304 has no body. Cached for ten minutes.",
+    access: "open", data: "observed",
+    query: [{ name: "build", description: "The client build, such as 1.60.1.70450.", schema: { type: "string", pattern: "^\\d+(\\.\\d+)+$", maxLength: 32, examples: ["1.60.1.70450"] }, required: true }],
+    responses: {
+      "200": { description: "The settled list.", schema: "settledListResponse" },
+      "304": { description: "The copy you sent in `If-None-Match` is current." },
+      "400": { description: "`build` is missing or is not a client build.", schema: "apiError" },
+      "503": { description: "Storage is unreachable. Keep the list you have and retry later; an unrecorded list is not an empty one.", schema: "apiError" },
+    },
   },
   {
     method: "GET", path: "/api/market/prices",
