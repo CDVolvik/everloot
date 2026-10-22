@@ -192,6 +192,74 @@ export declare const itemPage: z.ZodObject<{
         windows: z.ZodNumber;
         reporters: z.ZodNumber;
     }, z.core.$strip>>;
+    reported: z.ZodOptional<z.ZodObject<{
+        shown: z.ZodArray<z.ZodObject<{
+            fact: z.ZodEnum<{
+                agility: "agility";
+                arcane_resistance: "arcane_resistance";
+                armor: "armor";
+                attack_power: "attack_power";
+                block: "block";
+                block_rating: "block_rating";
+                crit_rating: "crit_rating";
+                damage_per_second: "damage_per_second";
+                defense_rating: "defense_rating";
+                dodge_rating: "dodge_rating";
+                expertise_rating: "expertise_rating";
+                fire_resistance: "fire_resistance";
+                frost_resistance: "frost_resistance";
+                haste_rating: "haste_rating";
+                health: "health";
+                hit_rating: "hit_rating";
+                holy_resistance: "holy_resistance";
+                intellect: "intellect";
+                mana: "mana";
+                mana_regeneration: "mana_regeneration";
+                nature_resistance: "nature_resistance";
+                parry_rating: "parry_rating";
+                resilience_rating: "resilience_rating";
+                shadow_resistance: "shadow_resistance";
+                spell_power: "spell_power";
+                spirit: "spirit";
+                stamina: "stamina";
+                strength: "strength";
+            }>;
+            value: z.ZodNumber;
+            reporters: z.ZodNumber;
+            build: z.ZodString;
+            lastSeen: z.ZodNullable<z.ZodString>;
+        }, z.core.$strip>>;
+        contested: z.ZodArray<z.ZodEnum<{
+            agility: "agility";
+            arcane_resistance: "arcane_resistance";
+            armor: "armor";
+            attack_power: "attack_power";
+            block: "block";
+            block_rating: "block_rating";
+            crit_rating: "crit_rating";
+            damage_per_second: "damage_per_second";
+            defense_rating: "defense_rating";
+            dodge_rating: "dodge_rating";
+            expertise_rating: "expertise_rating";
+            fire_resistance: "fire_resistance";
+            frost_resistance: "frost_resistance";
+            haste_rating: "haste_rating";
+            health: "health";
+            hit_rating: "hit_rating";
+            holy_resistance: "holy_resistance";
+            intellect: "intellect";
+            mana: "mana";
+            mana_regeneration: "mana_regeneration";
+            nature_resistance: "nature_resistance";
+            parry_rating: "parry_rating";
+            resilience_rating: "resilience_rating";
+            shadow_resistance: "shadow_resistance";
+            spell_power: "spell_power";
+            spirit: "spirit";
+            stamina: "stamina";
+            strength: "strength";
+        }>>;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const npcPage: z.ZodObject<{
     npcId: z.ZodNumber;
@@ -1265,7 +1333,7 @@ export declare const MCP_TOOLS: {
     };
     readonly item_page: {
         readonly title: "Item page for a drop";
-        readonly description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+        readonly description: "One Forever item: agreed name, observed loot-window drop frequency, agreed map pins, and player-reported armor, block, damage per second, stats and resistances. Each item number needs one value with 3 agreeing installs in the newest build with 3 reporting installs, and no competing value with 3; contested values are withheld. Each number states its agreeing installs, build and last seen, with the corpus date and method. Missing numbers are [?] with a reason. No baseline rows or player names. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly itemId: z.ZodNumber;
         };
@@ -1297,6 +1365,74 @@ export declare const MCP_TOOLS: {
                 pendingLoot: z.ZodOptional<z.ZodObject<{
                     windows: z.ZodNumber;
                     reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                reported: z.ZodOptional<z.ZodObject<{
+                    shown: z.ZodArray<z.ZodObject<{
+                        fact: z.ZodEnum<{
+                            agility: "agility";
+                            arcane_resistance: "arcane_resistance";
+                            armor: "armor";
+                            attack_power: "attack_power";
+                            block: "block";
+                            block_rating: "block_rating";
+                            crit_rating: "crit_rating";
+                            damage_per_second: "damage_per_second";
+                            defense_rating: "defense_rating";
+                            dodge_rating: "dodge_rating";
+                            expertise_rating: "expertise_rating";
+                            fire_resistance: "fire_resistance";
+                            frost_resistance: "frost_resistance";
+                            haste_rating: "haste_rating";
+                            health: "health";
+                            hit_rating: "hit_rating";
+                            holy_resistance: "holy_resistance";
+                            intellect: "intellect";
+                            mana: "mana";
+                            mana_regeneration: "mana_regeneration";
+                            nature_resistance: "nature_resistance";
+                            parry_rating: "parry_rating";
+                            resilience_rating: "resilience_rating";
+                            shadow_resistance: "shadow_resistance";
+                            spell_power: "spell_power";
+                            spirit: "spirit";
+                            stamina: "stamina";
+                            strength: "strength";
+                        }>;
+                        value: z.ZodNumber;
+                        reporters: z.ZodNumber;
+                        build: z.ZodString;
+                        lastSeen: z.ZodNullable<z.ZodString>;
+                    }, z.core.$strip>>;
+                    contested: z.ZodArray<z.ZodEnum<{
+                        agility: "agility";
+                        arcane_resistance: "arcane_resistance";
+                        armor: "armor";
+                        attack_power: "attack_power";
+                        block: "block";
+                        block_rating: "block_rating";
+                        crit_rating: "crit_rating";
+                        damage_per_second: "damage_per_second";
+                        defense_rating: "defense_rating";
+                        dodge_rating: "dodge_rating";
+                        expertise_rating: "expertise_rating";
+                        fire_resistance: "fire_resistance";
+                        frost_resistance: "frost_resistance";
+                        haste_rating: "haste_rating";
+                        health: "health";
+                        hit_rating: "hit_rating";
+                        holy_resistance: "holy_resistance";
+                        intellect: "intellect";
+                        mana: "mana";
+                        mana_regeneration: "mana_regeneration";
+                        nature_resistance: "nature_resistance";
+                        parry_rating: "parry_rating";
+                        resilience_rating: "resilience_rating";
+                        shadow_resistance: "shadow_resistance";
+                        spell_power: "spell_power";
+                        spirit: "spirit";
+                        stamina: "stamina";
+                        strength: "strength";
+                    }>>;
                 }, z.core.$strip>>;
             }, z.core.$strip>>;
         };
@@ -2095,7 +2231,7 @@ export declare const MCP_TOOLS: {
     };
     readonly coverage: {
         readonly title: "Database coverage by zone, type and field";
-        readonly description: "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field: coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.";
+        readonly description: "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field, plus scoped totals and the current build's whole-fact settled-list size, separately dated and measured. Coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). Confirmed includes settled. Reported fields needing one or two more installs are counted without their values. A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.";
         readonly inputSchema: {
             readonly zone: z.ZodOptional<z.ZodNumber>;
             readonly type: z.ZodOptional<z.ZodEnum<{
@@ -2702,7 +2838,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Item page for a drop";
-    description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+    description: "One Forever item: agreed name, observed loot-window drop frequency, agreed map pins, and player-reported armor, block, damage per second, stats and resistances. Each item number needs one value with 3 agreeing installs in the newest build with 3 reporting installs, and no competing value with 3; contested values are withheld. Each number states its agreeing installs, build and last seen, with the corpus date and method. Missing numbers are [?] with a reason. No baseline rows or player names. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly itemId: z.ZodNumber;
     };
@@ -2734,6 +2870,74 @@ export declare const MCP_TOOL_LIST: ({
             pendingLoot: z.ZodOptional<z.ZodObject<{
                 windows: z.ZodNumber;
                 reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            reported: z.ZodOptional<z.ZodObject<{
+                shown: z.ZodArray<z.ZodObject<{
+                    fact: z.ZodEnum<{
+                        agility: "agility";
+                        arcane_resistance: "arcane_resistance";
+                        armor: "armor";
+                        attack_power: "attack_power";
+                        block: "block";
+                        block_rating: "block_rating";
+                        crit_rating: "crit_rating";
+                        damage_per_second: "damage_per_second";
+                        defense_rating: "defense_rating";
+                        dodge_rating: "dodge_rating";
+                        expertise_rating: "expertise_rating";
+                        fire_resistance: "fire_resistance";
+                        frost_resistance: "frost_resistance";
+                        haste_rating: "haste_rating";
+                        health: "health";
+                        hit_rating: "hit_rating";
+                        holy_resistance: "holy_resistance";
+                        intellect: "intellect";
+                        mana: "mana";
+                        mana_regeneration: "mana_regeneration";
+                        nature_resistance: "nature_resistance";
+                        parry_rating: "parry_rating";
+                        resilience_rating: "resilience_rating";
+                        shadow_resistance: "shadow_resistance";
+                        spell_power: "spell_power";
+                        spirit: "spirit";
+                        stamina: "stamina";
+                        strength: "strength";
+                    }>;
+                    value: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                    build: z.ZodString;
+                    lastSeen: z.ZodNullable<z.ZodString>;
+                }, z.core.$strip>>;
+                contested: z.ZodArray<z.ZodEnum<{
+                    agility: "agility";
+                    arcane_resistance: "arcane_resistance";
+                    armor: "armor";
+                    attack_power: "attack_power";
+                    block: "block";
+                    block_rating: "block_rating";
+                    crit_rating: "crit_rating";
+                    damage_per_second: "damage_per_second";
+                    defense_rating: "defense_rating";
+                    dodge_rating: "dodge_rating";
+                    expertise_rating: "expertise_rating";
+                    fire_resistance: "fire_resistance";
+                    frost_resistance: "frost_resistance";
+                    haste_rating: "haste_rating";
+                    health: "health";
+                    hit_rating: "hit_rating";
+                    holy_resistance: "holy_resistance";
+                    intellect: "intellect";
+                    mana: "mana";
+                    mana_regeneration: "mana_regeneration";
+                    nature_resistance: "nature_resistance";
+                    parry_rating: "parry_rating";
+                    resilience_rating: "resilience_rating";
+                    shadow_resistance: "shadow_resistance";
+                    spell_power: "spell_power";
+                    spirit: "spirit";
+                    stamina: "stamina";
+                    strength: "strength";
+                }>>;
             }, z.core.$strip>>;
         }, z.core.$strip>>;
     };
@@ -3532,7 +3736,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Database coverage by zone, type and field";
-    description: "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field: coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.";
+    description: "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field, plus scoped totals and the current build's whole-fact settled-list size, separately dated and measured. Coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). Confirmed includes settled. Reported fields needing one or two more installs are counted without their values. A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.";
     inputSchema: {
         readonly zone: z.ZodOptional<z.ZodNumber>;
         readonly type: z.ZodOptional<z.ZodEnum<{

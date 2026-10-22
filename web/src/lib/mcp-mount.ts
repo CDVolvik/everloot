@@ -8,6 +8,8 @@ import { loadEcosystem } from "./ecosystem";
 import { accountMcpTools } from "./my-builds-tool";
 import { getRelease } from "./release";
 import { loadCensus } from "./rollup-compute";
+import { readSettledList } from "./settled-store";
+import { settledKeys } from "../../../kb/src/settled-list";
 import { uploadStore } from "./upload-store";
 import { mcpToolMetrics, recordUsage } from "./usage-metrics";
 
@@ -28,6 +30,10 @@ export function unavailable(error: string, status = 503): Response {
 export function toolLoaders(): ToolOptions {
   return {
     coverage: () => loadCoverage(),
+    settledSummary: async (build) => {
+      const list = await readSettledList(build);
+      return { build: list.build, dataAsOf: list.dataAsOf, facts: settledKeys(list).size };
+    },
     // The same timeline the /changes page shows, read from the files bundled with the site. The regional
     // copies stay on the site: the protocol's change entry has no field for them.
     changes: () => loadTimeline().map(({ copies: _copies, ...e }) => e),

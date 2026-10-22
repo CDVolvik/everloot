@@ -1,7 +1,7 @@
 {
   "$id": "https://everloot.app/schema/mcp/item_page.json",
   "title": "Item page for a drop",
-  "description": "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+  "description": "One Forever item: agreed name, observed loot-window drop frequency, agreed map pins, and player-reported armor, block, damage per second, stats and resistances. Each item number needs one value with 3 agreeing installs in the newest build with 3 reporting installs, and no competing value with 3; contested values are withheld. Each number states its agreeing installs, build and last seen, with the corpus date and method. Missing numbers are [?] with a reason. No baseline rows or player names. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
   "annotations": {
     "readOnlyHint": true,
     "openWorldHint": false
@@ -176,6 +176,121 @@
             ],
             "additionalProperties": false,
             "description": "Loot windows reported but not yet in the rates. Absent when there are none."
+          },
+          "reported": {
+            "description": "Player-reported item numbers, decided per line in the newest build with 3 reporting installs. Missing lines are unknown, never zero.",
+            "type": "object",
+            "properties": {
+              "shown": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fact": {
+                      "type": "string",
+                      "enum": [
+                        "armor",
+                        "block",
+                        "damage_per_second",
+                        "health",
+                        "mana",
+                        "agility",
+                        "strength",
+                        "intellect",
+                        "spirit",
+                        "stamina",
+                        "defense_rating",
+                        "dodge_rating",
+                        "parry_rating",
+                        "block_rating",
+                        "hit_rating",
+                        "crit_rating",
+                        "haste_rating",
+                        "expertise_rating",
+                        "resilience_rating",
+                        "attack_power",
+                        "mana_regeneration",
+                        "spell_power",
+                        "holy_resistance",
+                        "fire_resistance",
+                        "nature_resistance",
+                        "frost_resistance",
+                        "shadow_resistance",
+                        "arcane_resistance"
+                      ]
+                    },
+                    "value": {
+                      "type": "number"
+                    },
+                    "reporters": {
+                      "type": "integer",
+                      "minimum": 3,
+                      "maximum": 9007199254740991
+                    },
+                    "build": {
+                      "type": "string"
+                    },
+                    "lastSeen": {
+                      "description": "Latest agreeing report not after the corpus date; null means [?].",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "fact",
+                    "value",
+                    "reporters",
+                    "build",
+                    "lastSeen"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "contested": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "armor",
+                    "block",
+                    "damage_per_second",
+                    "health",
+                    "mana",
+                    "agility",
+                    "strength",
+                    "intellect",
+                    "spirit",
+                    "stamina",
+                    "defense_rating",
+                    "dodge_rating",
+                    "parry_rating",
+                    "block_rating",
+                    "hit_rating",
+                    "crit_rating",
+                    "haste_rating",
+                    "expertise_rating",
+                    "resilience_rating",
+                    "attack_power",
+                    "mana_regeneration",
+                    "spell_power",
+                    "holy_resistance",
+                    "fire_resistance",
+                    "nature_resistance",
+                    "frost_resistance",
+                    "shadow_resistance",
+                    "arcane_resistance"
+                  ]
+                },
+                "description": "No unique value has 3 agreeing installs; no value is disclosed."
+              }
+            },
+            "required": [
+              "shown",
+              "contested"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

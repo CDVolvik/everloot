@@ -1,5 +1,5 @@
 import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
-import { answerCoverage, type CoverageLoader } from "./coverage-tool.js";
+import { answerCoverage, type CoverageLoader, type SettledSummaryLoader } from "./coverage-tool.js";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, GAME_DATA_CREDIT, LICENCE, MCP_CREDIT, SITE, type EntityKind } from "@everloot/protocol";
@@ -14,6 +14,8 @@ import { goldFactsFromRecords, goldLedger, handleGoldLedger } from "./gold-ledge
 import { guildBoard, guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { formatItemPage, itemPage } from "./item-page.js";
+import { formatItemNumbers, itemToolFactsFromRecords } from "./item-page-tool.js";
+import { reportedItemFacts } from "./item-facts.js";
 import { formatObjectPage, objectFactsFromRecords, objectPage, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, itemMarket, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
@@ -65,7 +67,7 @@ export const TOOL_KINDS = {
   answer_sources: ["loot", "item_seen", "npc_sighting", "quest", "vendor", "object_sighting"],
   profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen", "vendor"],
   recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen", "vendor"],
-  item_page: ["loot", "item_seen", "npc_sighting", "object_sighting"],
+  item_page: ["loot", "item_seen", "npc_sighting", "object_sighting", "item_fact"],
   npc_page: ["npc_sighting", "quest", "vendor", "loot"],
   object_page: ["loot", "item_seen", "object_sighting"],
   quest_page: ["npc_sighting", "quest", "vendor"],
@@ -89,7 +91,7 @@ const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
   answer_sources: answerSourcesFactsFromRecords,
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
-  item_page: itemFactsFromRecords,
+  item_page: itemToolFactsFromRecords,
   npc_page: npcFactsFromRecords,
   object_page: objectFactsFromRecords,
   quest_page: worldFactsFromRecords,
@@ -492,14 +494,14 @@ function uploadsConfigured(loader?: CorpusLoader): boolean {
  * so as before and the structure carries connected false and the reason, never an empty page.
  */
 export async function readPage<T>(
-  tool: ToolName, loader: CorpusLoader | undefined, page: (facts: T) => { text: string; page: object; url?: string },
+  tool: ToolName, loader: CorpusLoader | undefined, page: (facts: T, dataAsOf: string | null) => { text: string; page: object; url?: string },
 ): Promise<StructuredAnswer> {
   const read = await readTooledFacts<T>(tool, loader);
   if (!read) {
     const reason = uploadsConfigured(loader) ? UNAVAILABLE : UPLOADS_UNSET;
     return { text: reason, structured: { connected: false, dataAsOf: null, reason } };
   }
-  const built = page(read.facts);
+  const built = page(read.facts, read.dataAsOf);
   return {
     text: `${withMore(built.text, built.url)}\n${answerFooter(read.dataAsOf)}`,
     structured: { connected: true, dataAsOf: read.dataAsOf, ...(built.url ? { url: built.url } : {}), page: built.page },
@@ -535,7 +537,7 @@ function professionArg(profession: string): string {
 }
 
 /** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
-export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader; coverage?: CoverageLoader }
+export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader; coverage?: CoverageLoader; settledSummary?: SettledSummaryLoader }
 
 /** A tool's answer: the text every client gets, and the structured content of the tool's output schema. */
 export type ToolAnswer = Answer;
@@ -591,10 +593,15 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
         };
       });
     },
-    item_page: (args) => readPage("item_page", options.corpus, (facts: ReturnType<typeof itemFactsFromRecords>) => {
-      const page = itemPage(args.itemId, facts);
-      return { text: formatItemPage(page), page, url: itemPageUrl(page, inGameFiles(page.itemId)) };
-    }),
+    item_page: async (args) => {
+      const answer = await readPage("item_page", options.corpus, (facts: ReturnType<typeof itemToolFactsFromRecords>, dataAsOf) => {
+        const reported = reportedItemFacts(facts.numbers.get(args.itemId), new Date(dataAsOf ?? NaN));
+        const page = { ...itemPage(args.itemId, facts), reported };
+        return { text: `${formatItemPage(page)}\n${formatItemNumbers(reported)}\nItem-number data as of ${dataAsOf ?? "[?]"}.`, page, url: itemPageUrl(page, inGameFiles(page.itemId)) };
+      });
+      if ("connected" in answer.structured && !answer.structured.connected) answer.text += "\nItem numbers: [?]; no corpus read. Agreeing installs [?], last seen [?], build [?], data as of [?].";
+      return answer;
+    },
     npc_page: (args) => readPage("npc_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = npcPage(args.npcId, facts);
       return { text: formatNpcPage(page), page, url: npcPageUrl(page) };
@@ -675,7 +682,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       const url = view ? ECOSYSTEM_URL : undefined;
       return { text: withMore(handleEcosystemProjects(view, args, now), url), structured: { ...ecosystemProjectsStructured(view, args, now), ...(url ? { url } : {}) } };
     },
-    coverage: (args) => answerCoverage(args, options.coverage),
+    coverage: (args) => answerCoverage(args, options.coverage, options.settledSummary),
     population: (args) => answerPopulation(args, options.census, answerFooter),
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };

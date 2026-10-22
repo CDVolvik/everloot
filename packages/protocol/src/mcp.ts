@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MCP_CREDIT } from "./attribution.js";
+import { ITEM_FACTS } from "./records.js";
 
 /**
  * The Everloot MCP server's tools: names, titles, descriptions, input schemas and annotations, in the
@@ -137,6 +138,13 @@ export const itemPage = z.object({
   drops: z.array(itemDrop),
   pins: z.array(mapPin).describe("Agreed positions of the NPCs it drops from; a pin needs 3 installs on the same map."),
   pendingLoot: pendingLoot.optional(),
+  reported: z.object({
+    shown: z.array(z.object({
+      fact: z.enum(ITEM_FACTS), value: z.number(), reporters: z.number().int().min(3),
+      build: z.string(), lastSeen: z.string().nullable().describe("Latest agreeing report not after the corpus date; null means [?]."),
+    })),
+    contested: z.array(z.enum(ITEM_FACTS)).describe("No unique value has 3 agreeing installs; no value is disclosed."),
+  }).optional().describe("Player-reported item numbers, decided per line in the newest build with 3 reporting installs. Missing lines are unknown, never zero."),
 });
 export const npcPage = z.object({
   npcId: z.number().int(),
@@ -557,7 +565,7 @@ export const MCP_TOOLS = {
   item_page: {
     title: "Item page for a drop",
     description:
-      "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+      "One Forever item: agreed name, observed loot-window drop frequency, agreed map pins, and player-reported armor, block, damage per second, stats and resistances. Each item number needs one value with 3 agreeing installs in the newest build with 3 reporting installs, and no competing value with 3; contested values are withheld. Each number states its agreeing installs, build and last seen, with the corpus date and method. Missing numbers are [?] with a reason. No baseline rows or player names. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
     inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
     outputSchema: { ...uploadsAnswer, page: itemPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
@@ -776,7 +784,7 @@ export const MCP_TOOLS = {
   coverage: {
     title: "Database coverage by zone, type and field",
     description:
-      "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field: coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.",
+      "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field, plus scoped totals and the current build's whole-fact settled-list size, separately dated and measured. Coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). Confirmed includes settled. Reported fields needing one or two more installs are counted without their values. A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.",
     inputSchema: {
       zone: z.number().int().positive().optional().describe("Released UiMap zone id, such as 1429 for Elwynn Forest. Omit for all released zones."),
       type: z.enum(["quests", "npcs", "pins", "vendors", "drops", "rares", "entrances", "bosses", "treasures"]).optional().describe("Coverage type. Omit for all types."),

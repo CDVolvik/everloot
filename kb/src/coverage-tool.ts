@@ -3,6 +3,8 @@ import { COVERAGE_TYPES, coverageShares, type CoverageCell, type CoverageReport 
 
 /** The host lends the same score its public coverage page reads. No raw records or baseline are read here. */
 export type CoverageLoader = () => Promise<CoverageReport | null>;
+/** Counts only from the persisted list; never lend its ids or settled values to the tool. */
+export type SettledSummaryLoader = (build: string) => Promise<{ build: string; dataAsOf: string | null; facts: number } | null>;
 
 const unknown = "[?]";
 const page = "https://everloot.app/database/coverage";
@@ -15,7 +17,7 @@ function cellText(cell: CoverageCell): string {
     + `${cell.reported}/${denominator} reported; ${cell.recheck}/${denominator} to recheck; expected ${cell.expected ?? unknown}; observed ${cell.observed}`;
 }
 
-export async function answerCoverage(args: McpToolArgs<"coverage">, loader?: CoverageLoader): Promise<string> {
+export async function answerCoverage(args: McpToolArgs<"coverage">, loader?: CoverageLoader, settledLoader?: SettledSummaryLoader): Promise<string> {
   const scope = `Scope: ${args.zone === undefined ? "all released zones" : `zone ${args.zone}`}; ${args.type === undefined ? "all types" : `type ${args.type}`}. Unplaced facts and held-back zones are excluded.`;
   const unavailable = (reason: string) => `${scope}\nCoverage ${reason}; counts, denominators, data date and installs are ${unknown}, not measured zero.\nMore: ${page}\n${MCP_CREDIT}`;
   if (!loader) return unavailable("not connected");
@@ -30,6 +32,18 @@ export async function answerCoverage(args: McpToolArgs<"coverage">, loader?: Cov
     "coverage = settled / expected; confirmed / expected beside it. Denominator = max(expected, observed), in entity-field facts. Confirmed includes settled. Reported counts are aggregate states, never unconfirmed values.",
     `Expected counts dated ${report.expected?.dataAsOf ?? unknown}, from game files and a local Classic baseline (counts only). Missing or zero denominators give [?] shares.`,
   ];
+  let settled = null;
+  try { settled = report.build ? await settledLoader?.(report.build) ?? null : null; } catch { /* Unknown, never a measured zero. */ }
+  if (settled?.build !== report.build || !settled?.dataAsOf) settled = null;
+  lines.push(`Whole-fact settled list: ${settled?.facts ?? unknown} facts; build ${report.build ?? unknown}; data as of ${settled?.dataAsOf ?? unknown}; distinct agreeing installs [?] (not stored in the list). Scope: the entire build, before zone/type filters. Method: persisted uploader skip list, one whole upload fact per key, not entity-field coverage; all reported fields must settle under the list's rules. An undated or unavailable list is unknown, not zero.`);
+  if (zones.length) {
+    const cells = zones.flatMap((z) => types.map((t) => z.types[t]));
+    const sum = (key: "settled" | "confirmed" | "reported" | "recheck") => cells.reduce((n, c) => n + c[key], 0);
+    // needsTotal is computed before the page's cap, unlike needs. Only it is exhaustive.
+    const needs = args.type === undefined ? zones.reduce((n, z) => n + z.needsTotal, 0)
+      : zones.every((z) => z.needs.length === z.needsTotal) ? zones.reduce((n, z) => n + z.needs.filter((f) => f.type === args.type).length, 0) : null;
+    lines.push(`Scoped entity-field totals: ${sum("settled")} settled; ${sum("confirmed")} confirmed (includes settled); ${sum("reported")} still reported; ${sum("recheck")} to recheck. Fields needing one or two more installs: ${needs ?? unknown}${needs === null ? " (the capped list cannot give an exhaustive type-filtered count)" : " (full count before the list cap)"}. Data date, method and overall/zone installs are stated above and below; scoped distinct installs [?] (not separately measured).`);
+  }
   if (!zones.length) lines.push("No released zone matches this filter; no counts measured for this scope.");
   for (const zone of zones) {
     lines.push(`\n${zone.name} (zone ${zone.mapId}); ${zone.installs} distinct folded installs; data as of ${report.dataAsOf ?? unknown}.`);

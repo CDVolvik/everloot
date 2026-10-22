@@ -52,7 +52,7 @@ test("each page tool answers with its page under the uploads envelope, and the t
 
   const item = await c.callTool({ name: "item_page", arguments: { itemId: 1234 } });
   const itemOut = out("item_page").parse(item.structuredContent);
-  expect(itemOut).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/items/1234", page: itemPage(1234, itemFactsFromRecords(records)) });
+  expect(itemOut).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/items/1234", page: { ...itemPage(1234, itemFactsFromRecords(records)), reported: { shown: [], contested: [] } } });
   expect(itemOut.page!.name).toBe("Peacebloom");
   expect(itemOut.page!.drops[0]).toMatchObject({ sourceNpcId: 456, source: "NPC 456 Forest Spider", kills: 12, drops: 3, reporters: 3 });
   expect(itemOut.page!.pins[0]).toMatchObject({ npcId: 456, name: "Forest Spider", mapId: 141, x: 41, y: 61, reporters: 3 });
@@ -106,7 +106,7 @@ test("an unknown id is a page with nothing agreed, not an error and not a zero",
   const result = await c.callTool({ name: "item_page", arguments: { itemId: 999 } });
   expect(result.isError).not.toBe(true);
   const parsed = out("item_page").parse(result.structuredContent);
-  expect(parsed.page).toEqual({ itemId: 999, name: null, drops: [], pins: [] });
+  expect(parsed.page).toEqual({ itemId: 999, name: null, drops: [], pins: [], reported: { shown: [], contested: [] } });
   expect(JSON.stringify(result.content)).toContain("Drop rate unrecorded");
   // Its page on the site is empty and not indexed, so the answer links nowhere.
   expect(parsed).not.toHaveProperty("url");

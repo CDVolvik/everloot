@@ -87,3 +87,38 @@ test("unavailable, disconnected and unknown zones are explicit", async () => {
   expect(await call({}, async () => { throw new Error("private failure"); })).toContain("unavailable");
   expect(await call({ zone: 9999 })).toContain("No released zone matches");
 });
+
+test("scoped totals keep whole-fact settled-list counts separate, dated and counts-only", async () => {
+  const text = await createToolHandlers({} as DB, {
+    coverage: async () => report(),
+    settledSummary: async (build) => ({ build, dataAsOf: "2026-10-21T12:00:00Z", facts: 17 }),
+  }).coverage({ zone: 1429, type: "npcs" });
+  expect(text).toContain("Whole-fact settled list: 17 facts; build test-build; data as of 2026-10-21T12:00:00Z");
+  expect(text).toContain("entire build, before zone/type filters");
+  expect(text).toContain("Scoped entity-field totals: 0 settled; 0 confirmed (includes settled); 1 still reported");
+  expect(text).toContain("Fields needing one or two more installs: 1");
+  expect(text).toContain("distinct agreeing installs [?] (not stored in the list)");
+});
+
+test("undated, wrong-build and failed settled lists are unknown, dated empty lists measure zero", async () => {
+  for (const settledSummary of [
+    async (build: string) => ({ build, dataAsOf: null, facts: 0 }),
+    async () => ({ build: "wrong", dataAsOf: asOf, facts: 99 }),
+    async () => { throw new Error("private failure"); },
+  ]) {
+    const text = await createToolHandlers({} as DB, { coverage: async () => report(), settledSummary }).coverage({});
+    expect(text).toContain("Whole-fact settled list: [?] facts");
+    expect(text).not.toMatch(/99 facts|private failure/);
+  }
+  const text = await createToolHandlers({} as DB, {
+    coverage: async () => report(), settledSummary: async (build) => ({ build, dataAsOf: asOf, facts: 0 }),
+  }).coverage({});
+  expect(text).toContain("Whole-fact settled list: 0 facts");
+});
+
+test("a capped list never invents an exhaustive type-filtered needs count", async () => {
+  const r = report();
+  r.zones[0]!.needsTotal = 999;
+  const text = await call({ zone: r.zones[0]!.mapId, type: "npcs" }, async () => r);
+  expect(text).toContain("Fields needing one or two more installs: [?]");
+});

@@ -23,6 +23,16 @@ const INSTALL_ID = (
 
 /** Tools whose rule is not the usual 3-install one get their own note instead of the generic one. */
 const TOOL_NOTES: Partial<Record<McpToolName, ReactNode>> = {
+  item_page: (
+    <>
+      Player-reported armor, block, damage per second, stats and resistances are in <C>page.reported</C>.
+      Each line uses the newest build with 3 reporting installs and each install&apos;s latest vote.
+      A unique value needs 3 agreeing installs; competing winners or split votes disclose no value.
+      Shown numbers carry agreeing install counts, build and last seen, alongside the corpus date and method.
+      The text prints <C>[?]</C> with a reason for missing or contested numbers; structured unknown times are null.
+      Missing lines are unknown, never zero. The input is still only <C>itemId</C>.
+    </>
+  ),
   coverage: (
     <>
       Reads the same score as <Link href="/database/coverage" className={docLink}>Database coverage</Link>.
@@ -30,6 +40,11 @@ const TOOL_NOTES: Partial<Record<McpToolName, ReactNode>> = {
       Counts are entity-field facts: settled / expected, with confirmed / expected beside it, using the larger of
       expected and observed as the denominator. Each answer includes the method, corpus date, build and install counts.
       The reported-fields list identifies fields needing votes without disclosing their unconfirmed values.
+      Scoped totals count settled, confirmed (including settled), still reported and recheck fields.
+      The whole-fact settled-list size is separate: it covers the entire current build before filters, at upload-fact
+      grain, with its own snapshot date. That list stores no install count, so its installs read <C>[?]</C>.
+      An undated or unavailable list is unknown. A dated empty list is measured zero.
+      Type-filtered counts of fields needing one or two installs read <C>[?]</C> when the page&apos;s cap prevents a full count.
       Baseline data contributes counts only. Unknown values read <C>[?]</C>. The answer is text only.
     </>
   ),
