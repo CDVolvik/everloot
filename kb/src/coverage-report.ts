@@ -7,9 +7,11 @@ import { POSITION_TOLERANCE, readBaseline, type Baseline } from "./baseline-repo
 import type { DB } from "./db.js";
 import { lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
 import { measureDropRate, type DropRateMeasurement } from "./drop-rate-settling.js";
+import { computeCoverage, EXPECTED_TYPE, parseCoverageExpected, type CoverageType as ScoreType, type RecheckScope } from "./coverage.js";
 import { tallyVotes, type FactState, type VoteRow } from "./fact-states.js";
 import type { Spawn } from "./importers/pfquest.js";
 import { objectSightingRowsFromRecords, objectSpawnRowsFromRecords, SPAWN_RADIUS } from "./object-spawns.js";
+import { computePlateau, type PlateauReport } from "./plateau.js";
 import { foldRecorderInstalls } from "./recorder-installs.js";
 import { isPinPosition } from "./world-pages.js";
 import type { WorldMapData } from "./world-map-data.js";
@@ -49,6 +51,8 @@ export interface CoverageReport {
   notes: string[];
   rows: CoverageRow[];
   expected: CoverageExpected;
+  /** The plateau over the released zones, from these counts as the denominator: what the public page would state. */
+  plateau: PlateauReport | null;
 }
 export interface CoverageInput {
   baseline: Baseline;
@@ -60,8 +64,10 @@ export interface CoverageInput {
   rareIds?: ReadonlySet<number>;
   bosses?: { encounterId: number; instanceMapId?: number }[];
   clientConnected?: boolean;
-  /** Explicit local cutoff only; patch detection belongs to a later step. */
+  /** An explicit local cutoff for every fact, beside the scopes. */
   recheckSince?: string;
+  /** The scopes in `kb/curated/recheck.json`: a fact in one counts only reports after its date. */
+  recheck?: readonly RecheckScope[];
 }
 
 /** readBaseline intentionally omits rank; read it locally without changing that reader or the importer. */
@@ -92,7 +98,29 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
   const npcs = records.filter((r): r is Npc => r.kind === "npc_sighting");
   const quests = records.filter(r => r.kind === "quest");
   const rows: CoverageRow[] = [];
-  const options = { asOf: input.dataAsOf ?? undefined, recheckSince: input.recheckSince };
+  const asOf = input.dataAsOf ?? undefined;
+  const scoreType = Object.fromEntries(Object.entries(EXPECTED_TYPE).map(([k, v]) => [v, k])) as Record<CoverageType, ScoreType>;
+  const questRewards = new Map<number, Set<number>>();
+  for (const r of quests) for (const item of r.rewardItemIds) questRewards.set(r.questId, (questRewards.get(r.questId) ?? new Set<number>()).add(item));
+  const time = (value: string | undefined) => (value === undefined ? NaN : Date.parse(value));
+  // The latest cutoff that covers a fact: the explicit one or a scope's date, matched by type, zone and ids as the
+  // public score matches them (`since` in coverage.ts). A drop rate has no tally to cut, so scopes leave it alone.
+  const cutoff = (type: CoverageType, id: string, field: string, zone: string): string | undefined => {
+    const parts = id.split(":").map(Number), head = parts[0]!;
+    const refs = type === "quest" ? [head, ...(questRewards.get(head) ?? [])]
+      : type === "vendor" ? parts.slice(0, 2)
+      : type === "boss" ? [...parts.slice(0, 2), ...(field.startsWith("npc:") ? [Number(field.slice(4))] : [])]
+      : [head];
+    const placed = /^\d+$/.test(zone) ? Number(zone) : null;
+    let best = input.recheckSince;
+    for (const s of input.recheck ?? []) {
+      if (s.type && s.type !== scoreType[type]) continue;
+      if (s.zones?.length && (placed === null || !s.zones.includes(placed))) continue;
+      if (s.ids?.length && !refs.some(r => s.ids!.includes(r))) continue;
+      if (best === undefined || time(s.since) > time(best)) best = s.since;
+    }
+    return best;
+  };
   const zoneName = (zone: string) => zone === "unplaced" ? "Unplaced" : zone.startsWith("area:") ? `Area ${zone.slice(5)}` : zones.find(z => String(z.uiMapId) === zone)?.name ?? `UiMap ${zone}`;
   const baselineZone = (spawns: readonly Spawn[] | undefined): string => {
     const counts = new Map<string, number>();
@@ -112,7 +140,7 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
     return agreed.length ? String(agreed[0]![0]) : baselineZone(baseline.units.get(id)?.spawns);
   };
   const add = (type: CoverageType, id: string, field: string, name: string | undefined, zone: string, level: number | undefined | null, votes: VoteRow[]): CoverageRow => {
-    const tally = tallyVotes(votes, options);
+    const tally = tallyVotes(votes, { asOf, recheckSince: cutoff(type, id, field, zone) });
     const row: CoverageRow = {
       type, id, field, name: name?.trim() || "[?]", zone, zoneName: zoneName(zone), level: level ?? null,
       state: tally.state, contested: tally.contested, spread: false,
@@ -255,21 +283,43 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
     fields[field] = (fields[field] ?? 0) + 1; zone.fields[r.type] = fields;
     counts.set(r.zone, zone);
   }
+  const expected: CoverageExpected = { version: 1, dataAsOf: input.dataAsOf ?? null, zones: [...counts.values()].sort((a, b) => a.zone.localeCompare(b.zone, "en", { numeric: true })) };
+  // The plateau as the public page states it: the released zones, with these counts as the denominator.
+  const released = new Set(map.zones.map(z => z.uiMapId));
+  const fileEntrances = map.entrances.flatMap(e => {
+    const zone = zoneAt(zoneTable({ zones }), e);
+    return zone && released.has(zone.mapId) ? [{ instanceMapIds: [e.mapId], zone: zone.mapId }] : [];
+  });
+  const scoreExpected = parseCoverageExpected(expected);
+  const plateau = scoreExpected && computePlateau({
+    records, asOf: input.dataAsOf, zones: map.zones.map(z => ({ mapId: z.uiMapId, name: z.name })),
+    heldBack: map.heldBackZones.map(z => z.uiMapId), fileEntrances, expected: scoreExpected, recheck: input.recheck ?? [],
+  });
   return {
     version: 1, commit: baseline.commit, dataAsOf: input.dataAsOf, connected: input.connected, clientConnected: input.clientConnected ?? false,
     notes: ["Local only: never published or committed. Counts are entity fields; shared loot tables stay a join.",
       "Unplaced and held-back zones remain in this local report. No counts are uploaded by this command.",
       "Quest-side settling is pending; confirmed sides keep collecting. Position spread prevents settling. Object loot without capture times cannot settle a pin.",
-      "Patch detection is not wired; recheck requires an explicit local cutoff. Drop recheck is not implemented.",
+      `Recheck: ${(input.recheck ?? []).length} scopes from kb/curated/recheck.json${input.recheckSince ? `, and every fact from ${input.recheckSince}` : ""}. A fact in a scope that was confirmed before the scope's date counts only reports after it, and stays recheck (neither confirmed nor settled, here and in the plateau) until 3 new installs agree. ${rows.filter(r => r.state === "recheck").length} fact fields are in recheck. Drop rates ignore scopes.`,
       ...(input.connected ? [] : ["Uploads are disconnected or unreadable; missing is not a measured zero."]),
       ...(input.clientConnected ? [] : ["No client snapshot supplied: game-file-only quests and bosses are unknown ([?])."])],
-    rows, expected: { version: 1, dataAsOf: input.dataAsOf ?? null, zones: [...counts.values()].sort((a, b) => a.zone.localeCompare(b.zone, "en", { numeric: true })) },
+    rows, expected, plateau,
   };
+}
+
+const share = (value: number | null) => (value === null ? "[?]" : `${(value * 100).toFixed(1)}%`);
+function formatPlateau(plateau: PlateauReport | null): string[] {
+  if (!plateau) return ["", "## Plateau", "", "[?]: the expected counts could not be read as the public score reads them."];
+  const verdict = plateau.site === null ? "[?]" : plateau.site ? "yes" : "no";
+  return ["", "## Plateau", "", `Site at its plateau: ${verdict}. Settled list refresh: every ${plateau.refreshDays} ${plateau.refreshDays === 1 ? "day" : "days"}.`,
+    `Data as of ${plateau.dataAsOf ?? "[?]"}; window from ${plateau.windowStart ?? "[?]"}; ${plateau.installs} installs behind the counted facts, ${plateau.windowInstalls} reporting in the window.`,
+    plateau.method, "", "| Type | Plateau | Confirmed | Settled | Newly confirmed | Recheck | Of |", "|---|---|---|---|---|---|---|",
+    ...plateau.types.map(t => `| ${t.type} | ${t.atPlateau === null ? "[?]" : t.atPlateau ? "yes" : "no"} | ${share(t.shares.confirmed)} (${t.confirmed}) | ${share(t.shares.settled)} (${t.settled}) | ${share(t.shares.newlyConfirmed)} (${t.newlyConfirmed ?? "[?]"}) | ${t.recheck} | ${t.denominator ?? "[?]"} |`)];
 }
 
 const cell = (value: unknown) => String(value ?? "[?]").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/[\r\n]/g, " ");
 export function formatCoverageReport(report: CoverageReport): string {
-  const lines = ["# Internal coverage report", "", ...report.notes, "", `Data as of: ${report.dataAsOf ?? "[?]"}. Baseline commit: ${report.commit ?? "[?]"}.`];
+  const lines = ["# Internal coverage report", "", ...report.notes, "", `Data as of: ${report.dataAsOf ?? "[?]"}. Baseline commit: ${report.commit ?? "[?]"}.`, ...formatPlateau(report.plateau)];
   let zone = "";
   for (const r of report.rows) {
     if (zone !== r.zone) {
