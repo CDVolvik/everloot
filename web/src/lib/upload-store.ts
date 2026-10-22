@@ -707,15 +707,21 @@ export function createUploadStore(opts: {
     const idle = snapshot !== null && rows.length === 0;
     let retryRollups = false;
     let settledWeek: string | null = null;
-    const run = await r2Fetch("cron/last-run.json", { method: "GET" });
-    if (run.status === 404) {
-      if (idle) retryRollups = true;
-    } else if (run.ok) {
-      const previous = await run.json() as { dataAsOf?: string; completionPending?: boolean; settledWeek?: string };
-      if (typeof previous.settledWeek === "string") settledWeek = previous.settledWeek;
-      if (idle) retryRollups = previous.dataAsOf !== snapshot.generatedAt || previous.completionPending === true;
-    } else if (idle) {
-      throw new Error(`cron heartbeat read failed (${run.status})`);
+    try {
+      const run = await r2Fetch("cron/last-run.json", { method: "GET" });
+      if (run.status === 404) {
+        if (idle) retryRollups = true;
+      } else if (run.ok) {
+        const previous = await run.json() as { dataAsOf?: string; completionPending?: boolean; settledWeek?: string };
+        if (typeof previous.settledWeek === "string") settledWeek = previous.settledWeek;
+        if (idle) retryRollups = previous.dataAsOf !== snapshot.generatedAt || previous.completionPending === true;
+      } else if (idle) {
+        throw new Error(`cron heartbeat read failed (${run.status})`);
+      }
+    } catch (err) {
+      // A broken heartbeat must not block pending uploads; only the idle run, which reads it to decide the fold,
+      // treats it as fatal (as it did before the settled week was stored there).
+      if (idle) throw err;
     }
     return { idle, retryRollups, dataAsOf: snapshot?.generatedAt ?? null, settledWeek };
   }
