@@ -74,6 +74,8 @@ export interface MapEntrance {
 export interface MapTreasure {
   id: string; objectId: number; name: string | null; mapId: number; zoneName: string;
   x: number; y: number; zoneX: number; zoneY: number; reporters: number;
+  /** The latest time an install saw it; absent on an answer cached before treasures had dates. */
+  lastSeen?: string | null;
 }
 export interface MapFlightMaster { id: string; name: string; x: number; y: number; heldBack: boolean }
 export interface MapFlightLine { id: string; from: string; to: string; points: [number, number][]; heldBack: boolean }

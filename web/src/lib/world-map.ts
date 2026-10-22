@@ -121,7 +121,7 @@ export function continentTreasures(continentId: number, seen: ZoneSightings, dat
     const zone = zones.find((z) => z.mapId === t.mapId);
     const at = zone && zone.continentId === continentId ? zoneToMap(zones, t.mapId, t.x / 100, t.y / 100) : null;
     if (!zone || !at) continue;
-    out.push({ id: `t${t.key}`, objectId: t.objectId, name: t.name, mapId: t.mapId, zoneName: zone.name, x: at.x, y: at.y, zoneX: t.x, zoneY: t.y, reporters: t.reporters });
+    out.push({ id: `t${t.key}`, objectId: t.objectId, name: t.name, mapId: t.mapId, zoneName: zone.name, x: at.x, y: at.y, zoneX: t.x, zoneY: t.y, reporters: t.reporters, lastSeen: t.lastSeen });
   }
   return out;
 }

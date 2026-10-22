@@ -52,11 +52,12 @@ all go through it. `treasurePins` is the one treasure list for the zone pages an
    `itemFactLines` takes the agreed values and writes them line for line once something supplies them. The lines
    were added to the hover card API only. The site's own item tooltip (`ItemTip`), the item page and the site card
    still print only the files' lines, because those belong to the item pages' lane.
-2. **Difficulty names.** Ids 1, 9 and 148 print as "Normal", "40 Player" and "20 Player", the names the game
-   gives them. Any other id prints as "Difficulty N". Nothing reports a difficulty today, so every page reads `[?]`.
-3. **Treasure markers carry installs and method, not a date.** Object sighting rows go through `objectSpawns`,
-   whose rows keep no time. Adding one changes the object pages' reader, so it is left for the next piece. The
-   map's sidebar already shows the corpus's data age.
+2. **Difficulty names.** Every id in the Classic DifficultyID list (warcraft.wiki.gg) prints by its name, for
+   example 1 "Normal", 9 "40 Player", 148 "20 Player", 174 "Heroic". Any other id prints as "Difficulty N". Nothing
+   reports a difficulty today, so every page reads `[?]` until 3 installs agree on one.
+3. **Treasure markers carry a last seen date** (part 2). Minimap sighting rows keep their `capturedAt`, and
+   `objectSpawns` gives each pin a `lastSeen` only when it is passed the corpus date, so the object pages and
+   `world_map_near`, which do not pass it, are unchanged.
 4. **The page inlines no instance ids.** `/map` has a size budget (what the page inlines stays under half the
    pins answer). The entrance cards' instance ids come with `/api/map/pins`, and the new entrance fields are
    written only when they say something.
@@ -94,5 +95,6 @@ all go through it. `treasurePins` is the one treasure list for the zone pages an
 
 ## What comes next
 
-Stopped here for review. The next piece of the map is after this one is read: a date on treasure pins, the
-instance index in the sitemap and on `/database`, and the tooltip facts once a record carries them.
+Part 2 (stacked on this PR) adds the treasure dates and the full difficulty name list. Still open: the
+instance index in the sitemap and on `/database` (other owners' files), and the tooltip facts, which the game files
+can supply as unconfirmed values once the extraction is rerun and the data policy names them.

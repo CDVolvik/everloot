@@ -56,7 +56,7 @@ export interface ZoneEntrance {
   files: boolean; confirmed: number | null; lastSeen: string | null; bosses: InstanceBoss[];
 }
 /** An object players saw on the minimap here, at its own position, once 3 installs agree on the spot. */
-export interface ZoneTreasure { objectId: number; name: string | null; x: number; y: number; reporters: number }
+export interface ZoneTreasure { objectId: number; name: string | null; x: number; y: number; reporters: number; lastSeen: string | null }
 export interface ZoneContents { npcs: ZoneNpc[]; quests: ZoneQuest[]; entrances: ZoneEntrance[]; treasures: ZoneTreasure[] }
 
 /**
@@ -113,9 +113,10 @@ export function placedEntrances(data: Pick<WorldMapData, "zones" | "entrances">,
   return out;
 }
 
-/** Treasure pins: objects seen on the minimap where 3 installs agree on the spot, with their agreed names. */
-export function treasurePins(seen: ZoneSightings): (ObjectSpawnPin & { name: string | null })[] {
-  return objectSpawns(seen.sightings ?? []).pins.map((pin) => ({ ...pin, name: seen.objectNames?.get(pin.objectId) ?? null }));
+/** Treasure pins: objects seen on the minimap where 3 installs agree on the spot, with their agreed names and last seen. */
+export function treasurePins(seen: ZoneSightings): (ObjectSpawnPin & { name: string | null; lastSeen: string | null })[] {
+  return objectSpawns(seen.sightings ?? [], [], seen.asOf ?? new Date())
+    .pins.map((pin) => ({ ...pin, name: seen.objectNames?.get(pin.objectId) ?? null, lastSeen: pin.lastSeen ?? null }));
 }
 
 /**
@@ -161,7 +162,7 @@ export function zoneContents(
   }
 
   for (const pin of treasurePins(seen)) {
-    out.get(pin.mapId)?.treasures.push({ objectId: pin.objectId, name: pin.name, x: pin.x, y: pin.y, reporters: pin.reporters });
+    out.get(pin.mapId)?.treasures.push({ objectId: pin.objectId, name: pin.name, x: pin.x, y: pin.y, reporters: pin.reporters, lastSeen: pin.lastSeen });
   }
 
   for (const here of out.values()) {

@@ -5,7 +5,7 @@ import type { EncounterRow, InstanceEntranceRow } from "../../../kb/src/instance
 // The loaders read storage; these tests hand the readers their facts directly.
 vi.mock("./rollup-compute", () => ({ loadInstanceFacts: vi.fn(), loadItemFacts: vi.fn() }));
 
-import { bossLine, entranceLinks, instanceHref, instanceRows, parseInstanceSegment } from "./instances";
+import { bossLine, difficultyLabel, entranceLinks, instanceHref, instanceRows, parseInstanceSegment } from "./instances";
 import { continentPinSet, continentTreasureCandidates } from "./world-map";
 import { zoneContents, type ZoneSightings } from "./zones";
 
@@ -90,6 +90,11 @@ describe("instance rows", () => {
     expect(entranceLinks(row, data)).toEqual([{ name: "Synthetic Stockade", id: 34 }]);
   });
 
+  test("a difficulty id prints by the game's name for it, and an id the list lacks as its number", () => {
+    expect([1, 2, 9, 148, 174, 194].map(difficultyLabel)).toEqual(["Normal", "Heroic", "40 Player", "20 Player", "Heroic", "25 Player (Heroic)"]);
+    expect(difficultyLabel(9999)).toBe("Difficulty 9999");
+  });
+
   test("an instance's address is its id and a slug, and the id is what counts", () => {
     expect(instanceHref(34, "Synthetic Stockade")).toBe("/database/instances/34-synthetic-stockade");
     expect(instanceHref(77, null)).toBe("/database/instances/77");
@@ -100,16 +105,21 @@ describe("instance rows", () => {
 });
 
 describe("markers on the map", () => {
-  const chest = (installId: string, x: number) => ({ installId, objectId: 500, mapId: 1429, x, y: 34, name: "Old Chest" });
+  const chest = (installId: string, x: number, capturedAt = "2026-10-19T09:00:00Z") => ({ installId, objectId: 500, mapId: 1429, x, y: 34, name: "Old Chest", capturedAt });
   const objectNames = new Map([[500, "Old Chest"]]);
 
   test("a treasure pin three installs agree on is drawn where the zone page lists it", () => {
     const sightings = { ...seen, sightings: ids.map((i) => chest(i, 12)), objectNames };
     const set = continentPinSet(0, { npcs: [], quests: [], vendors: [] }, false, data, sightings);
-    expect(set.treasures).toEqual([expect.objectContaining({ objectId: 500, name: "Old Chest", mapId: 1429, zoneName: "Synthetic Forest", zoneX: 12, zoneY: 34, reporters: 3 })]);
+    expect(set.treasures).toEqual([expect.objectContaining({ objectId: 500, name: "Old Chest", mapId: 1429, zoneName: "Synthetic Forest", zoneX: 12, zoneY: 34, reporters: 3, lastSeen: "2026-10-19T09:00:00.000Z" })]);
     const listed = zoneContents({ npcs: [], quests: [], vendors: [] }, data, sightings).get(1429)!.treasures;
-    expect(listed).toEqual([{ objectId: 500, name: "Old Chest", x: set.treasures[0]!.zoneX, y: set.treasures[0]!.zoneY, reporters: 3 }]);
+    expect(listed).toEqual([{ objectId: 500, name: "Old Chest", x: set.treasures[0]!.zoneX, y: set.treasures[0]!.zoneY, reporters: 3, lastSeen: "2026-10-19T09:00:00.000Z" }]);
     expect(continentPinSet(1, { npcs: [], quests: [], vendors: [] }, false, data, sightings).treasures).toEqual([]);
+  });
+
+  test("a treasure's last seen leaves out a clock set ahead of the corpus", () => {
+    const sightings = { ...seen, sightings: [...ids.slice(0, 2).map((i) => chest(i, 12)), chest("install-c", 12, "2031-01-01T00:00:00Z")], objectNames };
+    expect(continentPinSet(0, { npcs: [], quests: [], vendors: [] }, false, data, sightings).treasures[0]).toMatchObject({ reporters: 3, lastSeen: "2026-10-19T09:00:00.000Z" });
   });
 
   test("a treasure two installs report is not drawn, only counted", () => {

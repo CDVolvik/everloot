@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { agreedDifficulties, confirmedEntrances, instanceBosses, instanceFactsFromRecords } from "../src/instances.js";
+import { objectSightingRowsFromRecords, objectSpawns } from "../src/object-spawns.js";
 
 // SYNTHETIC records; ids, names and times are made up.
 const asOf = new Date("2026-10-21T12:00:00Z");
@@ -53,5 +54,26 @@ describe("agreedDifficulties", () => {
       { ...entrance("a", "2026-10-18T10:00:00Z", { difficulty: 9 }), instanceMapId: 409 }, { ...entrance("b", "2026-10-18T10:00:00Z", { difficulty: 9 }), instanceMapId: 409 },
     ]);
     expect([...agreedDifficulties(facts)]).toEqual([[36, 1]]);
+  });
+});
+
+describe("when a treasure pin was last seen", () => {
+  const sighting = (installId: string, capturedAt: string) =>
+    ({ kind: "object_sighting", installId, capturedAt, objectId: 500, name: "Synthetic Chest", mapId: 1436, x: 30, y: 40 });
+
+  test("a pin 3 installs agree on carries the latest time among its sightings, leaving out a clock set ahead", () => {
+    const rows = objectSightingRowsFromRecords([
+      sighting("a", "2026-10-18T10:00:00Z"), sighting("b", "2026-10-20T09:30:00Z"), sighting("c", "2031-01-01T00:00:00Z"),
+    ]);
+    expect(objectSpawns(rows, [], asOf).pins).toEqual([
+      { key: "obj500-1436-30.0_40.0", objectId: 500, mapId: 1436, x: 30, y: 40, reporters: 3, lastSeen: "2026-10-20T09:30:00.000Z" },
+    ]);
+  });
+
+  test("without the corpus date a pin is as before, and rows with no time give an unknown date", () => {
+    const rows = objectSightingRowsFromRecords(["a", "b", "c"].map((i) => sighting(i, "2026-10-18T10:00:00Z")));
+    expect(objectSpawns(rows).pins[0]).not.toHaveProperty("lastSeen");
+    const untimed = rows.map(({ capturedAt: _, ...r }) => r);
+    expect(objectSpawns(untimed, [], asOf).pins[0]).toMatchObject({ reporters: 3, lastSeen: null });
   });
 });

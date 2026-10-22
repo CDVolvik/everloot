@@ -58,7 +58,7 @@ export interface InstanceBoss {
 const valid = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v > 0;
 
 /** The latest of the rows' times that is not after `asOf`, as ISO, or null. */
-function latest(rows: readonly { capturedAt?: string }[], asOf: Date): string | null {
+export function latest(rows: readonly { capturedAt?: string }[], asOf: Date): string | null {
   let best = -Infinity;
   for (const r of rows) {
     const t = r.capturedAt === undefined ? NaN : Date.parse(r.capturedAt);
