@@ -1,0 +1,4 @@
+{
+  "served": "beta",
+  "prefixes": { "ptr": "/ptr", "beta": "/beta" }
+}

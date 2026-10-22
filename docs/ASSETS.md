@@ -178,12 +178,19 @@ build, so a build bump cannot leave one layer behind.
    older version keeps working.
 3. In `game-version.ts`, fill in `product` and `build` for its entry and set `available: true`. The
    test then expects every layer to name the build of the version the site shows, so regenerate the
-   layers from the new snapshot in the same change.
+   layers from the new snapshot in the same change. Beta's entry reads its build from the layer today,
+   so give it its own build as a fixed value there, or it would show the new build under its name.
+4. In `web/src/data/build-versions.json`, set `served` to the version the layers now hold. The test
+   fails while it names another one.
 
-**URL plan, not built yet.** Live is the default and has no prefix. Other versions get a path prefix
-(`/ptr/...`, `/beta/...`), each page with a canonical tag to the same page of its own version and the
-Live page as the only one in the sitemap, so search engines do not mix versions. Until then the label is
-information only; the menu does not switch anything.
+**Version addresses.** The unprefixed pages show the served version; their URLs do not change when it
+does, and only they are in the sitemap. `/beta/...` and `/ptr/...` (the `prefixes` in
+`build-versions.json`, rewritten in `web/next.config.js`) show the same pages when that version is the
+served one, with the canonical tag on the unprefixed page. Any other version's prefix shows one noindex
+page saying the site holds no snapshot of it (`web/src/app/game-version/[id]`); no page is filled in
+from another version's files. Showing two versions' data at once needs a second snapshot, which the site
+does not have yet (`docs/2026-10-22-lane-version-routing-closeout.md`). The header label is information
+only; the menu does not switch anything.
 
 ## Owner steps for the buckets
 

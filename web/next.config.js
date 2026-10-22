@@ -1,4 +1,5 @@
 const path = require("node:path");
+const versions = require("./src/data/build-versions.json");
 
 const reportOnlyCsp = [
   "default-src 'self'",
@@ -61,8 +62,19 @@ const nextConfig = {
   },
   // /lore/[slug] already owns one dynamic segment under /lore, so the browse pages live at
   // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.
+  // A game version's prefix (src/data/build-versions.json, read by lib/build-versions.ts): the served version's
+  // prefix shows the same pages, whose canonical stays the unprefixed URL; any other version's prefix shows
+  // the page saying the site holds no snapshot of it, never another version's data. Once a rewrite lands on a
+  // route, dynamic ones included, Next stops there: /beta/lore/npcs rewritten to /lore/npcs would be /lore/[slug].
+  // So each of the site's own rewrites gets a copy under the served prefix, ahead of the prefix's catch-all.
   async rewrites() {
-    return [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
+    const own = [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
+    return [
+      ...Object.entries(versions.prefixes).flatMap(([id, prefix]) => id === versions.served
+        ? [...own.map((r) => ({ source: `${prefix}${r.source}`, destination: r.destination })), { source: prefix, destination: "/" }, { source: `${prefix}/:path+`, destination: "/:path+" }]
+        : [{ source: prefix, destination: `/game-version/${id}` }, { source: `${prefix}/:path+`, destination: `/game-version/${id}` }]),
+      ...own,
+    ];
   },
   // One page, one URL: the internal route name is never a second address. Redirects match the
   // original URL, so this does not loop with the rewrite above. The source is constrained to the
@@ -81,6 +93,8 @@ const nextConfig = {
       { source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 },
       // The developer page became the docs; docs/page.tsx sends its old #anchors on to the matching page.
       { source: "/connect", destination: "/docs", permanent: true },
+      // The notice for a version without a snapshot lives at its prefix, not at its internal route.
+      { source: `/game-version/:id(${Object.keys(versions.prefixes).join("|")})`, destination: "/:id", permanent: true },
     ];
   },
   // Security headers on every route. The full CSP is report-only: it lists what the site loads (the analytics
