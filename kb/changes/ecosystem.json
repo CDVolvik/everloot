@@ -1,20 +1,20 @@
 {
   "schema": 1,
-  "refreshedAt": "2026-10-21T21:49:50.727Z",
+  "refreshedAt": "2026-10-22T05:01:59.282Z",
   "projects": {
     "everloot": {
       "status": "ok",
-      "fetchedAt": "2026-10-21T21:49:50.727Z",
+      "fetchedAt": "2026-10-22T05:01:59.282Z",
       "stars": 0,
       "archived": false,
       "license": "AGPL-3.0",
-      "lastCommit": "2026-10-21T20:49:12Z",
+      "lastCommit": "2026-10-22T02:15:20Z",
       "release": {
         "tag": "desktop-v0.1.6",
         "date": "2026-10-21T12:40:11Z",
         "url": "https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.6"
       },
-      "commits4w": 1325,
+      "commits4w": 1365,
       "contributors": 2,
       "openIssues": 10,
       "closedIssues": 1,
@@ -26,8 +26,8 @@
     },
     "polestar": {
       "status": "ok",
-      "fetchedAt": "2026-10-21T21:49:57.676Z",
-      "stars": 139,
+      "fetchedAt": "2026-10-22T05:02:06.125Z",
+      "stars": 141,
       "archived": false,
       "license": null,
       "lastCommit": "2026-10-21T11:36:46Z",
@@ -38,7 +38,7 @@
       },
       "commits4w": 1858,
       "contributors": 29,
-      "openIssues": 40,
+      "openIssues": 44,
       "closedIssues": 216,
       "medianFirstResponseHours": 0.5,
       "responseSample": 6,
@@ -48,7 +48,7 @@
     },
     "olympus": {
       "status": "ok",
-      "fetchedAt": "2026-10-21T21:50:07.036Z",
+      "fetchedAt": "2026-10-22T05:02:15.730Z",
       "stars": 20,
       "archived": false,
       "license": "MIT",
@@ -58,7 +58,7 @@
         "date": "2026-10-21T02:53:34Z",
         "url": "https://github.com/dnl-gentile/olympus-addon/releases/tag/v1.3.2"
       },
-      "commits4w": 790,
+      "commits4w": 786,
       "contributors": 3,
       "openIssues": 6,
       "closedIssues": 13,
@@ -72,7 +72,7 @@
     },
     "forever-ref": {
       "status": "ok",
-      "fetchedAt": "2026-10-21T21:50:16.429Z",
+      "fetchedAt": "2026-10-22T05:02:24.864Z",
       "stars": 0,
       "archived": false,
       "license": null,
@@ -108,6 +108,10 @@
       {
         "at": "2026-10-21T21:49:50.727Z",
         "stars": 0
+      },
+      {
+        "at": "2026-10-22T05:01:59.282Z",
+        "stars": 0
       }
     ],
     "polestar": [
@@ -130,6 +134,10 @@
       {
         "at": "2026-10-21T21:49:50.727Z",
         "stars": 139
+      },
+      {
+        "at": "2026-10-22T05:01:59.282Z",
+        "stars": 141
       }
     ],
     "olympus": [
@@ -152,6 +160,10 @@
       {
         "at": "2026-10-21T21:49:50.727Z",
         "stars": 20
+      },
+      {
+        "at": "2026-10-22T05:01:59.282Z",
+        "stars": 20
       }
     ],
     "forever-ref": [
@@ -173,6 +185,10 @@
       },
       {
         "at": "2026-10-21T21:49:50.727Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-22T05:01:59.282Z",
         "stars": 0
       }
     ]
