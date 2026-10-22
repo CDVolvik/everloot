@@ -40,6 +40,14 @@ export const PFQUEST_NAME_FILES = ["units", "objects", "items", "quests"] as con
  */
 export const JUNK_NAME = /<(?:TEST|TXT|NYI|UNUSED|PH|DND)>|\[(?:UNUSED|PH|DND|NYI|TEST)\]|\(Only GM can see it\)|\b(?:UNUSED|TEST|DEPRECATED|NYI)\b|^OLD[A-Z]/;
 
+/**
+ * The developers' test quests JUNK_NAME lets through, for quest titles only: a build number glued on the end
+ * ("The \"Chow\" Quest (123)aa"), any other all-capitals marker in angle brackets ("<CHANGE TO GOSSIP>"), a
+ * "DND" prefix, and a title that says it is a test quest ("Hunter test quest2", "Test Kill Quest"). Titles that
+ * only hold the word, such as "Test of Faith" and "The Gordok Taste Test", stay. Case-sensitive in the markers.
+ */
+export const JUNK_QUEST_TITLE = /\(\d+\)[a-z]*$|<[A-Z][A-Z ]*>|^DND\b|\b[Tt]est\b.*\b[Qq]uest\d*\b/;
+
 export type LuaData = number | string | boolean | LuaTable;
 /** A Lua table: positional entries are keyed 1, 2, 3 …, in file order. */
 export type LuaTable = Map<number | string, LuaData>;
@@ -285,7 +293,7 @@ export async function importPfquest(
     const raw = names[file].get(id);
     const name = (typeof raw === "string" ? raw : file === "quests" ? asTable(raw)?.get("T") : undefined) as string | undefined;
     if (typeof name !== "string" || !name.trim()) { result.skipped.unnamed++; return null; }
-    if (JUNK_NAME.test(name)) { result.skipped.junk++; return null; }
+    if (JUNK_NAME.test(name) || (file === "quests" && JUNK_QUEST_TITLE.test(name))) { result.skipped.junk++; return null; }
     return name.trim();
   };
   const spawnsOf = (row: LuaTable): Spawn[] => {

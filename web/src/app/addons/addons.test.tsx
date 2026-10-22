@@ -4,7 +4,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 const github = vi.hoisted(() => ({ polestarLive: vi.fn() }));
 vi.mock("@/lib/polestar-github", () => github);
-const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn(), loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: true }), loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: true }) }));
+const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn(), loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: true }), loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: true }), loadInstanceFacts: async () => ({ entrances: [], encounters: [], sightings: [], unreachable: true, dataAsOf: null }) }));
 vi.mock("@/lib/rollup-compute", () => rollup);
 vi.mock("../../lib/rollup-compute", () => rollup);
 // The committed star history, or none when a test sets `history.none`.
