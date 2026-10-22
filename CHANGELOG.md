@@ -15,6 +15,19 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site: the snapshot cron stops rewriting the whole corpus when nothing arrived. One query asks whether an
+  upload is newer than the snapshot; if not, the snapshot and the completion rollup are skipped, the market fold
+  runs only when the UTC day changed, and `/api/health` reads the last successful run from a heartbeat instead
+  of the corpus's age. An idle week no longer reads as an outage, and the cron does no work for nothing.
+- Site: the item pages and the hover card say the item's set, its restrictions, its class and race
+  requirements, the skill it needs and its Use, Equip and Chance-on-hit lines, read from the game files. A
+  value the files do not carry reads `[?]` and says which table the game uses and the extract does not: the
+  stat amounts and the armour, which the game works out from tables we do not read, and the weapon damage,
+  which it works out from its weapon damage tables, the weapon speed and its own rounding. The numbers are
+  checked against the game's own tooltip before any range is printed.
+- Site: the sitemap is back. It had answered 500 since the wiki landed, because the build traced the wiki's
+  pages into the `/wiki` routes only, and the sitemap reads them on every request. The site had no sitemap for
+  two days; a build now fails for any route that reads the wiki without carrying it.
 - Site: records in `/api/corpus/public` and the bulk `corpus.ndjson` carry a per-install pseudonym (`pub-` and 32
   hex, a keyed hash) in place of the install id, so they pass the protocol's parser again and anyone can count
   installs. The addon's install id still never leaves. Protocol package 1.13.0, description only.
@@ -29,6 +42,30 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Site: `/database/coverage` says how much of the game three players have agreed on, per zone, per type and
+  per field, with the confirmed share beside the settled one, and the zones that need players first. A type is
+  at its plateau when 90% of its expected facts are confirmed, 75% are settled, and under 0.5% became confirmed
+  in the 28 days before the data date; about 2% of the settled facts are left out each week, picked by a hash
+  of the fact and the week, so every settled fact is looked at again about once a year and the load stays
+  flat. A fact a patch may have changed counts as neither confirmed nor settled.
+- Knowledge base: `npm run kb -- coverage-report`, a local report of the facts that are missing, reported,
+  contested or spread, by zone and level, with the expected counts written beside it. Local only: the counts
+  are uploaded, never the rows.
+- Knowledge base: the settled list, one list per client build of the facts three players confirmed and two
+  more agreed on, and the uploaders that stop sending what is already settled. The site's copy is served at
+  `/api/coverage/settled`; the Desktop App keeps it beside its sent log, refreshes it once a day, and says
+  how many rows it skipped. The server-side tally of the extra agreement is behind a switch that stays off
+  until the data policy says how it is published.
+- Site and MCP server: a `coverage` tool, the same counts as the coverage page as text, per zone and per
+  type. The public tool list is 29 tools; the directory submissions carry the older count until they are
+  updated.
+- Site: a page per dungeon and raid, with the entrance players confirmed, the bosses and their kill counts,
+  and the treasure markers on the map, all read from the same readers the zone and object pages use, so a
+  marker on the map and a row on a page cannot disagree. The pages are in the sitemap and `/database` links
+  the index.
+- Knowledge base: `npm run kb -- name-gaps` opens with the counts: how many items, quests, item sets and
+  spells carry a name today, and which source each name came from — the game files, the Warcraft Wiki, the
+  local baseline, or the players. A source that was not read says so instead of printing a zero.
 - Addon, protocol and site: item numbers players see. When the game shows an item's tooltip, the addon records
   its armor, block, damage per second, stats and resistances for the plain item, with the client build (record
   kind `item_fact`, protocol package 1.15.0, record protocol 1.8.0). The item page, the site's hover card and the
