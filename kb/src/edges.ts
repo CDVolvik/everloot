@@ -10,7 +10,7 @@
 import { GAME_DATA_CREDIT, MCP_CREDIT, RELS, type EntityKind, type Rel } from "@everloot/protocol";
 import { INDEPENDENT_INSTALLS, lootWindowsFromRecords, recheckLootRecords, rollupDrops } from "./drop-rollup.js";
 import type { RecheckScope } from "./coverage.js";
-import { recheckRows } from "./fact-states.js";
+import { recheckRows, tallyVotes } from "./fact-states.js";
 import { npcZones, scopeSince } from "./recheck-scopes.js";
 import { isPinPosition } from "./world-pages.js";
 
@@ -155,26 +155,58 @@ export function observedEdges(records: unknown[], dataAsOf: string | Date, reche
     }
   }
   // A vendor offer counts where its vendor stands, a quest where its leading giver stands, a pin on its own map.
-  const npcZone = new Map<number, number | null>(), questZone = new Map<number, number | null>();
+  const npcZone = new Map<number, number | null>(), npcRare = new Map<number, boolean>();
+  const questZone = new Map<number, number | null>(), questRewards = new Map<number, Set<number>>();
   if (recheck.length) {
-    for (const [npcId, zone] of npcZones(records.flatMap((raw) => {
-      const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
-      if (!r || r.kind !== "npc_sighting" || !id(r.npcId) || typeof r.mapId !== "number" || !Number.isInteger(r.mapId) || r.mapId < 0 || typeof r.installId !== "string") return [];
-      return [{ npcId: id(r.npcId), mapId: r.mapId, installId: String(r.installId ?? ""), pin: isPinPosition(r.positionKind) }];
-    }))) npcZone.set(npcId, zone);
+    const npcRows: { npcId: number; mapId: number; installId: string; pin: boolean; rank?: unknown }[] = [];
+    const npcRowsById = new Map<number, typeof npcRows>();
     for (const raw of records) {
       const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
-      if (!r || r.kind !== "quest" || !id(r.questId) || questZone.has(id(r.questId))) continue;
-      const lead = id(r.giverNpcId) || id(r.turnInNpcId);
-      if (lead) questZone.set(id(r.questId), npcZone.get(lead) ?? null);
+      if (!r || r.kind !== "npc_sighting" || !id(r.npcId) || typeof r.mapId !== "number" || !Number.isInteger(r.mapId) || r.mapId < 0 || typeof r.installId !== "string") continue;
+      const row = { npcId: id(r.npcId), mapId: r.mapId, installId: r.installId, pin: isPinPosition(r.positionKind), ...(r.rank === undefined ? {} : { rank: r.rank }) };
+      npcRows.push(row);
+      const list = npcRowsById.get(row.npcId);
+      if (list) list.push(row); else npcRowsById.set(row.npcId, [row]);
+    }
+    for (const [npcId, zone] of npcZones(npcRows)) npcZone.set(npcId, zone);
+    // A rare is its agreed rank, or with none agreed, any report of a rare rank, as `npcScope` counts it.
+    const rare = (v: string) => v === "rare" || v === "rare_elite";
+    for (const [npcId, rows] of npcRowsById) {
+      const agreed = tallyVotes(rows.flatMap((r) => (r.rank === undefined ? [] : [{ installId: r.installId, value: String(r.rank) }]))).winner?.value;
+      npcRare.set(npcId, agreed !== undefined ? rare(String(agreed)) : rows.some((r) => typeof r.rank === "string" && rare(r.rank)));
+    }
+    const questLeads = new Map<number, { installId: string; giverNpcId?: number; turnInNpcId?: number }[]>();
+    for (const raw of records) {
+      const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+      if (!r || r.kind !== "quest" || !id(r.questId)) continue;
+      const questId = id(r.questId);
+      const rewards = questRewards.get(questId) ?? new Set<number>();
+      for (const item of ids(r.rewardItemIds)) rewards.add(item);
+      questRewards.set(questId, rewards);
+      if (typeof r.installId !== "string") continue;
+      const leads = questLeads.get(questId) ?? [];
+      leads.push({
+        installId: r.installId,
+        ...(id(r.giverNpcId) ? { giverNpcId: id(r.giverNpcId) } : {}),
+        ...(id(r.turnInNpcId) ? { turnInNpcId: id(r.turnInNpcId) } : {}),
+      });
+      questLeads.set(questId, leads);
+    }
+    // The leading giver by distinct-install votes, then the leading turn-in, where `questScope` places it.
+    for (const [questId, rows] of questLeads) {
+      const lead = (k: "giverNpcId" | "turnInNpcId") => {
+        const voted = tallyVotes(rows.flatMap((r) => (r[k] === undefined ? [] : [{ installId: r.installId, value: r[k]! }]))).groups.sort((a, b) => b.voters.size - a.voters.size)[0]?.value;
+        return typeof voted === "number" ? npcZone.get(voted) ?? null : null;
+      };
+      questZone.set(questId, lead("giverNpcId") ?? lead("turnInNpcId"));
     }
   }
   const scopeFor = (key: string): string | null => {
     if (!recheck.length) return null;
     const [kind, a, b] = key.split("|");
     if (kind === "sold") return scopeSince(recheck, { types: ["vendors"], zones: [npcZone.get(Number(a)) ?? null], ids: [Number(a), Number(b)] });
-    if (kind === "reward") return scopeSince(recheck, { types: ["quests"], zones: [questZone.get(Number(a)) ?? null], ids: [Number(a), Number(b)] });
-    if (kind === "zone") return scopeSince(recheck, { types: ["pins"], zones: [Number(b)], ids: [Number(a)] });
+    if (kind === "reward") return scopeSince(recheck, { types: ["quests"], zones: [questZone.get(Number(a)) ?? null], ids: [Number(a), ...(questRewards.get(Number(a)) ?? [])] });
+    if (kind === "zone") return scopeSince(recheck, { types: npcRare.get(Number(a)) ? ["pins", "rares"] : ["pins"], zones: [Number(b)], ids: [Number(a)] });
     return null;
   };
   const qualified = (key: string, rows: Group["rows"]) => {
@@ -198,16 +230,33 @@ export function observedEdges(records: unknown[], dataAsOf: string | Date, reche
     const span = g ? qualified(`drop|${toKind}:${toId}|${rate.itemId}`, g.rows).span : new Span(ceiling);
     out.push(edge("item", rate.itemId, "dropped_by", toKind, toId, rate.reporters, span));
   }
-  // Vendors: the price most installs agree on, at 3 or more; ties keep the lower price.
-  const sold = new Map<string, { vendor: number; item: number; installs: number; span: Span }>();
+  // Vendors: recheck every price of one item together, then the price most installs agree on, at 3 or more.
+  const vendorItems = new Map<string, { vendor: number; item: number; rows: (Group["rows"][number] & { price: number })[] }>();
   for (const [key, g] of groups) {
-    const [kind, vendor, item] = key.split("|");
+    const [kind, vendor, item, price] = key.split("|");
     if (kind !== "sold") continue;
-    const q = qualified(key, g.rows);
-    if (q.installs < INDEPENDENT_INSTALLS) continue;
     const k = `${vendor}|${item}`;
-    const best = sold.get(k);
-    if (!best || q.installs > best.installs) sold.set(k, { vendor: Number(vendor), item: Number(item), installs: q.installs, span: q.span });
+    const v = vendorItems.get(k) ?? { vendor: Number(vendor), item: Number(item), rows: [] };
+    for (const row of g.rows) v.rows.push({ ...row, price: Number(price) });
+    vendorItems.set(k, v);
+  }
+  const sold = new Map<string, { vendor: number; item: number; installs: number; span: Span }>();
+  for (const [k, v] of vendorItems) {
+    const since = scopeSince(recheck, { types: ["vendors"], zones: [npcZone.get(v.vendor) ?? null], ids: [v.vendor, v.item] });
+    const kept = since ? recheckRows(v.rows, since, { value: (row) => row.price }).rows : v.rows;
+    const byPrice = new Map<number, { installs: Set<string>; span: Span }>();
+    for (const row of kept) {
+      const g = byPrice.get(row.price) ?? { installs: new Set<string>(), span: new Span(ceiling) };
+      g.installs.add(row.installId);
+      g.span.add(row.capturedAt);
+      byPrice.set(row.price, g);
+    }
+    let best: { installs: number; span: Span } | null = null;
+    for (const [, g] of [...byPrice].sort((a, b) => a[0] - b[0])) {
+      if (g.installs.size < INDEPENDENT_INSTALLS) continue;
+      if (!best || g.installs.size > best.installs) best = { installs: g.installs.size, span: g.span };
+    }
+    if (best) sold.set(k, { vendor: v.vendor, item: v.item, installs: best.installs, span: best.span });
   }
   for (const s of sold.values()) out.push(edge("item", s.item, "sold_by", "npc", s.vendor, s.installs, s.span));
   for (const [key, g] of groups) {

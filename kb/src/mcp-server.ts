@@ -74,7 +74,7 @@ export const TOOL_KINDS = {
   quest_page: ["npc_sighting", "quest", "vendor"],
   vendor_page: ["npc_sighting", "quest", "vendor"],
   world_map_near: ["npc_sighting", "vendor", "instance_entrance", "object_sighting"],
-  entity_relations: ["loot", "vendor", "quest", "npc_sighting"],
+  entity_relations: ["loot", "vendor", "quest", "npc_sighting", "object_sighting"],
   collection_gap: ["collection_catalog", "collection_owned"],
   guild_board: ["guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot"],
   auction_history: ["auction_scan"],

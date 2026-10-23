@@ -66,7 +66,9 @@ the treasure pins and the object names. `kb/src/world-map-near.ts`'s `observedPi
 `toolLoaders()` into `createToolHandlers`, and every page tool's facts are built with them: the NPC, quest, vendor and
 world-map-near facts attach `recheck`, the object pages cut their loot windows through `recheckLootRecords`, and
 `item_page`, `answer_sources` and `entity_relations` forward the scopes too, and the object page and world-map-near
-cut their treasure names and pins with them. The memo key includes them, so a scoped
+cut their treasure names and pins with them. Relation edges reuse the page rules: drops cut through
+`recheckLootRecords`, vendor prices are settled together before the best price is chosen, quest zones use the leading
+giver's vote and every reward id, and a rare's `located_in` edge is scoped as a rare pin. The memo key includes them, so a scoped
 and an unscoped read of one corpus never share facts. `kb/test/mcp-recheck-scopes.test.ts` covers the end-to-end path.
 The standalone `mcp-http-main.ts` still has no scopes (it has no curated file to read); the site's mounts do.
 
