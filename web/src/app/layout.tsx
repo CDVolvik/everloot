@@ -79,12 +79,13 @@ export default function RootLayout({
         </main>
         <Footer />
         {/* AdSense loads on every page so Google's certified consent message can run where the law requires
-            it (EEA, UK, Switzerland, US states). Ads themselves appear only where a page places an AdSlot. */}
+            it (EEA, UK, Switzerland, US states). Ads themselves appear only where a page places an AdSlot.
+            It loads once the page has, so it neither competes with the page's own files nor runs before its first paint. */}
         {adsenseClient && (
           <Script
             id="adsense"
             async
-            strategy="afterInteractive"
+            strategy="lazyOnload"
             crossOrigin="anonymous"
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsenseClient)}`}
           />
