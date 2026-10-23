@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import type { WorldFacts } from "../../../kb/src/world-pages";
-import { hasContent, parseZoneSegment, publicZones, zoneByMapId, zoneContents, zoneHref, zoneMapHref, zoneSlug } from "./zones";
+import { WORLD_MAP } from "./world-map";
+import { hasContent, parseZoneSegment, placedEntrances, publicZones, zoneByMapId, zoneContents, zoneHref, zoneMapHref, zoneSlug } from "./zones";
 
 // SYNTHETIC data in the shape of the generated file; the numbers and names are made up.
 const data: WorldMapData = {
@@ -81,6 +82,19 @@ describe("zoneContents", () => {
     expect(zoneContents(twoOnly, data).get(1429)!.quests).toEqual([]);
   });
 
+  test("an entrance goes to the zone the files put it in, over the rectangles, and on held-back ground it is not placed", () => {
+    const city = { uiMapId: 1453, name: "Synthetic City", continentId: 0, bounds: { top: -8700, bottom: -8900, left: 900, right: 700 } };
+    const placed: WorldMapData = {
+      ...data, zones: [...data.zones, city],
+      entrances: data.entrances.map((e) => (e.mapId === 34 ? { ...e, uiMapId: 1429 } : e.mapId === 389 ? { ...e, uiMapId: 2482 } : e)),
+    };
+    // The Stockade lies in the city's smaller rectangle too, but its ground is the forest's.
+    const contents = zoneContents(empty, placed);
+    expect(contents.get(1429)!.entrances.map((e) => e.names[0])).toEqual(["Synthetic Stockade"]);
+    expect(contents.get(1453)!.entrances).toEqual([]);
+    expect([...contents.values()].flatMap((c) => c.entrances).map((e) => e.names[0])).not.toContain("Synthetic Chasm");
+  });
+
   test("an entrance goes to the smallest released zone around it; one in a held-back zone is not placed", () => {
     const contents = zoneContents(empty, data);
     expect(contents.get(1429)!.entrances).toEqual([{ names: ["Synthetic Stockade"], instanceMapIds: [34], raid: false, x: 19.8, y: 35.5, files: true, confirmed: null, lastSeen: null, bosses: [] }]);
@@ -117,5 +131,45 @@ describe("zoneContents", () => {
     expect(hasContent(contents.get(1429))).toBe(false);
     expect(hasContent(zoneContents(empty, data).get(1429))).toBe(true);
     expect(hasContent(undefined)).toBe(false);
+  });
+});
+
+describe("the committed map data: the zone each entrance is in", () => {
+  // What the game files say, independent of the zone rectangles, read from build 1.60.1.70532. "named" is the outdoor
+  // AreaTable area named after the instance on the entrance's continent; "ground" is the AreaTable area of the
+  // terrain chunk under Map.Corpse (the ghost-return spot), used when no named area leads to a zone. Either is walked
+  // up ParentAreaID to the zone area a UiMapAssignment names.
+  const expected: Record<string, string> = {
+    "Shadowfang Keep": "Silverpine Forest", // named: Shadowfang Keep > Silverpine Forest
+    "Stormwind Stockade": "Stormwind City", // ground: Stormwind City
+    "Deadmines": "Westfall", // ground: The Dagger Hills > Westfall
+    "Wailing Caverns": "The Barrens", // ground: The Barrens
+    "Razorfen Kraul": "The Barrens", // named: Razorfen Kraul > The Barrens
+    "Blackfathom Deeps": "Ashenvale", // named: Blackfathom Deeps > Ashenvale (the ghost spot's ground is Darkshore)
+    "Uldaman": "Badlands", // named: Uldaman > Badlands (the ghost spot's ground is Loch Modan)
+    "Gnomeregan": "Dun Morogh", // named: Gnomeregan > Dun Morogh
+    "Sunken Temple": "Swamp of Sorrows", // ground: Swamp of Sorrows (its named area has no parent)
+    "Razorfen Downs": "The Barrens", // named: Razorfen Downs > The Barrens
+    "Scarlet Monastery": "Tirisfal Glades", // ground: Tirisfal Glades
+    "Zul'Farrak": "Tanaris", // named: Zul'Farrak > Tanaris
+    "Blackrock Spire": "Burning Steppes", // ground: Blackrock Mountain > Burning Steppes
+    "Blackrock Depths": "Searing Gorge", // ground: Searing Gorge
+    "Onyxia's Lair": "Dustwallow Marsh", // ground: Wyrmbog > Dustwallow Marsh
+    "Scholomance": "Western Plaguelands", // ground: Caer Darrow > Western Plaguelands
+    "Zul'Gurub": "Stranglethorn Vale", // named: Zul'Gurub > Stranglethorn Vale
+    "Stratholme": "Eastern Plaguelands", // named: Stratholme > Eastern Plaguelands
+    "Maraudon": "Desolace", // ground: Valley of Spears > Desolace
+    "Ragefire Chasm": "Orgrimmar", // ground: Orgrimmar
+    "Molten Core": "Burning Steppes", // ground: Blackrock Mountain > Burning Steppes
+    "Dire Maul": "Feralas", // named: Dire Maul > Feralas
+    "Blackwing Lair": "Burning Steppes", // ground: Blackrock Mountain > Burning Steppes
+    "Ruins of Ahn'Qiraj": "Silithus", // named: Ruins of Ahn'Qiraj > Silithus
+    "Ahn'Qiraj Temple": "Silithus", // ground: The Scarab Wall > Silithus
+  };
+
+  test("every entrance lands in the zone the game puts it in, not the smallest rectangle around it", () => {
+    const zoneOf = new Map(WORLD_MAP.zones.map((z) => [z.uiMapId, z.name]));
+    const found = Object.fromEntries(placedEntrances(WORLD_MAP).flatMap((e) => e.names.map((n) => [n, e.zone ? zoneOf.get(e.zone.mapId) : null])));
+    expect(found).toEqual(expected);
   });
 });

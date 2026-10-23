@@ -54,8 +54,13 @@ export function worldToZone(zones: ZoneEntry[], mapId: number, point: WorldPoint
   return unit(x) && unit(y) ? { mapId, x, y } : null;
 }
 
-/** The zone a world point lies in. Where zone rectangles overlap (a city in its zone), the smallest wins. */
-export function zoneAt(zones: ZoneEntry[], point: WorldPoint): ZoneEntry | null {
+/**
+ * The zone a world point lies in. `uiMapId` is the zone the game files put the point in (see world-map-data.ts);
+ * when it is given it decides, and a zone missing from `zones` (a held-back one, say) gives null. Without it the rectangles guess: the smallest one around the point wins. That is right for a city in its
+ * zone but wrong where a zone's rectangle reaches over its neighbour, as most do.
+ */
+export function zoneAt(zones: ZoneEntry[], point: WorldPoint, uiMapId?: number): ZoneEntry | null {
+  if (uiMapId !== undefined) return find(zones, uiMapId) ?? null;
   let best: { zone: ZoneEntry; area: number } | null = null;
   for (const zone of zones) {
     if (!worldToZone(zones, zone.mapId, point)) continue;
@@ -88,6 +93,8 @@ export interface EntrancePin {
   raid: boolean;
   world: WorldPoint;
   map: MapPoint;
+  /** The zone the game files put the entrance in, when they say (see `zoneAt`). */
+  uiMapId?: number;
 }
 
 /** Dungeon and raid entrances as pins. Entrances within a yard of each other share one pin. */
@@ -101,7 +108,7 @@ export function placeEntrances(data: Pick<WorldMapData, "entrances">): EntranceP
       if (!same.mapIds.includes(e.mapId)) same.mapIds.push(e.mapId);
       same.raid ||= e.raid;
     } else {
-      pins.push({ names: [e.name], mapIds: [e.mapId], raid: e.raid, world, map: worldToMap(world) });
+      pins.push({ names: [e.name], mapIds: [e.mapId], raid: e.raid, world, map: worldToMap(world), ...(e.uiMapId !== undefined ? { uiMapId: e.uiMapId } : {}) });
     }
   }
   return pins;
@@ -111,14 +118,15 @@ export interface FlightMasterPin { id: number; name: string; world: WorldPoint; 
 export interface FlightLine { from: number; to: number; continentId: number; points: MapPoint[]; heldBack: boolean }
 
 /**
- * Flight masters and flight lines on the stitched map. One whose smallest zone is a held-back one (zone
- * rectangles overlap, so a held-back zone can lie over released ones), or whose name names one, is flagged, and so is a line that has such an end, so the spoiler switch can keep them off.
+ * Flight masters and flight lines on the stitched map. One whose zone (`zoneAt`: the game files' zone, else the
+ * smallest rectangle) is a held-back one, or whose name names one, is flagged, and so is a line that has such an
+ * end, so the spoiler switch can keep them off.
  */
 export function placeFlights(data: Pick<WorldMapData, "flightNodes" | "flightPaths" | "zones" | "heldBackZones">): { masters: FlightMasterPin[]; lines: FlightLine[] } {
   const all = zoneTable({ zones: [...data.zones, ...data.heldBackZones] }), held = new Set(data.heldBackZones.map((z) => z.uiMapId));
   const masters = data.flightNodes.map((n): FlightMasterPin => {
     const world = { continentId: n.continentId, worldX: n.worldX, worldY: n.worldY };
-    return { id: n.id, name: n.name, world, map: worldToMap(world), heldBack: held.has(zoneAt(all, world)?.mapId ?? -1) || data.heldBackZones.some((z) => n.name.toLowerCase().includes(z.name.toLowerCase())) };
+    return { id: n.id, name: n.name, world, map: worldToMap(world), heldBack: held.has(zoneAt(all, world, n.uiMapId)?.mapId ?? -1) || data.heldBackZones.some((z) => n.name.toLowerCase().includes(z.name.toLowerCase())) };
   });
   const hidden = new Set(masters.filter((m) => m.heldBack).map((m) => m.id));
   const lines = data.flightPaths.map((p): FlightLine => ({

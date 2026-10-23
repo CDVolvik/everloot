@@ -90,7 +90,7 @@ export function placedEntrances(data: Pick<WorldMapData, "zones" | "entrances">,
   const placed = new Set<number>();
   for (const pin of placeEntrances(data)) {
     for (const id of pin.mapIds) placed.add(id);
-    const zone = zoneAt(zones, pin.world);
+    const zone = zoneAt(zones, pin.world, pin.uiMapId);
     const at = zone && worldToZone(zones, zone.mapId, pin.world);
     const mine = confirmed.filter((e) => pin.mapIds.includes(e.instanceMapId));
     const players = Math.max(0, ...mine.map((e) => e.reporters));
@@ -123,7 +123,7 @@ export function treasurePins(seen: ZoneSightings): (ObjectSpawnPin & { name: str
 /**
  * What is known to be in each released zone. NPC and vendor positions come through `observedPins`, so the
  * 3-install rule holds as everywhere else. A quest is in the zone where its agreed giver or turn-in NPC
- * stands. Dungeon and raid entrances are read from the game files and go to the smallest zone around them; one is
+ * stands. Dungeon and raid entrances are read from the game files and go to the zone the files put them in (world-map-data.ts); one is
  * confirmed when 3 installs zoned into its instance, and an instance the files place nowhere gets the players'
  * entrance instead, so no entrance has two pins. Treasures are objects seen on the minimap, pinned at 3 installs.
  */

@@ -86,6 +86,13 @@ describe("handleWorldMapNear", () => {
     expect(two.ok && two.entrances[0]?.confirmed).toBeUndefined();
   });
 
+  test("an entrance's zone is the one the game files give it, and one in a held-back zone is left out", () => {
+    // The Stockade lies inside Synthetic Forest's rectangle, but the files put it in the held-back zone.
+    const placed = { ...data, entrances: [{ ...data.entrances[0]!, uiMapId: 2548 }, { ...data.entrances[1]!, uiMapId: 1429 }] };
+    const result = nearResult({ zone: "Synthetic Forest", x: 50, y: 50 }, placed, facts(corpus));
+    expect(result.ok && result.entrances.map((e) => [e.names[0], e.zone])).toEqual([["Synthetic Keep", "Synthetic Forest"]]);
+  });
+
   test("a zone can be named by its map id", () => {
     expect(near({ zone: "1429", x: 50, y: 50 })).toContain("Near Synthetic Forest at 50, 50");
   });

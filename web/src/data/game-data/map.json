@@ -9,8 +9,8 @@
     "buildId": 70532,
     "version": "1.60.1.70532",
     "buildConfig": "ad1802f4455e427ed8b7769aab25b0c0",
-    "definitions": "d8b2f0bdd362",
-    "extractedAt": "2026-10-22T22:42:27.998Z",
+    "definitions": "326704dc5066",
+    "extractedAt": "2026-10-23T01:16:52.238Z",
     "tables": [
       {
         "table": "Map",
@@ -40,6 +40,16 @@
       {
         "table": "TaxiPathNode",
         "rows": 10778,
+        "encryptedBlocks": 0
+      },
+      {
+        "table": "AreaTable",
+        "rows": 1375,
+        "encryptedBlocks": 3
+      },
+      {
+        "table": "TerrainArea",
+        "rows": 25600,
         "encryptedBlocks": 0
       }
     ]
@@ -616,7 +626,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -231,
-      "worldY": 1571.6
+      "worldY": 1571.6,
+      "uiMapId": 1421
     },
     {
       "mapId": 34,
@@ -624,7 +635,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -8762.4,
-      "worldY": 848
+      "worldY": 848,
+      "uiMapId": 1453
     },
     {
       "mapId": 36,
@@ -632,7 +644,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -11207.8,
-      "worldY": 1681.2
+      "worldY": 1681.2,
+      "uiMapId": 1436
     },
     {
       "mapId": 43,
@@ -640,7 +653,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": -751.1,
-      "worldY": -2209.2
+      "worldY": -2209.2,
+      "uiMapId": 1413
     },
     {
       "mapId": 47,
@@ -648,7 +662,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": -4459.4,
-      "worldY": -1660.2
+      "worldY": -1660.2,
+      "uiMapId": 1413
     },
     {
       "mapId": 48,
@@ -656,7 +671,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": 4249.1,
-      "worldY": 748.4
+      "worldY": 748.4,
+      "uiMapId": 1440
     },
     {
       "mapId": 70,
@@ -664,7 +680,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -6060.2,
-      "worldY": -2955
+      "worldY": -2955,
+      "uiMapId": 1418
     },
     {
       "mapId": 90,
@@ -672,7 +689,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -5162.7,
-      "worldY": 931.6
+      "worldY": 931.6,
+      "uiMapId": 1426
     },
     {
       "mapId": 109,
@@ -680,7 +698,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -10170.1,
-      "worldY": -3996
+      "worldY": -3996,
+      "uiMapId": 1435
     },
     {
       "mapId": 129,
@@ -688,7 +707,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": -4662.9,
-      "worldY": -2535.9
+      "worldY": -2535.9,
+      "uiMapId": 1413
     },
     {
       "mapId": 189,
@@ -696,7 +716,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": 2892.2,
-      "worldY": -811.3
+      "worldY": -811.3,
+      "uiMapId": 1420
     },
     {
       "mapId": 209,
@@ -704,7 +725,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": -6790.6,
-      "worldY": -2891.3
+      "worldY": -2891.3,
+      "uiMapId": 1446
     },
     {
       "mapId": 229,
@@ -712,7 +734,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -7522.5,
-      "worldY": -1233
+      "worldY": -1233,
+      "uiMapId": 1428
     },
     {
       "mapId": 230,
@@ -720,7 +743,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": -7178.1,
-      "worldY": -928.6
+      "worldY": -928.6,
+      "uiMapId": 1427
     },
     {
       "mapId": 249,
@@ -728,7 +752,8 @@
       "raid": true,
       "continentId": 1,
       "worldX": -4753.3,
-      "worldY": -3752.4
+      "worldY": -3752.4,
+      "uiMapId": 1445
     },
     {
       "mapId": 289,
@@ -736,7 +761,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": 1274.8,
-      "worldY": -2552.6
+      "worldY": -2552.6,
+      "uiMapId": 1422
     },
     {
       "mapId": 309,
@@ -744,7 +770,8 @@
       "raid": true,
       "continentId": 0,
       "worldX": -11916.1,
-      "worldY": -1224.6
+      "worldY": -1224.6,
+      "uiMapId": 1434
     },
     {
       "mapId": 329,
@@ -752,7 +779,8 @@
       "raid": false,
       "continentId": 0,
       "worldX": 3392.3,
-      "worldY": -3378.5
+      "worldY": -3378.5,
+      "uiMapId": 1423
     },
     {
       "mapId": 349,
@@ -760,7 +788,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": -1432.7,
-      "worldY": 2925
+      "worldY": 2925,
+      "uiMapId": 1443
     },
     {
       "mapId": 389,
@@ -768,7 +797,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": 1816.8,
-      "worldY": -4423.4
+      "worldY": -4423.4,
+      "uiMapId": 1454
     },
     {
       "mapId": 409,
@@ -776,7 +806,8 @@
       "raid": true,
       "continentId": 0,
       "worldX": -7510.6,
-      "worldY": -1036.7
+      "worldY": -1036.7,
+      "uiMapId": 1428
     },
     {
       "mapId": 429,
@@ -784,7 +815,8 @@
       "raid": false,
       "continentId": 1,
       "worldX": -3908,
-      "worldY": 1130
+      "worldY": 1130,
+      "uiMapId": 1444
     },
     {
       "mapId": 469,
@@ -792,7 +824,8 @@
       "raid": true,
       "continentId": 0,
       "worldX": -7663.4,
-      "worldY": -1218.7
+      "worldY": -1218.7,
+      "uiMapId": 1428
     },
     {
       "mapId": 509,
@@ -800,7 +833,8 @@
       "raid": true,
       "continentId": 1,
       "worldX": -8114.5,
-      "worldY": 1526.4
+      "worldY": 1526.4,
+      "uiMapId": 1451
     },
     {
       "mapId": 531,
@@ -808,7 +842,8 @@
       "raid": true,
       "continentId": 1,
       "worldX": -8111.7,
-      "worldY": 1526.8
+      "worldY": 1526.8,
+      "uiMapId": 1451
     }
   ],
   "flightNodes": [
@@ -817,504 +852,576 @@
       "name": "Stormwind, Elwynn",
       "continentId": 0,
       "worldX": -8832.8,
-      "worldY": 478.6
+      "worldY": 478.6,
+      "uiMapId": 1453
     },
     {
       "id": 4,
       "name": "Sentinel Hill, Westfall",
       "continentId": 0,
       "worldX": -10628.9,
-      "worldY": 1036.7
+      "worldY": 1036.7,
+      "uiMapId": 1436
     },
     {
       "id": 5,
       "name": "Lakeshire, Redridge",
       "continentId": 0,
       "worldX": -9429.1,
-      "worldY": -2231.4
+      "worldY": -2231.4,
+      "uiMapId": 1433
     },
     {
       "id": 6,
       "name": "Ironforge, Dun Morogh",
       "continentId": 0,
       "worldX": -4821.8,
-      "worldY": -1155.4
+      "worldY": -1155.4,
+      "uiMapId": 1426
     },
     {
       "id": 7,
       "name": "Menethil Harbor, Wetlands",
       "continentId": 0,
       "worldX": -3792.3,
-      "worldY": -783.3
+      "worldY": -783.3,
+      "uiMapId": 1437
     },
     {
       "id": 8,
       "name": "Thelsamar, Loch Modan",
       "continentId": 0,
       "worldX": -5421.9,
-      "worldY": -2930
+      "worldY": -2930,
+      "uiMapId": 1432
     },
     {
       "id": 10,
       "name": "The Sepulcher, Silverpine Forest",
       "continentId": 0,
       "worldX": 478.9,
-      "worldY": 1536.6
+      "worldY": 1536.6,
+      "uiMapId": 1421
     },
     {
       "id": 11,
       "name": "Undercity, Tirisfal",
       "continentId": 0,
       "worldX": 1568.6,
-      "worldY": 268
+      "worldY": 268,
+      "uiMapId": 1420
     },
     {
       "id": 12,
       "name": "Darkshire, Duskwood",
       "continentId": 0,
       "worldX": -10515.5,
-      "worldY": -1261.7
+      "worldY": -1261.7,
+      "uiMapId": 1431
     },
     {
       "id": 13,
       "name": "Tarren Mill, Hillsbrad",
       "continentId": 0,
       "worldX": -0.1,
-      "worldY": -859.9
+      "worldY": -859.9,
+      "uiMapId": 1424
     },
     {
       "id": 14,
       "name": "Southshore, Hillsbrad",
       "continentId": 0,
       "worldX": -711.5,
-      "worldY": -515.5
+      "worldY": -515.5,
+      "uiMapId": 1424
     },
     {
       "id": 16,
       "name": "Refuge Pointe, Arathi",
       "continentId": 0,
       "worldX": -1240.5,
-      "worldY": -2515.1
+      "worldY": -2515.1,
+      "uiMapId": 1417
     },
     {
       "id": 17,
       "name": "Hammerfall, Arathi",
       "continentId": 0,
       "worldX": -916.3,
-      "worldY": -3496.9
+      "worldY": -3496.9,
+      "uiMapId": 1417
     },
     {
       "id": 18,
       "name": "Booty Bay, Stranglethorn",
       "continentId": 0,
       "worldX": -14444.3,
-      "worldY": 509.6
+      "worldY": 509.6,
+      "uiMapId": 1434
     },
     {
       "id": 19,
       "name": "Booty Bay, Stranglethorn",
       "continentId": 0,
       "worldX": -14473,
-      "worldY": 464.1
+      "worldY": 464.1,
+      "uiMapId": 1434
     },
     {
       "id": 20,
       "name": "Grom'gol, Stranglethorn",
       "continentId": 0,
       "worldX": -12414.2,
-      "worldY": 146.3
+      "worldY": 146.3,
+      "uiMapId": 1434
     },
     {
       "id": 21,
       "name": "Kargath, Badlands",
       "continentId": 0,
       "worldX": -6634,
-      "worldY": -2180.1
+      "worldY": -2180.1,
+      "uiMapId": 1418
     },
     {
       "id": 22,
       "name": "Thunder Bluff, Mulgore",
       "continentId": 1,
       "worldX": -1197.2,
-      "worldY": 29.7
+      "worldY": 29.7,
+      "uiMapId": 1456
     },
     {
       "id": 23,
       "name": "Orgrimmar, Durotar",
       "continentId": 1,
       "worldX": 1677.6,
-      "worldY": -4315.7
+      "worldY": -4315.7,
+      "uiMapId": 1454
     },
     {
       "id": 25,
       "name": "Crossroads, The Barrens",
       "continentId": 1,
       "worldX": -441.8,
-      "worldY": -2596.1
+      "worldY": -2596.1,
+      "uiMapId": 1413
     },
     {
       "id": 26,
       "name": "Auberdine, Darkshore",
       "continentId": 1,
       "worldX": 6341.4,
-      "worldY": 557.7
+      "worldY": 557.7,
+      "uiMapId": 1439
     },
     {
       "id": 27,
       "name": "Rut'theran Village, Teldrassil",
       "continentId": 1,
       "worldX": 8643.6,
-      "worldY": 841
+      "worldY": 841,
+      "uiMapId": 1438
     },
     {
       "id": 28,
       "name": "Astranaar, Ashenvale",
       "continentId": 1,
       "worldX": 2827.3,
-      "worldY": -289.2
+      "worldY": -289.2,
+      "uiMapId": 1440
     },
     {
       "id": 29,
       "name": "Sun Rock Retreat, Stonetalon Mountains",
       "continentId": 1,
       "worldX": 966.6,
-      "worldY": 1040.3
+      "worldY": 1040.3,
+      "uiMapId": 1442
     },
     {
       "id": 30,
       "name": "Freewind Post, Thousand Needles",
       "continentId": 1,
       "worldX": -5407.7,
-      "worldY": -2414.3
+      "worldY": -2414.3,
+      "uiMapId": 1441
     },
     {
       "id": 31,
       "name": "Thalanaar, Feralas",
       "continentId": 1,
       "worldX": -4491.9,
-      "worldY": -775.9
+      "worldY": -775.9,
+      "uiMapId": 1444
     },
     {
       "id": 32,
       "name": "Theramore, Dustwallow Marsh",
       "continentId": 1,
       "worldX": -3825.4,
-      "worldY": -4516.6
+      "worldY": -4516.6,
+      "uiMapId": 1445
     },
     {
       "id": 33,
       "name": "Stonetalon Peak, Stonetalon Mountains",
       "continentId": 1,
       "worldX": 2681.1,
-      "worldY": 1461.7
+      "worldY": 1461.7,
+      "uiMapId": 1442
     },
     {
       "id": 37,
       "name": "Nijel's Point, Desolace",
       "continentId": 1,
       "worldX": 139.2,
-      "worldY": 1325.8
+      "worldY": 1325.8,
+      "uiMapId": 1443
     },
     {
       "id": 38,
       "name": "Shadowprey Village, Desolace",
       "continentId": 1,
       "worldX": -1767.6,
-      "worldY": 3263.9
+      "worldY": 3263.9,
+      "uiMapId": 1443
     },
     {
       "id": 39,
       "name": "Gadgetzan, Tanaris",
       "continentId": 1,
       "worldX": -7224,
-      "worldY": -3734.6
+      "worldY": -3734.6,
+      "uiMapId": 1446
     },
     {
       "id": 40,
       "name": "Gadgetzan, Tanaris",
       "continentId": 1,
       "worldX": -7048.9,
-      "worldY": -3780.4
+      "worldY": -3780.4,
+      "uiMapId": 1446
     },
     {
       "id": 41,
       "name": "Feathermoon, Feralas",
       "continentId": 1,
       "worldX": -4373.8,
-      "worldY": 3338.6
+      "worldY": 3338.6,
+      "uiMapId": 1444
     },
     {
       "id": 42,
       "name": "Camp Mojache, Feralas",
       "continentId": 1,
       "worldX": -4419.9,
-      "worldY": 199.3
+      "worldY": 199.3,
+      "uiMapId": 1444
     },
     {
       "id": 43,
       "name": "Aerie Peak, The Hinterlands",
       "continentId": 0,
       "worldX": 283.7,
-      "worldY": -2002.8
+      "worldY": -2002.8,
+      "uiMapId": 1425
     },
     {
       "id": 44,
       "name": "Valormok, Azshara",
       "continentId": 1,
       "worldX": 3661.5,
-      "worldY": -4390.4
+      "worldY": -4390.4,
+      "uiMapId": 1447
     },
     {
       "id": 45,
       "name": "Nethergarde Keep, Blasted Lands",
       "continentId": 0,
       "worldX": -11112.2,
-      "worldY": -3435.7
+      "worldY": -3435.7,
+      "uiMapId": 1419
     },
     {
       "id": 48,
       "name": "Bloodvenom Post, Felwood",
       "continentId": 1,
       "worldX": 5068.4,
-      "worldY": -337.2
+      "worldY": -337.2,
+      "uiMapId": 1448
     },
     {
       "id": 49,
       "name": "Moonglade",
       "continentId": 1,
       "worldX": 7458.5,
-      "worldY": -2487.2
+      "worldY": -2487.2,
+      "uiMapId": 1450
     },
     {
       "id": 52,
       "name": "Everlook, Winterspring",
       "continentId": 1,
       "worldX": 6799.2,
-      "worldY": -4742.4
+      "worldY": -4742.4,
+      "uiMapId": 1452
     },
     {
       "id": 53,
       "name": "Everlook, Winterspring",
       "continentId": 1,
       "worldX": 6813.1,
-      "worldY": -4611.1
+      "worldY": -4611.1,
+      "uiMapId": 1452
     },
     {
       "id": 55,
       "name": "Brackenwall Village, Dustwallow Marsh",
       "continentId": 1,
       "worldX": -3147.4,
-      "worldY": -2842.2
+      "worldY": -2842.2,
+      "uiMapId": 1445
     },
     {
       "id": 56,
       "name": "Stonard, Swamp of Sorrows",
       "continentId": 0,
       "worldX": -10457,
-      "worldY": -3279.2
+      "worldY": -3279.2,
+      "uiMapId": 1435
     },
     {
       "id": 58,
       "name": "Zoram'gar Outpost, Ashenvale",
       "continentId": 1,
       "worldX": 3374.7,
-      "worldY": 997
+      "worldY": 997,
+      "uiMapId": 1440
     },
     {
       "id": 61,
       "name": "Splintertree Post, Ashenvale",
       "continentId": 1,
       "worldX": 2302.4,
-      "worldY": -2524.6
+      "worldY": -2524.6,
+      "uiMapId": 1440
     },
     {
       "id": 62,
       "name": "Nighthaven, Moonglade",
       "continentId": 1,
       "worldX": 7793.6,
-      "worldY": -2403.5
+      "worldY": -2403.5,
+      "uiMapId": 1450
     },
     {
       "id": 63,
       "name": "Nighthaven, Moonglade",
       "continentId": 1,
       "worldX": 7787.7,
-      "worldY": -2404.1
+      "worldY": -2404.1,
+      "uiMapId": 1450
     },
     {
       "id": 64,
       "name": "Talrendis Point, Azshara",
       "continentId": 1,
       "worldX": 2722,
-      "worldY": -3880.6
+      "worldY": -3880.6,
+      "uiMapId": 1447
     },
     {
       "id": 65,
       "name": "Talonbranch Glade, Felwood",
       "continentId": 1,
       "worldX": 6205.9,
-      "worldY": -1949.6
+      "worldY": -1949.6,
+      "uiMapId": 1448
     },
     {
       "id": 66,
       "name": "Chillwind Camp, Western Plaguelands",
       "continentId": 0,
       "worldX": 931.3,
-      "worldY": -1430.1
+      "worldY": -1430.1,
+      "uiMapId": 1422
     },
     {
       "id": 67,
       "name": "Light's Hope Chapel, Eastern Plaguelands",
       "continentId": 0,
       "worldX": 2271.1,
-      "worldY": -5340.8
+      "worldY": -5340.8,
+      "uiMapId": 1423
     },
     {
       "id": 68,
       "name": "Light's Hope Chapel, Eastern Plaguelands",
       "continentId": 0,
       "worldX": 2327.4,
-      "worldY": -5286.9
+      "worldY": -5286.9,
+      "uiMapId": 1423
     },
     {
       "id": 69,
       "name": "Moonglade",
       "continentId": 1,
       "worldX": 7470.4,
-      "worldY": -2123.4
+      "worldY": -2123.4,
+      "uiMapId": 1450
     },
     {
       "id": 70,
       "name": "Flame Crest, Burning Steppes",
       "continentId": 0,
       "worldX": -7504,
-      "worldY": -2187.5
+      "worldY": -2187.5,
+      "uiMapId": 1428
     },
     {
       "id": 71,
       "name": "Morgan's Vigil, Burning Steppes",
       "continentId": 0,
       "worldX": -8364.6,
-      "worldY": -2738.4
+      "worldY": -2738.4,
+      "uiMapId": 1428
     },
     {
       "id": 72,
       "name": "Cenarion Hold, Silithus",
       "continentId": 1,
       "worldX": -6811.4,
-      "worldY": 836.7
+      "worldY": 836.7,
+      "uiMapId": 1451
     },
     {
       "id": 73,
       "name": "Cenarion Hold, Silithus",
       "continentId": 1,
       "worldX": -6761.8,
-      "worldY": 772
+      "worldY": 772,
+      "uiMapId": 1451
     },
     {
       "id": 74,
       "name": "Thorium Point, Searing Gorge",
       "continentId": 0,
       "worldX": -6552.6,
-      "worldY": -1168.3
+      "worldY": -1168.3,
+      "uiMapId": 1427
     },
     {
       "id": 75,
       "name": "Thorium Point, Searing Gorge",
       "continentId": 0,
       "worldX": -6554.9,
-      "worldY": -1100.1
+      "worldY": -1100.1,
+      "uiMapId": 1427
     },
     {
       "id": 76,
       "name": "Revantusk Village, The Hinterlands",
       "continentId": 0,
       "worldX": -635.3,
-      "worldY": -4720.5
+      "worldY": -4720.5,
+      "uiMapId": 1425
     },
     {
       "id": 77,
       "name": "Camp Taurajo, The Barrens",
       "continentId": 1,
       "worldX": -2380.7,
-      "worldY": -1882.7
+      "worldY": -1882.7,
+      "uiMapId": 1413
     },
     {
       "id": 79,
       "name": "Marshal's Refuge, Un'Goro Crater",
       "continentId": 1,
       "worldX": -6113.8,
-      "worldY": -1142.7
+      "worldY": -1142.7,
+      "uiMapId": 1449
     },
     {
       "id": 80,
       "name": "Ratchet, The Barrens",
       "continentId": 1,
       "worldX": -894.6,
-      "worldY": -3773
+      "worldY": -3773,
+      "uiMapId": 1413
     },
     {
       "id": 84,
       "name": "Plaguewood Tower, Eastern Plaguelands",
       "continentId": 0,
       "worldX": 2998.7,
-      "worldY": -3050.1
+      "worldY": -3050.1,
+      "uiMapId": 1423
     },
     {
       "id": 85,
       "name": "Northpass Tower, Eastern Plaguelands",
       "continentId": 0,
       "worldX": 3109.3,
-      "worldY": -4285.1
+      "worldY": -4285.1,
+      "uiMapId": 1423
     },
     {
       "id": 86,
       "name": "Eastwall Tower, Eastern Plaguelands",
       "continentId": 0,
       "worldX": 2499.2,
-      "worldY": -4742.9
+      "worldY": -4742.9,
+      "uiMapId": 1423
     },
     {
       "id": 87,
       "name": "Crown Guard Tower, Eastern Plaguelands",
       "continentId": 0,
       "worldX": 1857.6,
-      "worldY": -3658.5
+      "worldY": -3658.5,
+      "uiMapId": 1423
     },
     {
       "id": 559,
       "name": "Summit of Eternity, Mount Hyjal",
       "continentId": 1,
       "worldX": 5283.2,
-      "worldY": -3306.7
+      "worldY": -3306.7,
+      "uiMapId": 2482
     },
     {
       "id": 3203,
       "name": "Rog'mar, Riverglades",
       "continentId": 0,
       "worldX": -7923.7,
-      "worldY": -4783
+      "worldY": -4783,
+      "uiMapId": 2548
     },
     {
       "id": 3242,
       "name": "Tainted Foothills, Mount Hyjal",
       "continentId": 1,
       "worldX": 4393.5,
-      "worldY": -2836.4
+      "worldY": -2836.4,
+      "uiMapId": 2482
     },
     {
       "id": 3275,
       "name": "Powderfuse Port, Riverglades",
       "continentId": 0,
       "worldX": -8180,
-      "worldY": -5616.3
+      "worldY": -5616.3,
+      "uiMapId": 2548
     },
     {
       "id": 3276,
       "name": "Farholde Keep, Riverglades",
       "continentId": 0,
       "worldX": -9104.1,
-      "worldY": -4830.5
+      "worldY": -4830.5,
+      "uiMapId": 2548
     }
   ],
   "flightPaths": [

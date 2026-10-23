@@ -169,14 +169,17 @@ export function nearResult(args: NearArgs, data: WorldMapData, facts: NearFacts)
   // An entrance the files place is confirmed by players who zoned into one of its instances; no second pin is made.
   const confirmed = new Map<number, number>();
   for (const e of confirmedEntrances(facts.entrances ?? [], new Date(), facts.recheck ?? [])) confirmed.set(e.instanceMapId, Math.max(confirmed.get(e.instanceMapId) ?? 0, e.reporters));
+  // An entrance the files put in a held-back zone is left out, like the zone.
+  const held = new Set(data.heldBackZones.map((z) => z.uiMapId));
   const entrances = placeEntrances(data)
+    .filter((p) => p.uiMapId === undefined || !held.has(p.uiMapId))
     .map((p) => ({ p, d: distanceYards(origin, p.world) }))
     .filter((e) => e.d <= radius)
     .sort((a, b) => a.d - b.d)
     .slice(0, limit)
     .map(({ p, d }) => {
       const players = Math.max(0, ...p.mapIds.map((id) => confirmed.get(id) ?? 0));
-      return { names: p.names, raid: p.raid, zone: zoneAt(zones, p.world)?.name ?? null, yards: oneDecimal(d), ...(players ? { confirmed: players } : {}) };
+      return { names: p.names, raid: p.raid, zone: zoneAt(zones, p.world, p.uiMapId)?.name ?? null, yards: oneDecimal(d), ...(players ? { confirmed: players } : {}) };
     });
   const observed = (kind: ObservedKind): NearPin[] => pins
     .filter((p) => p.kind === kind && p.npcId !== selfId)

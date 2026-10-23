@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { chunkOf, terrainRowId } from "../src/terrain-area.js";
 import { assignmentRect, buildWorldMapData, thinLine, WorldMapData, WORLD_MAP_SCHEMA } from "../src/world-map-data.js";
 
 // Synthetic rows in the shape of the client tables (column names from WoWDBDefs). The numbers are made up.
@@ -69,7 +70,11 @@ describe("map data from client tables", () => {
 
   test("zones that are not on a continent, battlegrounds and later ids are left out, and the hold-back is reported", () => {
     expect(data.zones.map((z) => z.uiMapId)).toEqual([1411, 1429]);
-    expect(data.warnings).toEqual(["1 zone(s) with later UiMap ids are held back as possibly unreleased", "no flight tables in the snapshot: no flight masters or flight lines"]);
+    expect(data.warnings).toEqual([
+      "1 zone(s) with later UiMap ids are held back as possibly unreleased",
+      "no flight tables in the snapshot: no flight masters or flight lines",
+      "no terrain areas in the snapshot: entrances and flight masters are placed by zone rectangles, which overlap",
+    ]);
     // The held-back zone is kept apart, with its rectangle, for the spoiler switch.
     expect(data.heldBackZones).toHaveLength(1);
     expect(data.heldBackZones[0]!.uiMapId).toBeGreaterThan(1458);
@@ -102,6 +107,88 @@ describe("map data from client tables", () => {
 
   test("a snapshot without the map tables is refused with a pointer to client-extract", () => {
     expect(() => buildWorldMapData(() => undefined, source)).toThrow(/client-extract/);
+  });
+});
+
+describe("the zone each entrance is in, from the ground under it", () => {
+  // Each zone's whole-map assignment names the area it shows; the terrain chunk under a spot names its area.
+  const ground = (continentId: number, worldX: number, worldY: number, AreaID: number): Row => {
+    const { col, row } = chunkOf(worldX, worldY);
+    return { ID: terrainRowId(continentId, col, row), ContinentID: continentId, AreaID };
+  };
+  const areaOf: Record<number, number> = { 1429: 12, 1411: 14, 2548: 16591 };
+  const withAreas: typeof tables = {
+    ...tables,
+    UiMapAssignment: rows([...tables.UiMapAssignment!.values()].map((a) => ({ ...a, AreaID: areaOf[Number(a.UiMapID)] ?? 0 }))),
+    AreaTable: rows([
+      { ID: 12, AreaName_lang: "Elwynn Forest", ParentAreaID: 0 },
+      { ID: 14, AreaName_lang: "Durotar", ParentAreaID: 0 },
+      { ID: 16591, AreaName_lang: "Riverglades", ParentAreaID: 0 },
+      { ID: 87, AreaName_lang: "Goldshire", ParentAreaID: 12 },
+      { ID: 2000, AreaName_lang: "A cave", ParentAreaID: 87 },
+      { ID: 3000, AreaName_lang: "Nowhere", ParentAreaID: 0 },
+    ]),
+    TerrainArea: rows([
+      ground(0, -8762.4, 848, 2000), // Stockade: a sub-area of a sub-area of Elwynn
+      ground(0, 2892.2, -811.3, 16591), // Scarlet Monastery: ground a held-back zone shows
+      ground(1, 1816.8, -4423.4, 12), // Ragefire Chasm: Elwynn's area, but Elwynn is on the other continent
+      ground(0, -7510.6, -1036.7, 3000), // Molten Core: an area no zone shows
+    ]),
+  };
+  const d = buildWorldMapData((t) => withAreas[t], source);
+  const zoneOf = (name: string) => d.entrances.find((e) => e.name === name)?.uiMapId;
+
+  test("the ground's area, walked up its parents, gives the zone that shows it", () => {
+    expect(zoneOf("Stormwind Stockade")).toBe(1429);
+  });
+
+  test("a held-back zone counts, so the spoiler switch can hide what lies in it", () => {
+    expect(zoneOf("Scarlet Monastery")).toBe(2548);
+  });
+
+  test("an area no zone on the spot's continent shows leaves the zone to the rectangles, with a warning", () => {
+    expect(zoneOf("Ragefire Chasm")).toBeUndefined();
+    expect(zoneOf("Molten Core")).toBeUndefined();
+    expect(d.warnings).toContain("2 entrance(s) or flight master(s) have no zone from the terrain; the zone rectangles place them");
+  });
+
+  // The ghost-return spot can stand over a border; the outdoor area named after the instance says where its door is.
+  const named = (extra: Row[], mapRows: Row[] = []) => {
+    const t: typeof tables = {
+      ...withAreas,
+      Map: rows([...tables.Map!.values(), ...mapRows]),
+      AreaTable: rows([...withAreas.AreaTable!.values(), ...extra]),
+    };
+    return buildWorldMapData((n) => t[n], source);
+  };
+  const zoneIn = (d2: WorldMapData, name: string) => d2.entrances.find((e) => e.name === name)?.uiMapId;
+
+  test("the outdoor area named after the instance decides over the ground under the ghost spot", () => {
+    // The Stockade's ghost spot is on Elwynn's ground, but an area of continent 0 named "Stormwind Stockade" lies under the held-back zone.
+    const d2 = named([{ ID: 5000, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 16591 }]);
+    expect(zoneIn(d2, "Stormwind Stockade")).toBe(2548);
+  });
+
+  test("the instance's own area name counts too, and a named area on another continent does not", () => {
+    const d2 = named(
+      [
+        { ID: 5001, AreaName_lang: "The Old Prison", ContinentID: 0, ParentAreaID: 16591 },
+        { ID: 5002, AreaName_lang: "The Old Prison", ContinentID: 34, ParentAreaID: 0 },
+        { ID: 5003, AreaName_lang: "Stormwind Stockade", ContinentID: 1, ParentAreaID: 14 },
+      ],
+      [{ ...tables.Map!.get(34)!, AreaTableID: 5002 }],
+    );
+    expect(zoneIn(d2, "Stormwind Stockade")).toBe(2548);
+  });
+
+  test("named areas that lead to two zones, or to none, leave the zone to the ground", () => {
+    const two = named([
+      { ID: 5000, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 16591 },
+      { ID: 5001, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 12 },
+    ]);
+    expect(zoneIn(two, "Stormwind Stockade")).toBe(1429);
+    const none = named([{ ID: 5000, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 0 }]);
+    expect(zoneIn(none, "Stormwind Stockade")).toBe(1429);
   });
 });
 
@@ -161,7 +248,15 @@ describe("the committed map data", () => {
     expect(committed.schema).toBe(WORLD_MAP_SCHEMA);
     expect(committed.source).toMatchObject({ product: "wow_classic_beta", status: "found in game files, unconfirmed", licence: "Blizzard game data, not under our licence" });
     expect(committed.source.buildId).toBeGreaterThan(70000);
-    expect(committed.source.tables.map((t) => t.table).sort()).toEqual(["Map", "TaxiNodes", "TaxiPath", "TaxiPathNode", "UiMap", "UiMapAssignment"]);
+    expect(committed.source.tables.map((t) => t.table).sort()).toEqual(["AreaTable", "Map", "TaxiNodes", "TaxiPath", "TaxiPathNode", "TerrainArea", "UiMap", "UiMapAssignment"]);
+  });
+
+  test("every entrance and flight master has the zone its ground belongs to, and the zone is on its continent", () => {
+    const zones = new Map([...committed.zones, ...committed.heldBackZones].map((z) => [z.uiMapId, z]));
+    for (const spot of [...committed.entrances, ...committed.flightNodes]) {
+      expect(spot.uiMapId, spot.name).toBeDefined();
+      expect(zones.get(spot.uiMapId!)?.continentId, spot.name).toBe(spot.continentId);
+    }
   });
 
   test("carries no third-party data: only the fields the page uses, and no unused-map placeholders", () => {
