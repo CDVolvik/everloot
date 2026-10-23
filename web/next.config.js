@@ -113,6 +113,9 @@ const nextConfig = {
       // dynamic pages, so the CDN-specific headers are used.
       { source: "/database/items", headers: databaseItemsCdnHeaders },
       { source: "/database/items/:path*", headers: databaseItemsCdnHeaders },
+      // Zone and instance pages read no cookies either, and each one renders from the whole corpus on every request.
+      { source: "/database/zones/:path*", headers: databaseItemsCdnHeaders },
+      { source: "/database/instances/:path*", headers: databaseItemsCdnHeaders },
       // The embeddable tooltip script other sites load: an hour in browsers and at the CDN, so a fix reaches them quickly.
       { source: "/tooltips.js", headers: [
         { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },

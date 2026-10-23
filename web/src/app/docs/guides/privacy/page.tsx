@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Privacy and your data",
-  description: "What an Everloot upload carries, what is published, what is never published, and how to withdraw, delete or opt out.",
+  description: "What an Everloot upload carries, what is published and what never is, the census, player pages, cookies, and how to withdraw, delete or opt out.",
   path: "/docs/guides/privacy",
 });
 

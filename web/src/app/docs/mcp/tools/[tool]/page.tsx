@@ -9,7 +9,7 @@ import DocPage from "@/components/docs/DocPage";
 import { toolFromSlug, toolHref } from "@/lib/docs/nav";
 import { toolSamples } from "@/lib/docs/examples";
 import { toolDocs } from "@/lib/protocol-docs";
-import { DESCRIPTION_MAX, pageMetadata } from "@/lib/seo";
+import { DESCRIPTION_MAX, DESCRIPTION_MIN, pageMetadata } from "@/lib/seo";
 
 /** One page per MCP tool, generated from the protocol's tool definitions (MCP_TOOLS). */
 
@@ -86,7 +86,18 @@ export async function generateMetadata({ params }: { params: Promise<{ tool: str
   const name = toolFromSlug((await params).tool);
   const doc = name && toolDocs().find((d) => d.name === name);
   if (!doc) return {};
-  return pageMetadata({ title: `${doc.name}: ${doc.title} · MCP tool`, description: metaDescription(doc.description), path: toolHref(doc.name) });
+  return pageMetadata({ title: `${doc.name}: ${doc.title} · MCP tool`, description: toolDescription(doc.description), path: toolHref(doc.name) });
+}
+
+/**
+ * The tool's description, and when that is under DESCRIPTION_MIN, what the page documents. The first addition that
+ * fits DESCRIPTION_MAX wins, so a longer description keeps less of it.
+ */
+function toolDescription(text: string): string {
+  const base = metaDescription(text);
+  if (base.length >= DESCRIPTION_MIN) return base;
+  const choices = [`${base} An Everloot MCP tool: its parameters, its answer and the same call over HTTP.`, `${base} An Everloot MCP tool.`];
+  return choices.find((t) => t.length <= DESCRIPTION_MAX) ?? base;
 }
 
 /** The tool's description in whole sentences while they fit DESCRIPTION_MAX; a first sentence too long on its own is cut at a word. */

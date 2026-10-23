@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(props: { searchParams: Promise<{ q?: string | string[] }> }): Promise<Metadata> {
   const params = await props.searchParams;
   return {
-    ...pageMetadata({ title: "Find a player", description: "Look up a WoW: Forever character by name, from the Everloot addon.", path: "/players" }),
+    ...pageMetadata({ title: "Find a player", description: "Look up a WoW: Forever character by the start of its name: the race, class, level and guild the Everloot addon last saw, and the day it saw them.", path: "/players" }),
     robots: playerRobots(Boolean(params.q)),
   };
 }
