@@ -1,6 +1,21 @@
 {
   "posts": [
     {
+      "id": "bluesky:3mykabhkzym2o",
+      "source": "bluesky",
+      "url": "https://bsky.app/profile/worldofwarcraft.blizzard.com/post/3mykabhkzym2o",
+      "title": "It’s almost time to say goodbye until launch, so hop on the WoW: Forever Beta while you can!",
+      "author": "World of Warcraft",
+      "role": "Official account",
+      "postedAt": "2026-10-23T13:00:00.579Z",
+      "editedAt": null,
+      "category": "Bluesky",
+      "game": "forever",
+      "kind": "post",
+      "excerpt": "",
+      "firstSeen": "2026-10-23T16:56:45.746Z"
+    },
+    {
       "id": "forum:eu:6447340",
       "source": "forum",
       "region": "eu",
