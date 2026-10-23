@@ -17,6 +17,9 @@ export const REPAIRED_TEMPLATES = [
   "alliance", "horde", "neutral",
   "wp", "wplink", "au", "alternate universe", "loot", "coppercost", "cv-ah",
   "co", "coords", "reputation", "quality", "costitem",
+  "api", "raceicon", "classicon", "socket icon", "mob", "fu", "expac", "achievement", "title", "school", "gossip", "keypress",
+  "starcraft", "sc", "overwatch", "diablo", "dash", "queststart", "queststartfinish",
+  "wow-inline", "bc-inline", "wotlk-inline", "legion-inline", "wod-inline", "bfa-inline", "sl-inline", "df-inline",
   "ss", "for", "stub", "removed",
 ];
 
@@ -149,6 +152,32 @@ function render(inner: string): string | null {
     const shown = /^\d+$/.test(count) ? Number(count).toLocaleString("en-US") : count;
     return positional[1] ? `${shown}${named.numsep ?? " "}${positional[1]}` : shown;
   }
+  // {{api|GetSubZoneText}}, {{api|CreateFrame()|label}}, {{api|t=wh|OnEvent}}: the label, else the name, with any "(args)" kept for functions.
+  if (name === "api") {
+    const target = positional[0] ?? "";
+    const type = named.t ?? "a";
+    const paren = target.indexOf("(");
+    if (positional[1]) return positional[1] + (paren >= 0 && ["a", "w", "wm"].includes(type) ? target.slice(paren) : "");
+    return target;
+  }
+  // {{mob|Name}}, {{mob|Link||Label}}: the label, else the name (the A/H standing marks are icons).
+  if (name === "mob") return positional[2] || positional[0] || "";
+  // {{fu|Name|label}} (Film universe), like {{au}}, and {{expac|Dragonflight}}: the label, else the name as written.
+  if (name === "fu" || name === "film universe") return positional[1] || positional[0] || "";
+  if (name === "expac") return positional[0] ?? "";
+  // {{achievement|Name|label}}: the label, else the name; the coin icon is dropped.
+  if (name === "achievement") return positional[1] || positional[0] || "";
+  // {{title|Vendor}} shows <Vendor> in small text.
+  if (name === "title") return positional[0] ? `<${positional[0]}>` : "";
+  // {{school|Fire|label}}, {{gossip|text}}, {{keypress|Shift|1}}: the text the template wraps.
+  if (name === "school") return positional[1] || positional[0] || "";
+  if (name === "gossip") return positional[0] ?? "";
+  if (name === "keypress") return positional.filter(Boolean).join(named.chain ?? "+");
+  // {{StarCraft|Page|label}} and friends link another wiki: the label, else the page.
+  if (["starcraft", "sc", "overwatch", "diablo"].includes(name)) return positional[1] || positional[0] || "";
+  if (name === "dash") return "–";
+  // Icon-only templates: a race, class or socket icon, a quest marker or an expansion logo.
+  if (["raceicon", "classicon", "socket icon", "queststart", "queststartfinish"].includes(name) || /^(wow|bc|wotlk|legion|wod|bfa|sl|df)-inline$/.test(name)) return REMOVED;
   // {{Alliance}}, {{Horde}}, {{Neutral}} are the small faction icon alone.
   if (/^(horde|alliance|neutral)( icon( small)?)?$/.test(name)) return REMOVED;
   if (name === "ss" || name === "for" || name === "removed" || name.startsWith("stub")) return REMOVED;
