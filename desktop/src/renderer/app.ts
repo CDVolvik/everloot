@@ -156,7 +156,7 @@ function chat(): string {
       ? `<br>Search alone only matches names in Everloot's data. A model reads the question, fixes the spelling and looks it up for you. <button type="button" class="link" data-addmodel>Add a key or a free model</button>`
       : "";
     const meta = m.role === "assistant"
-      ? `<div class="meta"><button type="button" class="link copy" data-copy="${i}">${esc(copyLabel(i, copied))}</button>${m.model ? `<b>${esc(m.model)}</b>` : "<b>search only</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}${nudge}</div>`
+      ? `<div class="meta"><button type="button" class="link copy" data-copy="${i}">${esc(copyLabel(i, copied))}</button>${m.model ? `<b>${esc(m.model)}</b>` : m.stopped ? "" : "<b>search only</b>"}${m.stopped ? `${m.model ? " · " : ""}Stopped` : ""}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && !m.stopped && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}${nudge}</div>`
       : `<div class="meta">${clock(m.at)}</div>`;
     return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
   }).join("");
@@ -168,7 +168,7 @@ function chat(): string {
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <div class="thread" id="thread">${thread || `<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span><div class="chips">${starters(c).map((q) => askChip(q)).join("")}</div>`}${c?.busy ? `<div class="msg msg-assistant" id="chatLive">${liveAnswer()}</div>` : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
     <form id="chatForm"><textarea id="chatText" rows="2" aria-label="Your question" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea>
-      <div class="composer-bar">${c ? modelMenu(c) : ""}<button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></div></form>
+      <div class="composer-bar">${c ? modelMenu(c) : ""}${c?.busy ? `<button type="button" class="btn" id="chatStop">Stop</button>` : ""}<button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></div></form>
   </div>`;
 }
 
@@ -930,7 +930,12 @@ async function sendChat(question: string): Promise<void> {
   live = null;
   render();
   try { data.chat = await api.chatSend(question); } finally { live = null; }
+  // Stop was on the composer and goes with the answer; the question box takes the focus it had.
+  const stopped = data.chat.messages.at(-1)?.stopped === true;
+  const fromStop = document.activeElement?.id === "chatStop";
   render();
+  if (fromStop) main.querySelector<HTMLElement>("#chatText")?.focus();
+  if (stopped) { announcer.textContent = ""; setTimeout(() => { announcer.textContent = "Stopped"; }, 50); }
 }
 
 // The answer as it is written goes into its bubble only; the rest of the page stays as it is.
@@ -1058,6 +1063,7 @@ async function onClick(ev: MouseEvent): Promise<void> {
   if (t.dataset.run) { void api.runNow(t.dataset.run as Job); return; }
   if (t.dataset.unfollow) { const gone = t.dataset.unfollow.toLowerCase(); state = await api.saveSettings({ market: { realms: state!.settings.market.realms.filter((r) => r.toLowerCase() !== gone) } }); void load("market"); return; }
   if (t.id === "pause") { await api.setPaused(!state!.engine.paused); return; }
+  if (t.id === "chatStop") { await api.chatStop(); return; }
   if (t.id === "chatClear") { copied = null; data.chat = await api.chatClear(); render(); return; }
   if (t.id === "browse") {
     const folder = await api.pickGameFolder();
