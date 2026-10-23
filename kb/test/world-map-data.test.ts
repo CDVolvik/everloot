@@ -151,6 +151,45 @@ describe("the zone each entrance is in, from the ground under it", () => {
     expect(zoneOf("Molten Core")).toBeUndefined();
     expect(d.warnings).toContain("2 entrance(s) or flight master(s) have no zone from the terrain; the zone rectangles place them");
   });
+
+  // The ghost-return spot can stand over a border; the outdoor area named after the instance says where its door is.
+  const named = (extra: Row[], mapRows: Row[] = []) => {
+    const t: typeof tables = {
+      ...withAreas,
+      Map: rows([...tables.Map!.values(), ...mapRows]),
+      AreaTable: rows([...withAreas.AreaTable!.values(), ...extra]),
+    };
+    return buildWorldMapData((n) => t[n], source);
+  };
+  const zoneIn = (d2: WorldMapData, name: string) => d2.entrances.find((e) => e.name === name)?.uiMapId;
+
+  test("the outdoor area named after the instance decides over the ground under the ghost spot", () => {
+    // The Stockade's ghost spot is on Elwynn's ground, but an area of continent 0 named "Stormwind Stockade" lies under the held-back zone.
+    const d2 = named([{ ID: 5000, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 16591 }]);
+    expect(zoneIn(d2, "Stormwind Stockade")).toBe(2548);
+  });
+
+  test("the instance's own area name counts too, and a named area on another continent does not", () => {
+    const d2 = named(
+      [
+        { ID: 5001, AreaName_lang: "The Old Prison", ContinentID: 0, ParentAreaID: 16591 },
+        { ID: 5002, AreaName_lang: "The Old Prison", ContinentID: 34, ParentAreaID: 0 },
+        { ID: 5003, AreaName_lang: "Stormwind Stockade", ContinentID: 1, ParentAreaID: 14 },
+      ],
+      [{ ...tables.Map!.get(34)!, AreaTableID: 5002 }],
+    );
+    expect(zoneIn(d2, "Stormwind Stockade")).toBe(2548);
+  });
+
+  test("named areas that lead to two zones, or to none, leave the zone to the ground", () => {
+    const two = named([
+      { ID: 5000, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 16591 },
+      { ID: 5001, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 12 },
+    ]);
+    expect(zoneIn(two, "Stormwind Stockade")).toBe(1429);
+    const none = named([{ ID: 5000, AreaName_lang: "Stormwind Stockade", ContinentID: 0, ParentAreaID: 0 }]);
+    expect(zoneIn(none, "Stormwind Stockade")).toBe(1429);
+  });
 });
 
 describe("flight masters and flight lines from the taxi tables", () => {

@@ -55,9 +55,8 @@ export function worldToZone(zones: ZoneEntry[], mapId: number, point: WorldPoint
 }
 
 /**
- * The zone a world point lies in. `uiMapId` is the zone the game files put the point in (the ground under it, see
- * world-map-data.ts); when it is given it decides, and a zone missing from `zones` (a held-back one, say) gives
- * null. Without it the rectangles guess: the smallest one around the point wins. That is right for a city in its
+ * The zone a world point lies in. `uiMapId` is the zone the game files put the point in (see world-map-data.ts);
+ * when it is given it decides, and a zone missing from `zones` (a held-back one, say) gives null. Without it the rectangles guess: the smallest one around the point wins. That is right for a city in its
  * zone but wrong where a zone's rectangle reaches over its neighbour, as most do.
  */
 export function zoneAt(zones: ZoneEntry[], point: WorldPoint, uiMapId?: number): ZoneEntry | null {

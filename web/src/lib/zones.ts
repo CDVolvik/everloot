@@ -123,7 +123,7 @@ export function treasurePins(seen: ZoneSightings): (ObjectSpawnPin & { name: str
 /**
  * What is known to be in each released zone. NPC and vendor positions come through `observedPins`, so the
  * 3-install rule holds as everywhere else. A quest is in the zone where its agreed giver or turn-in NPC
- * stands. Dungeon and raid entrances are read from the game files and go to the zone the ground under them belongs to; one is
+ * stands. Dungeon and raid entrances are read from the game files and go to the zone the files put them in (world-map-data.ts); one is
  * confirmed when 3 installs zoned into its instance, and an instance the files place nowhere gets the players'
  * entrance instead, so no entrance has two pins. Treasures are objects seen on the minimap, pinned at 3 installs.
  */

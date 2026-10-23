@@ -394,7 +394,8 @@ not git.
 
 **The map layer.** From the map tables we publish zone rectangles (`UiMapAssignment`), continents
 and instances (`Map`, `UiMap`), dungeon and raid entrance points (`Map.Corpse`) and, for each entrance
-and flight master, the zone its ground belongs to (the terrain chunk's area in the ADT files, up
+and flight master, the zone the files put it in (for an entrance, the outdoor `AreaTable` area named
+after the instance when there is one, else the terrain chunk's area in the ADT files; either way up
 `AreaTable` to the area a zone's `UiMapAssignment` names; only the zone id is published), each stamped
 with the build it came from. Like the talent catalog, it may be shown on the site and committed as
 a clearly marked game-data file in `web/src/data/game-data/`, with a README that says it is

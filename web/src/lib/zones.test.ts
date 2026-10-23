@@ -135,35 +135,36 @@ describe("zoneContents", () => {
 });
 
 describe("the committed map data: the zone each entrance is in", () => {
-  // What the game files say, independent of the zone rectangles: the AreaTable area of the terrain chunk under
-  // each entrance (its ADT tile), walked up the ParentAreaID chain to the zone area a UiMapAssignment names.
-  // Read from build 1.60.1.70532; the area chain is in the comment.
+  // What the game files say, independent of the zone rectangles, read from build 1.60.1.70532. "named" is the outdoor
+  // AreaTable area named after the instance on the entrance's continent; "ground" is the AreaTable area of the
+  // terrain chunk under Map.Corpse (the ghost-return spot), used when no named area leads to a zone. Either is walked
+  // up ParentAreaID to the zone area a UiMapAssignment names.
   const expected: Record<string, string> = {
-    "Shadowfang Keep": "Silverpine Forest", // Shadowfang Keep > Silverpine Forest
-    "Stormwind Stockade": "Stormwind City", // Stormwind City
-    "Deadmines": "Westfall", // The Dagger Hills > Westfall
-    "Wailing Caverns": "The Barrens", // The Barrens
-    "Razorfen Kraul": "The Barrens", // Razorfen Kraul > The Barrens
-    "Blackfathom Deeps": "Darkshore", // Twilight Vale > Darkshore; Ashenvale's ground starts a chunk south
-    "Uldaman": "Loch Modan", // Stonesplinter Valley > Loch Modan
-    "Gnomeregan": "Dun Morogh", // Dun Morogh
-    "Sunken Temple": "Swamp of Sorrows", // Swamp of Sorrows
-    "Razorfen Downs": "The Barrens", // Razorfen Downs > The Barrens
-    "Scarlet Monastery": "Tirisfal Glades", // Tirisfal Glades
-    "Zul'Farrak": "Tanaris", // Zul'Farrak > Tanaris
-    "Blackrock Spire": "Burning Steppes", // Blackrock Mountain > Burning Steppes
-    "Blackrock Depths": "Searing Gorge", // Searing Gorge
-    "Onyxia's Lair": "Dustwallow Marsh", // Wyrmbog > Dustwallow Marsh
-    "Scholomance": "Western Plaguelands", // Caer Darrow > Western Plaguelands
-    "Zul'Gurub": "Stranglethorn Vale", // Zul'Gurub > Stranglethorn Vale
-    "Stratholme": "Eastern Plaguelands", // Stratholme > Eastern Plaguelands
-    "Maraudon": "Desolace", // Valley of Spears > Desolace
-    "Ragefire Chasm": "Orgrimmar", // Orgrimmar
-    "Molten Core": "Burning Steppes", // Blackrock Mountain > Burning Steppes
-    "Dire Maul": "Feralas", // Feralas
-    "Blackwing Lair": "Burning Steppes", // Blackrock Mountain > Burning Steppes
-    "Ruins of Ahn'Qiraj": "Silithus", // The Scarab Wall > Silithus
-    "Ahn'Qiraj Temple": "Silithus", // The Scarab Wall > Silithus
+    "Shadowfang Keep": "Silverpine Forest", // named: Shadowfang Keep > Silverpine Forest
+    "Stormwind Stockade": "Stormwind City", // ground: Stormwind City
+    "Deadmines": "Westfall", // ground: The Dagger Hills > Westfall
+    "Wailing Caverns": "The Barrens", // ground: The Barrens
+    "Razorfen Kraul": "The Barrens", // named: Razorfen Kraul > The Barrens
+    "Blackfathom Deeps": "Ashenvale", // named: Blackfathom Deeps > Ashenvale (the ghost spot's ground is Darkshore)
+    "Uldaman": "Badlands", // named: Uldaman > Badlands (the ghost spot's ground is Loch Modan)
+    "Gnomeregan": "Dun Morogh", // named: Gnomeregan > Dun Morogh
+    "Sunken Temple": "Swamp of Sorrows", // ground: Swamp of Sorrows (its named area has no parent)
+    "Razorfen Downs": "The Barrens", // named: Razorfen Downs > The Barrens
+    "Scarlet Monastery": "Tirisfal Glades", // ground: Tirisfal Glades
+    "Zul'Farrak": "Tanaris", // named: Zul'Farrak > Tanaris
+    "Blackrock Spire": "Burning Steppes", // ground: Blackrock Mountain > Burning Steppes
+    "Blackrock Depths": "Searing Gorge", // ground: Searing Gorge
+    "Onyxia's Lair": "Dustwallow Marsh", // ground: Wyrmbog > Dustwallow Marsh
+    "Scholomance": "Western Plaguelands", // ground: Caer Darrow > Western Plaguelands
+    "Zul'Gurub": "Stranglethorn Vale", // named: Zul'Gurub > Stranglethorn Vale
+    "Stratholme": "Eastern Plaguelands", // named: Stratholme > Eastern Plaguelands
+    "Maraudon": "Desolace", // ground: Valley of Spears > Desolace
+    "Ragefire Chasm": "Orgrimmar", // ground: Orgrimmar
+    "Molten Core": "Burning Steppes", // ground: Blackrock Mountain > Burning Steppes
+    "Dire Maul": "Feralas", // named: Dire Maul > Feralas
+    "Blackwing Lair": "Burning Steppes", // ground: Blackrock Mountain > Burning Steppes
+    "Ruins of Ahn'Qiraj": "Silithus", // named: Ruins of Ahn'Qiraj > Silithus
+    "Ahn'Qiraj Temple": "Silithus", // ground: The Scarab Wall > Silithus
   };
 
   test("every entrance lands in the zone the game puts it in, not the smallest rectangle around it", () => {
