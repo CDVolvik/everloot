@@ -6,8 +6,17 @@ import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 // Some pages open the upload store or the knowledge release only when they render, never on import.
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); }, permanentRedirect: () => {}, usePathname: () => "/" }));
 
+/** Every docs page without a dynamic segment, so a new one is checked without being listed. Only /docs leads with "WoW Forever". */
+const docsRoutes = Object.entries(import.meta.glob<{ metadata: Metadata }>("./docs/**/page.tsx"))
+  .filter(([file]) => !file.includes("["))
+  .map(([file, load]): [string, () => Promise<{ metadata: Metadata }>, boolean] => {
+    const path = file.slice(1).replace(/\/page\.tsx$/, "");
+    return [path, load, path === "/docs"];
+  });
+
 /** Every static route that exports `metadata`, with whether its title must lead with "WoW Forever". */
 const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
+  ...docsRoutes,
   ["/about", () => import("./about/page"), false],
   ["/addon", () => import("./addon/page"), true],
   ["/addons", () => import("./addons/page"), true],
@@ -18,7 +27,6 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/addons/popular", () => import("./addons/popular/page"), true],
   ["/census", () => import("./census/page"), true],
   ["/changes", () => import("./changes/page"), true],
-  ["/docs", () => import("./docs/page"), true],
   ["/accessibility", () => import("./accessibility/page"), false],
   ["/contact", () => import("./contact/page"), false],
   ["/database", () => import("./database/page"), true],
@@ -34,7 +42,6 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/database/vendors", async () => ({ metadata: await (await import("./database/vendors/page")).generateMetadata({}) }), true],
   ["/lore", () => import("./lore/page"), false],
   ["/lore/coverage", async () => ({ metadata: await (await import("./lore/coverage/page")).generateMetadata() }), false],
-  ["/docs/quickstart", () => import("./docs/quickstart/page"), false],
   // The map's description depends on whether the game's map pictures are on, so it is generated.
   ["/map", async () => ({ metadata: await (await import("./map/page")).generateMetadata({ searchParams: Promise.resolve({}) }) }), true],
   ...(["eastern-kingdoms", "kalimdor"] as const).map((slug): [string, () => Promise<{ metadata: Metadata }>, boolean] => [
@@ -43,6 +50,7 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
     true,
   ]),
   ["/methodology", () => import("./methodology/page"), true],
+  ["/players", async () => ({ metadata: await (await import("./players/page")).generateMetadata({ searchParams: Promise.resolve({}) }) }), false],
   ["/privacy", () => import("./privacy/page"), false],
   ["/search", () => import("./search/page"), false],
   ["/security", () => import("./security/page"), false],
@@ -101,10 +109,12 @@ test("every MCP tool page has a description that fits", async () => {
   for (const name of MCP_TOOL_NAMES) {
     const slug = toolHref(name).split("/").pop()!;
     const m = await generateMetadata({ params: Promise.resolve({ tool: slug }) });
-    const description = text(m.description);
-    expect(description.length, name).toBeGreaterThan(0);
-    expect(description.length, `${name}: ${description}`).toBeLessThanOrEqual(DESCRIPTION_MAX);
+    within(m.description, name);
   }
+});
+
+test("every docs page without a dynamic segment is checked", () => {
+  expect(docsRoutes.map(([path]) => path)).toEqual(expect.arrayContaining(["/docs", "/docs/quickstart", "/docs/guides/account", "/docs/cookbook/ask-claude"]));
 });
 
 const within = (description: unknown, label: string) => {
