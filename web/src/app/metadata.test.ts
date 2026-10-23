@@ -24,10 +24,13 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/database", () => import("./database/page"), true],
   // The lists are generated: a filtered or sorted view is noindex. Their plain URL is checked here.
   ["/database/drops", async () => ({ metadata: await (await import("./database/drops/page")).generateMetadata({}) }), true],
+  ["/database/factions", async () => ({ metadata: await (await import("./database/factions/page")).generateMetadata({}) }), true],
   ["/database/items", async () => ({ metadata: await (await import("./database/items/page")).generateMetadata({}) }), true],
   ["/database/npcs", async () => ({ metadata: await (await import("./database/npcs/page")).generateMetadata({}) }), true],
   ["/database/objects", async () => ({ metadata: await (await import("./database/objects/page")).generateMetadata({}) }), true],
+  ["/database/quest-chains", async () => ({ metadata: await (await import("./database/quest-chains/page")).generateMetadata({}) }), true],
   ["/database/quests", async () => ({ metadata: await (await import("./database/quests/page")).generateMetadata({}) }), true],
+  ["/database/titles", async () => ({ metadata: await (await import("./database/titles/page")).generateMetadata({}) }), true],
   ["/database/vendors", async () => ({ metadata: await (await import("./database/vendors/page")).generateMetadata({}) }), true],
   ["/lore", () => import("./lore/page"), false],
   ["/lore/coverage", async () => ({ metadata: await (await import("./lore/coverage/page")).generateMetadata() }), false],
@@ -104,6 +107,46 @@ test("every MCP tool page has a description that fits", async () => {
   }
 });
 
+const within = (description: unknown, label: string) => {
+  expect(text(description).length, `${label}: ${description}`).toBeGreaterThanOrEqual(DESCRIPTION_MIN);
+  expect(text(description).length, `${label}: ${description}`).toBeLessThanOrEqual(DESCRIPTION_MAX);
+};
+
+test("every instance description fits, whatever its kind and name", async () => {
+  const { instanceDescription, instanceRows } = await import("@/lib/instances");
+  const rows = [...instanceRows({}).values()];
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) within(instanceDescription(row), `instance ${row.instanceMapId}`);
+  // A row the game files do not name falls back to its id; its kind may be unknown.
+  for (const raid of [true, false, null]) within(instanceDescription({ instanceMapId: 99999, name: null, raid }), `unnamed ${raid}`);
+  expect(instanceDescription(rows.find((r) => r.name === "Ragefire Chasm")!)).toBe(
+    "Ragefire Chasm, a WoW: Forever dungeon: where its entrance is, the bosses players have reported killing, the kills for each and when each was last seen.",
+  );
+});
+
+test("every API endpoint page has a description that fits and starts with its summary", async () => {
+  const { generateMetadata } = await import("./docs/api/[endpoint]/page");
+  const { API_ROUTES } = await import("@everloot/protocol");
+  const { endpointSlug } = await import("@/lib/docs/nav");
+  for (const route of API_ROUTES) {
+    const m = await generateMetadata({ params: Promise.resolve({ endpoint: endpointSlug(route) }) });
+    within(m.description, `${route.method} ${route.path}`);
+    expect(text(m.description).startsWith(`${route.summary}.`), route.path).toBe(true);
+  }
+});
+
+test("every guild family description fits and counts the rows of the page's three tables", async () => {
+  const { generateMetadata } = await import("./guilds/[slug]/page");
+  const { FAMILIES } = await import("@/data/families");
+  for (const family of FAMILIES) {
+    const m = await generateMetadata({ params: Promise.resolve({ slug: family.slug }) });
+    within(m.description, family.slug);
+    expect(text(m.description).startsWith(family.summary), family.slug).toBe(true);
+  }
+  const olympus = await generateMetadata({ params: Promise.resolve({ slug: "olympus" }) });
+  expect(text(olympus.description)).toMatch(/ \d+ guild halls?, \d+ claims? and \d+ sighted names?\.$/);
+});
+
 test("the routes with their own social card point at it", async () => {
   for (const [path, load] of routes.filter(([p]) => ["/tools/raid", "/map", "/changes"].includes(p))) {
     const og = (await load()).metadata.openGraph as { images: { url: string }[] };
@@ -128,6 +171,7 @@ test("the titles asked for are the titles used", async () => {
   expect((await routes.find(([p]) => p === "/map/kalimdor")![1]()).metadata.title).toBe("WoW Forever Map: Kalimdor");
   expect((await routes.find(([p]) => p === "/addons")![1]()).metadata.title).toBe("WoW Forever Addons");
   expect((await routes.find(([p]) => p === "/changes")![1]()).metadata.title).toBe("WoW Forever Patch Notes and Blizzard Posts");
+  expect((await routes.find(([p]) => p === "/tools/professions")![1]()).metadata.title).toBe("WoW Forever Profession Hubs");
   const { generateMetadata } = await import("./tools/talents/[class]/page");
   expect((await generateMetadata({ params: Promise.resolve({ class: "hunter" }) })).title).toBe("WoW Forever Hunter Talent Calculator");
 });

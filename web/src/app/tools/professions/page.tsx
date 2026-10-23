@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import AdSlot from "@/components/AdSlot";
+import JsonLd from "@/components/JsonLd";
+import { webApplicationJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
@@ -14,8 +16,11 @@ import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SectionHead
 
 export const dynamic = "force-dynamic";
 
+const TITLE = "WoW Forever Profession Hubs";
+const lede = "Profession paths and recipe skill ranges, estimated from the recipes and prices players uploaded.";
+
 export const metadata: Metadata = {
-  ...pageMetadata({ title: "WoW Forever Profession Hubs", description: "Leveling routes and material lists for WoW: Forever professions, built from player-collected recipes and prices. The numbers open as reports arrive.", path: "/tools/professions" }),
+  ...pageMetadata({ title: TITLE, description: "Leveling routes and material lists for WoW: Forever professions, built from player-collected recipes and prices. The numbers open as reports arrive.", path: "/tools/professions" }),
   keywords: ["wow forever professions", "wow forever profession leveling", "forever profession perks"],
 };
 
@@ -55,10 +60,11 @@ export default async function ProfessionsPage(
   const pending = !corpus.unreachable && reports === 0;
   return (
     <Container>
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/professions", description: lede })} />
       <PageHeader
         trail={trailFor("/tools/professions")!}
-        title="Forever Profession Hubs"
-        lede="Profession paths and recipe skill ranges, estimated from the recipes and prices players uploaded."
+        title={TITLE}
+        lede={lede}
         meta={corpus.unreachable
           ? <span>Storage unreachable</span>
           : <>

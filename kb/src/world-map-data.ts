@@ -16,13 +16,22 @@
  * - TaxiNodes, TaxiPath, TaxiPathNode: flight masters (a node with a flight to or from it), and each
  *   flight's line through its path points. Boats and zeppelins are paths that start or end at "Transport"
  *   stand-in nodes (some hop to another continent), not at a dock, so they are left out for now.
+ * - AreaTable and TerrainArea (derived at extraction, terrain-area.ts): the zone each entrance and flight master
+ *   is in. An area's `ParentAreaID` chain reaches the area a zone's UiMapAssignment names (`AreaID`). For an
+ *   entrance, the area that starts the chain is the outdoor area named after the instance on the entrance's
+ *   continent (the game names the ground around a dungeon's doorway after it: "Uldaman" under Badlands,
+ *   "Blackfathom Deeps" under Ashenvale), when there is one and it leads to one zone. Otherwise, and for flight
+ *   masters, it is the area of the ground under the spot. `Map.Corpse` is where a ghost returns, which can stand
+ *   a little way off the doorway and over a zone border, so the named area comes first. Zone rectangles overlap,
+ *   so they cannot decide this; they are only the fallback for a spot that neither gives a zone for.
  */
 import { z } from "zod";
 import { readClientManifest, readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
+import { TERRAIN_AREA_TABLE, terrainAreaAt } from "./terrain-area.js";
 
 export const WORLD_MAP_SCHEMA = "everloot.world-map/1";
 /** Tables this file is built from. */
-export const WORLD_MAP_TABLES = ["Map", "UiMap", "UiMapAssignment", "TaxiNodes", "TaxiPath", "TaxiPathNode"] as const;
+export const WORLD_MAP_TABLES = ["Map", "UiMap", "UiMapAssignment", "TaxiNodes", "TaxiPath", "TaxiPathNode", "AreaTable", TERRAIN_AREA_TABLE] as const;
 
 /**
  * Zones of the original world, as numbered by their UiMap ids (1411 to 1458). Zones with later ids are
@@ -52,11 +61,15 @@ export const WorldMapData = z.object({
   zones: z.array(ZoneRow),
   /** Zones with later UiMap ids: Forever additions that may be unreleased. Shown only when the reader turns spoilers on. */
   heldBackZones: z.array(ZoneRow).default([]),
+  /** `uiMapId`, here and on flight masters: the zone the game files put the spot in (see the header). Absent when they give none. */
   entrances: z.array(z.object({
     mapId: z.number().int(), name: z.string(), raid: z.boolean(), continentId: z.number().int(), worldX: z.number(), worldY: z.number(),
+    uiMapId: z.number().int().optional(),
   })),
   /** Flight masters: the taxi nodes that a flight starts or ends at (TaxiNodes). World yards, as everything else here. */
-  flightNodes: z.array(z.object({ id: z.number().int(), name: z.string(), continentId: z.number().int(), worldX: z.number(), worldY: z.number() })).default([]),
+  flightNodes: z.array(z.object({
+    id: z.number().int(), name: z.string(), continentId: z.number().int(), worldX: z.number(), worldY: z.number(), uiMapId: z.number().int().optional(),
+  })).default([]),
   /** One flight line per pair of nodes (TaxiPath, drawn through its TaxiPathNode points), points as [worldX, worldY] yards, thinned. */
   flightPaths: z.array(z.object({
     from: z.number().int(), to: z.number().int(), continentId: z.number().int(), points: z.array(z.tuple([z.number(), z.number()])),
@@ -87,14 +100,52 @@ export function assignmentRect(row: Record<string, unknown>): WorldRect | null {
 
 type Rows = Map<number, Record<string, unknown>>;
 
-/** The first whole-map assignment of each UiMap (lowest OrderIndex): which game map it lies on and its rectangle. */
-export function placeUiMaps(assignments: Record<string, unknown>[]): Map<number, { mapId: number; rect: WorldRect }> {
-  const placed = new Map<number, { mapId: number; rect: WorldRect }>();
+/** The first whole-map assignment of each UiMap (lowest OrderIndex): which game map it lies on, its rectangle and the area it shows. */
+export function placeUiMaps(assignments: Record<string, unknown>[]): Map<number, { mapId: number; rect: WorldRect; areaId: number }> {
+  const placed = new Map<number, { mapId: number; rect: WorldRect; areaId: number }>();
   for (const a of [...assignments].sort((p, q) => Number(p.OrderIndex) - Number(q.OrderIndex))) {
     const uiMapId = num(a.UiMapID), mapId = num(a.MapID), rect = assignmentRect(a);
-    if (uiMapId !== null && mapId !== null && rect && !placed.has(uiMapId)) placed.set(uiMapId, { mapId, rect });
+    if (uiMapId !== null && mapId !== null && rect && !placed.has(uiMapId)) placed.set(uiMapId, { mapId, rect, areaId: num(a.AreaID) ?? 0 });
   }
   return placed;
+}
+
+/**
+ * The zone (UiMap id) a spot is in, as the game decides it: the area of the ground under it, or the nearest area up
+ * its `ParentAreaID` chain that a zone shows. Null without terrain there, or when no zone shows any of the areas.
+ */
+export function zoneOfGround(
+  terrain: Rows, areas: Rows, zoneOfArea: Map<number, number>, point: { continentId: number; worldX: number; worldY: number },
+): number | null {
+  return zoneOfAreaChain(terrainAreaAt(terrain, point), areas, zoneOfArea);
+}
+
+/** The zone an area belongs to: the first area up its `ParentAreaID` chain that a zone shows, or null. */
+export function zoneOfAreaChain(areaId: number | null, areas: Rows, zoneOfArea: Map<number, number>): number | null {
+  const seen = new Set<number>();
+  for (let id = areaId; id && !seen.has(id); id = num(areas.get(id)?.ParentAreaID)) {
+    seen.add(id);
+    const zone = zoneOfArea.get(id);
+    if (zone !== undefined) return zone;
+  }
+  return null;
+}
+
+/**
+ * The zone of the outdoor area named after an instance on the continent it is entered from: an area of that
+ * continent whose name is the instance's name, or its own area's name. Null when there is none, or when the named
+ * areas lead to more than one zone (or to none).
+ */
+export function zoneOfNamedArea(instance: Record<string, unknown>, continentId: number, areas: Rows, zoneOfArea: Map<number, number>): number | null {
+  const names = new Set([instance.MapName_lang, areas.get(Number(instance.AreaTableID))?.AreaName_lang]
+    .filter((n): n is string => typeof n === "string" && n.trim() !== "").map((n) => n.trim()));
+  const found = new Set<number | null>();
+  for (const a of areas.values()) {
+    if (Number(a.ContinentID) !== continentId || typeof a.AreaName_lang !== "string" || !names.has(a.AreaName_lang.trim())) continue;
+    found.add(zoneOfAreaChain(Number(a.ID), areas, zoneOfArea));
+  }
+  found.delete(null);
+  return found.size === 1 ? [...found][0]! : null;
 }
 
 export function buildWorldMapData(
@@ -147,6 +198,34 @@ export function buildWorldMapData(
 
   const { flightNodes, flightPaths } = buildFlights(get("TaxiNodes"), get("TaxiPath"), get("TaxiPathNode"), continentIds);
   if (!flightNodes.length) warnings.push("no flight tables in the snapshot: no flight masters or flight lines");
+
+  // The zone each spot is in: for an entrance the outdoor area named after its instance, else the ground under the
+  // spot. A zone shows the area its whole-map assignment names.
+  const terrain = get(TERRAIN_AREA_TABLE), areas = get("AreaTable");
+  if (terrain && areas) {
+    const zoneOfArea = new Map<number, number>();
+    for (const z of [...zones, ...heldBackZones]) {
+      const areaId = placed.get(z.uiMapId)?.areaId;
+      if (areaId) zoneOfArea.set(areaId, z.uiMapId);
+    }
+    const continentOf = new Map([...zones, ...heldBackZones].map((z) => [z.uiMapId, z.continentId]));
+    const onContinent = (zone: number | null, continentId: number) => (zone !== null && continentOf.get(zone) === continentId ? zone : null);
+    let unresolved = 0;
+    for (const e of entrances) {
+      const zone = onContinent(zoneOfNamedArea(maps.get(e.mapId)!, e.continentId, areas, zoneOfArea), e.continentId)
+        ?? onContinent(zoneOfGround(terrain, areas, zoneOfArea, e), e.continentId);
+      if (zone !== null) e.uiMapId = zone;
+      else unresolved++;
+    }
+    for (const n of flightNodes) {
+      const zone = onContinent(zoneOfGround(terrain, areas, zoneOfArea, n), n.continentId);
+      if (zone !== null) n.uiMapId = zone;
+      else unresolved++;
+    }
+    if (unresolved) warnings.push(`${unresolved} entrance(s) or flight master(s) have no zone from the terrain; the zone rectangles place them`);
+  } else {
+    warnings.push("no terrain areas in the snapshot: entrances and flight masters are placed by zone rectangles, which overlap");
+  }
 
   return WorldMapData.parse({ schema: WORLD_MAP_SCHEMA, source, continents, zones, heldBackZones, entrances, flightNodes, flightPaths, warnings });
 }

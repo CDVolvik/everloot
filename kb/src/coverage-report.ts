@@ -234,7 +234,7 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
   const entrances = records.filter(r => r.kind === "instance_entrance");
   const entranceKeys = new Map<string, { instance: number; map: number | undefined; name?: string }>();
   for (const e of map.entrances) {
-    const zone = zoneAt(zoneTable({ zones }), e);
+    const zone = zoneAt(zoneTable({ zones }), e, e.uiMapId);
     entranceKeys.set(`${e.mapId}:${zone?.mapId ?? "unplaced"}`, { instance: e.mapId, map: zone?.mapId, name: e.name });
   }
   for (const r of entrances) entranceKeys.set(`${r.instanceMapId}:${r.mapId}`, { instance: r.instanceMapId, map: r.mapId, name: r.name });
@@ -288,7 +288,7 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
   // The plateau as the public page states it: the released zones, with these counts as the denominator.
   const released = new Set(map.zones.map(z => z.uiMapId));
   const fileEntrances = map.entrances.flatMap(e => {
-    const zone = zoneAt(zoneTable({ zones }), e);
+    const zone = zoneAt(zoneTable({ zones }), e, e.uiMapId);
     return zone && released.has(zone.mapId) ? [{ instanceMapIds: [e.mapId], zone: zone.mapId }] : [];
   });
   const scoreExpected = parseCoverageExpected(expected);

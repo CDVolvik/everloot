@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
-import { openDb } from "../src/db.js";
+import { fillNameNorm, openDb } from "../src/db.js";
 import { replaceSourceRows, type EntityInput } from "../src/entities.js";
-import { getByName, getEntity, search } from "../src/search.js";
+import { allTerms, getByName, getEntity, search } from "../src/search.js";
 
 const row = (extId: string, name: string, body = "", extra: Partial<EntityInput> = {}): EntityInput => ({
   kind: "lore_page",
@@ -161,5 +161,92 @@ test("the normalized lookup is skipped when the pool already holds the exact nam
   await replaceSourceRows(buried, "curated", ["lore_page"], rows);
   const buriedCount = countPrepares(buried);
   expect(search(buried, "kel thuzad", 10)[0].name).toBe("Kel'Thuzad");
-  expect(buriedCount()).toBe(2);
+  expect(buriedCount()).toBe(3); // pool, the one-time name_norm column check, the normalized lookup
+  expect(search(buried, "kel thuzad", 10)[0].name).toBe("Kel'Thuzad");
+  expect(buriedCount()).toBe(5);
+});
+
+/** A database where `name` is buried past the re-rank window by 60 bm25-heavier pages. */
+async function buriedUnder(name: string, words: string, extra: Partial<EntityInput> = {}) {
+  const db = openDb(":memory:");
+  const rows: EntityInput[] = [];
+  for (let i = 1; i <= 60; i++) rows.push(row(String(100 + i), `${words} chronicle ${i}`, `${`${words} `.repeat(20)}volume ${i}`));
+  rows.push(row("1", name, "The page being asked about.", extra));
+  await replaceSourceRows(db, "curated", ["lore_page", "item"], rows);
+  return db;
+}
+
+/** Records every SQL string the search prepares. */
+function recordSql(db: ReturnType<typeof openDb>): string[] {
+  const seen: string[] = [];
+  const orig = db.prepare.bind(db);
+  (db as unknown as { prepare: unknown }).prepare = (sql: string) => {
+    seen.push(sql);
+    return orig(sql);
+  };
+  return seen;
+}
+
+test("name_norm holds allTerms(name), including the letters and punctuation SQLite lower()/replace() miss", async () => {
+  const names = ["Kel'Thuzad", "ÆRENDIL «Bright»", "Ünàl·Ström", "Zul'jin ~ the=Hexer", "ÁRBOL—Ñandú", "Thunderfury, Blessed Blade"];
+  const db = openDb(":memory:");
+  await replaceSourceRows(db, "curated", ["lore_page"], names.map((n, i) => row(String(i), n)));
+  const stored = db.prepare("SELECT name, name_norm AS norm FROM entities ORDER BY id").all() as { name: string; norm: string }[];
+  expect(stored.map((r) => r.norm)).toEqual(names.map(allTerms));
+  expect(allTerms("ÆRENDIL «Bright»")).toBe("ærendil bright");
+  expect(allTerms("Ünàl·Ström")).toBe("ünàl ström");
+  expect(allTerms("Zul'jin ~ the=Hexer")).toBe("zul jin the hexer");
+  // SQLite's lower() leaves non-ASCII capitals alone, so the old SQL expression could never match these.
+  expect(db.prepare("SELECT lower('ÆRENDIL') AS v").get()).toEqual({ v: "Ærendil" });
+});
+
+test("rows written without name_norm are filled when the database is opened", () => {
+  const db = openDb(":memory:");
+  db.prepare(
+    "INSERT INTO entities (kind, ext_id, name, game_version, source_id, source_url, licence, retrieved_at)" +
+      " VALUES ('lore_page', '1', 'ÆRENDIL «Bright»', 'lore', 'curated', 'https://example.test/1', 'CC-BY-SA-4.0', '2023-11-13')",
+  ).run();
+  expect(db.prepare("SELECT name_norm AS norm FROM entities").get()).toEqual({ norm: null });
+  expect(fillNameNorm(db, false)).toBe(1);
+  expect(db.prepare("SELECT name_norm AS norm FROM entities").get()).toEqual({ norm: "ærendil bright" });
+  db.prepare("UPDATE entities SET name = 'Ærendil the Dim'").run();
+  expect(fillNameNorm(db, false)).toBe(0); // only missing values without checkAll
+  expect(fillNameNorm(db, true)).toBe(1);
+  expect(db.prepare("SELECT name_norm AS norm FROM entities").get()).toEqual({ norm: "ærendil the dim" });
+});
+
+test("a buried non-ASCII exact name ranks first through name_norm", async () => {
+  const db = await buriedUnder("ÆRENDIL «Bright»", "ærendil bright");
+  expect(search(db, "ærendil bright", 1)[0].name).toBe("ÆRENDIL «Bright»");
+  expect(search(db, "Ærendil Bright", 10)[0].name).toBe("ÆRENDIL «Bright»");
+  expect(search(db, "ærendil bright", 10, { kinds: ["item"] }).some((h) => h.name === "ÆRENDIL «Bright»")).toBe(false);
+});
+
+test("the exact lookup reads the name_norm index, narrowed by kind", async () => {
+  const db = await buriedUnder("Kel'Thuzad", "kel thuzad");
+  const seen = recordSql(db);
+  expect(search(db, "kel thuzad", 10, { kinds: ["lore_page"] })[0].name).toBe("Kel'Thuzad");
+  const exactSql = seen.find((s) => s.includes("name_norm IN"));
+  expect(exactSql).toBeDefined();
+  expect(exactSql).not.toContain("replace(");
+  const plan = db.prepare(`EXPLAIN QUERY PLAN ${exactSql}`).all("kel thuzad", "kel thuzad", "lore_page") as { detail: string }[];
+  expect(plan.map((p) => p.detail).join("\n")).toMatch(/USING INDEX entities_name_norm \(name_norm=\? AND kind=\?\)/);
+});
+
+test("an old release without name_norm falls back to the SQL expression", async () => {
+  const db = await buriedUnder("Kel'Thuzad", "kel thuzad");
+  db.exec("DROP INDEX entities_name_norm; ALTER TABLE entities DROP COLUMN name_norm");
+  const seen = recordSql(db);
+  expect(search(db, "kel thuzad", 10)[0].name).toBe("Kel'Thuzad");
+  expect(search(db, "kel thuzad", 1)[0].name).toBe("Kel'Thuzad");
+  expect(search(db, "kel thuzad", 10, { kinds: ["item"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
+  const exactSql = seen.filter((s) => s.includes("IN (?, ?)"));
+  expect(exactSql.length).toBeGreaterThan(0);
+  expect(exactSql.every((s) => s.includes("replace(") && !s.includes("name_norm"))).toBe(true);
+});
+
+test("a buried punctuated name with stopwords is rescued when asked with all its words", async () => {
+  const db = await buriedUnder("Rise of the Lich-King", "rise lich king");
+  expect(search(db, "rise of the lich king", 1)[0].name).toBe("Rise of the Lich-King");
+  expect(search(db, "Rise of the Lich King?", 10)[0].name).toBe("Rise of the Lich-King");
 });

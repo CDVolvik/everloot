@@ -83,6 +83,13 @@ describe("conversions", () => {
     const city = [...zones, { mapId: 1453, name: "City", continentId: 0, bounds: { top: -8700, bottom: -8900, left: 600, right: 400 } }];
     expect(zoneAt(city, stormwind)?.mapId).toBe(1453);
   });
+
+  test("where the game files name the zone, that zone wins over the smallest rectangle", () => {
+    const city = [...zones, { mapId: 1453, name: "City", continentId: 0, bounds: { top: -8700, bottom: -8900, left: 600, right: 400 } }];
+    expect(zoneAt(city, stormwind, 1429)?.mapId).toBe(1429);
+    // A zone not in the list (a held-back one, when only released zones are passed) gives no zone, not a neighbour.
+    expect(zoneAt(city, stormwind, 2548)).toBeNull();
+  });
 });
 
 describe("entrance pins", () => {
@@ -126,6 +133,28 @@ describe("flight masters and lines", () => {
   test("a master that lies in a held-back zone only, and a line that ends at one, are flagged", () => {
     expect(flights.masters.map((m) => m.heldBack)).toEqual([false, true]);
     expect(flights.lines.map((l) => l.heldBack)).toEqual([true, false]);
+  });
+
+  test("the zone the game files give decides the flag, not which rectangles reach over the master", () => {
+    const { masters } = placeFlights({
+      zones: data.zones,
+      heldBackZones: [held],
+      flightNodes: [
+        // Inside the held-back rectangle only, but on ground a released zone shows (Talonbranch Glade, under Mount Hyjal's rectangle).
+        { id: 4, name: "Released Post", continentId: 0, worldX: -8000, worldY: -4000, uiMapId: 1429 },
+        // Inside a released rectangle, but on ground the held-back zone shows.
+        { id: 2, name: "Stormwind", continentId: 0, worldX: -8840.6, worldY: 489.7, uiMapId: 2548 },
+      ],
+      flightPaths: [],
+    });
+    expect(masters.map((m) => [m.id, m.heldBack])).toEqual([[4, false], [2, true]]);
+  });
+});
+
+describe("entrance pins and the game files' zone", () => {
+  test("a pin keeps the zone the files give its entrance", () => {
+    const pins = placeEntrances({ entrances: [{ ...data.entrances[0]!, uiMapId: 1453 }, data.entrances[3]!] });
+    expect(pins.map((p) => p.uiMapId)).toEqual([1453, undefined]);
   });
 });
 

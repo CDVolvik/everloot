@@ -40,6 +40,15 @@ const STOPWORDS = new Set([
   "which", "who", "whom", "whose", "why", "with", "would",
 ]);
 
+/**
+ * A name as its words: lowercased, split on anything that is not a letter or number, joined by
+ * one space. ASCII and Unicode punctuation (', ’, ‘, “, ”, –, —, …) are all word separators, and
+ * non-ASCII letters fold to lower case. Stored as `entities.name_norm` and used by the re-rank.
+ */
+export function allTerms(name: string): string {
+  return (name.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(" ");
+}
+
 function contentTerms(input: string): string[] {
   const terms = input.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   const kept = terms.filter((t) => t.length > 1 && !STOPWORDS.has(t));
@@ -61,9 +70,10 @@ const ROW_EXACT = rowSelect(ROW_SNIPPET_BODY);
 const RERANK = 50;
 
 /**
- * Approximates allTerms(name) in SQL: lowercase, common punctuation becomes a space,
- * runs of spaces collapsed, ends trimmed. Used only as a pre-filter for the exact-name
- * lookup below; the final rank still uses the exact JS allTerms equality.
+ * Approximates allTerms(name) in SQL for releases built before `entities.name_norm` existed:
+ * lowercase, common punctuation becomes a space, runs of spaces collapsed, ends trimmed. It
+ * scans the whole table and misses non-ASCII case and unlisted punctuation, which is why newer
+ * databases store the JS result instead. The final rank still uses the exact JS allTerms equality.
  */
 const NORM_PUNCT = [
   "'",
@@ -104,6 +114,18 @@ function normExpr(col: string): string {
 }
 
 const NORM_SQL = normExpr("e.name");
+
+/** Whether each open database has `entities.name_norm`; checked once per handle. */
+const hasNameNorm = new WeakMap<DB, boolean>();
+function nameNormSql(db: DB): string {
+  let has = hasNameNorm.get(db);
+  if (has === undefined) {
+    const cols = db.prepare("SELECT name FROM pragma_table_info('entities')").all() as { name: string }[];
+    has = cols.some((c) => c.name === "name_norm");
+    hasNameNorm.set(db, has);
+  }
+  return has ? "e.name_norm" : NORM_SQL;
+}
 
 /** SearchOptions currently exposes only kinds, versions and types: no sourceId/sources/excluded-kinds/publishable filters exist. */
 function pushOptionFilters(conds: string[], params: unknown[], opts: SearchOptions): void {
@@ -147,24 +169,24 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
     .all(...params) as SearchHit[];
   // The page being asked about: first a name made of exactly the asked words ("Thrall"), then a name
   // that matches only once its stopwords are dropped ("Find Thrall!"), then everything else.
-  // allTerms splits on anything that is not a letter/number, so ASCII and Unicode
-  // punctuation (', ’, ‘, “, ”, –, —, …) are all word separators in JS with no extra mapping.
-  const allTerms = (name: string) => (name.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(" ");
   // Names that match only after punctuation is stripped ("Kel'Thuzad" for "kel thuzad") get no SQL
   // boost and can fall outside the re-rank window. Pull a few by normalized name so the re-rank sees them.
+  // The full asked words also count, so a punctuated name with stopwords ("Rise of the Lich-King"
+  // for "rise of the lich king") is pulled too; it ranks second, like any name equal after dropping them.
   // Skipped entirely when the pool already holds the exact row: one fewer query on the common path.
+  const asked = allTerms(raw);
   const exact: SearchHit[] = pool.some((h) => allTerms(h.name) === wanted)
     ? []
     : (() => {
-        const exactConds = [`${NORM_SQL} = ?`];
-        const exactParams: unknown[] = [wanted];
+        const exactConds = [`${nameNormSql(db)} IN (?, ?)`];
+        const exactParams: unknown[] = [wanted, asked];
         pushOptionFilters(exactConds, exactParams, opts);
         return db
           .prepare(`SELECT ${ROW_EXACT} FROM entities e WHERE ${exactConds.join(" AND ")} LIMIT 10`)
           .all(...exactParams) as SearchHit[];
       })();
   const seen = new Set(pool.map((h) => h.id));
-  const merged = [...exact.filter((h) => !seen.has(h.id) && allTerms(h.name) === wanted), ...pool];
+  const merged = [...exact.filter((h) => !seen.has(h.id) && [wanted, asked].includes(allTerms(h.name))), ...pool];
   const rank = (hit: SearchHit) => (allTerms(hit.name) === wanted ? 0 : contentTerms(hit.name).join(" ") === wanted ? 1 : 2);
   // At the same rank, Everloot's own curated entries come before the copied Warcraft Wiki pages.
   const own = (hit: SearchHit) => (hit.sourceId === "curated" ? 0 : 1);

@@ -43,6 +43,13 @@ const DIFFICULTY_NAMES: Readonly<Record<number, string>> = {
 export const difficultyLabel = (id: number): string => DIFFICULTY_NAMES[id] ?? `Difficulty ${id}`;
 export const instanceTitle = (row: Pick<InstanceRow, "instanceMapId" | "name">): string => row.name ?? `Instance ${row.instanceMapId}`;
 
+/**
+ * The instance page's meta description: what the page shows, in its order. No zone, because a files entrance is
+ * unconfirmed until players zone in from it.
+ */
+export const instanceDescription = (row: Pick<InstanceRow, "instanceMapId" | "name" | "raid">): string =>
+  `${instanceTitle(row)}, a WoW: Forever ${row.raid === null ? "instance" : row.raid ? "raid" : "dungeon"}: where its entrance is, the bosses players have reported killing, the kills for each and when each was last seen.`;
+
 /** "Edwin VanCleef (12 kills) from 3 installs, last seen 2026-10-20". */
 export const bossLine = (boss: InstanceBoss): string => `${bossLabel(boss)} from ${boss.reporters} installs, last seen ${dayLabel(boss.lastSeen)}`;
 

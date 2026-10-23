@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
+import { webApplicationJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { collectionFactsFromRecords, handleCollectionGap } from "../../../../../kb/src/collection-gap";
@@ -11,6 +13,9 @@ import { trailFor } from "@/lib/breadcrumbs";
 import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SectionHeading } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+const HEADING = "Collection gap and completion";
+const lede = "Owned versus missing in a collection, and a character's achievement, reputation, title and quest progress.";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Completionist: Collections, Achievements, Reputation", description: "Owned versus missing in a WoW: Forever collection, plus a character's achievement, reputation, title and quest progress. Lists come from agreeing uploads.", path: "/tools/collections" }),
@@ -42,10 +47,11 @@ export default async function CollectionsPage(
 
   return (
     <Container>
+      <JsonLd data={webApplicationJsonLd({ name: HEADING, path: "/tools/collections", description: lede })} />
       <PageHeader
         trail={trailFor("/tools/collections")!}
-        title="Collection gap and completion"
-        lede="Owned versus missing in a collection, and a character's achievement, reputation, title and quest progress."
+        title={HEADING}
+        lede={lede}
         meta={<span>{corpus.unreachable ? "Storage unreachable" : dataAgeLabel(completion?.dataAsOf ?? corpus.dataAsOf)}</span>}
         actions={<Link href="/upload" className="btn">Upload addon data</Link>}
       />

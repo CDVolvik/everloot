@@ -9,7 +9,7 @@ import { endpointHref, endpointSlug, routeFromSlug } from "@/lib/docs/nav";
 import { requestSamples, responseSamples, schemaFields } from "@/lib/docs/examples";
 import { guardOn } from "@/lib/data-guard";
 import { DATA_LABEL } from "@/lib/protocol-docs";
-import { pageMetadata } from "@/lib/seo";
+import { DESCRIPTION_MAX, pageMetadata } from "@/lib/seo";
 
 /** One page per public endpoint, generated from the protocol's route catalogue (API_ROUTES). */
 
@@ -22,7 +22,19 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ endpoint: string }> }): Promise<Metadata> {
   const route = routeFromSlug((await params).endpoint);
   if (!route) return {};
-  return pageMetadata({ title: `${route.method} ${route.path} · API Reference`, description: route.summary, path: endpointHref(route) });
+  return pageMetadata({ title: `${route.method} ${route.path} · API Reference`, description: endpointDescription(route), path: endpointHref(route) });
+}
+
+/**
+ * The summary, then who may call the endpoint and what the page lists. The first that fits DESCRIPTION_MAX wins,
+ * so a long summary keeps less of what follows it.
+ */
+function endpointDescription(route: (typeof API_ROUTES)[number]): string {
+  const summary = `${route.summary}.`;
+  const lists = `its ${route.pathParams?.length || route.query?.length ? "parameters, " : ""}responses and example requests.`;
+  const reference = `${route.method} ${route.path} in the Everloot API: ${lists}`;
+  const choices = [`${summary} ${accessText(route)} ${reference}`, `${summary} ${reference}`, `${summary} The reference lists ${lists}`, summary];
+  return choices.find((text) => text.length <= DESCRIPTION_MAX) ?? summary;
 }
 
 /** `backticks` in the protocol's descriptions become code. */
@@ -38,6 +50,9 @@ const ACCESS_TEXT: Record<string, string> = {
   "key-or-rate-limited-off": "Open to anyone, no key needed. This endpoint has no limit of its own today.",
   cron: "Internal.",
 };
+
+const accessText = (route: (typeof API_ROUTES)[number]) =>
+  ACCESS_TEXT[route.access === "key-or-rate-limited" && !guardOn() ? "key-or-rate-limited-off" : route.access];
 
 export default async function EndpointPage({ params }: { params: Promise<{ endpoint: string }> }) {
   const route = routeFromSlug((await params).endpoint);
@@ -59,7 +74,7 @@ export default async function EndpointPage({ params }: { params: Promise<{ endpo
       <P><Prose text={route.description} /></P>
 
       <H2 id="access">Access</H2>
-      <P>{ACCESS_TEXT[route.access === "key-or-rate-limited" && !guardOn() ? "key-or-rate-limited-off" : route.access]} Data: {DATA_LABEL[route.data]}. {route.access !== "open" && <>Limits and keys are explained on <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link>.</>}</P>
+      <P>{accessText(route)} Data: {DATA_LABEL[route.data]}. {route.access !== "open" && <>Limits and keys are explained on <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link>.</>}</P>
 
       {route.pathParams?.length ? (
         <>

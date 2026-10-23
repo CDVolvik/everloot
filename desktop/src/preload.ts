@@ -38,6 +38,7 @@ const api: EverlootApi = {
   chatInfo: () => ipcRenderer.invoke("chatInfo"),
   chatSend: (text: string) => ipcRenderer.invoke("chatSend", text),
   chatClear: () => ipcRenderer.invoke("chatClear"),
+  chatStop: () => ipcRenderer.invoke("chatStop"),
   chatSetProvider: (choice: ProviderChoice) => ipcRenderer.invoke("chatSetProvider", choice),
   chatRemoveProvider: (kind?: ProviderKind) => ipcRenderer.invoke("chatRemoveProvider", kind),
   chatUseModel: (kind: ProviderKind, model: string) => ipcRenderer.invoke("chatUseModel", kind, model),

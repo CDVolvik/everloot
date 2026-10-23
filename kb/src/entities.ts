@@ -1,4 +1,5 @@
 import type { DB } from "./db.js";
+import { allTerms } from "./search.js";
 import { SOURCES, type SourceId } from "./sources.js";
 
 export type Kind = "item" | "npc" | "object" | "quest" | "zone" | "spell" | "lore_page" | "creator" | "realm";
@@ -36,8 +37,8 @@ export async function replaceSourceRows(
   );
   const del = db.prepare("DELETE FROM entities WHERE source_id = ? AND kind = ?");
   const ins = db.prepare(
-    `INSERT INTO entities (kind, ext_id, name, body, data, game_version, source_id, source_url, licence, retrieved_at)
-     VALUES (@kind, @extId, @name, @body, @data, @gameVersion, @sourceId, @sourceUrl, @licence, @retrievedAt)`,
+    `INSERT INTO entities (kind, ext_id, name, body, data, game_version, source_id, source_url, licence, retrieved_at, name_norm)
+     VALUES (@kind, @extId, @name, @body, @data, @gameVersion, @sourceId, @sourceUrl, @licence, @retrievedAt, @nameNorm)`,
   );
   db.exec("BEGIN");
   try {
@@ -46,7 +47,7 @@ export async function replaceSourceRows(
     let n = 0;
     for await (const r of rows) {
       if (!kinds.includes(r.kind)) throw new Error(`row kind ${r.kind} is not one of: ${kinds.join(", ")}`);
-      ins.run({ ...r, body: r.body ?? "", data: JSON.stringify(r.data ?? {}), sourceId, licence });
+      ins.run({ ...r, body: r.body ?? "", data: JSON.stringify(r.data ?? {}), sourceId, licence, nameNorm: allTerms(r.name) });
       n++;
     }
     if (n === 0 && before > 0) {

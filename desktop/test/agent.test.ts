@@ -201,3 +201,57 @@ test("with Anthropic the model calls the MCP tools itself and the steps and sour
   expect(r.sources).toHaveLength(2);
   expect(r.text).toContain("Baron Geddon");
 });
+
+test("Stop ends an OpenAI-compatible stream mid-answer and keeps the text that had arrived", async () => {
+  const stop = new AbortController();
+  let request: AbortSignal | undefined;
+  // One delta, then the server keeps the stream open until the request is aborted.
+  const send = vi.fn(async (_url: string, init: { signal: AbortSignal }) => {
+    request = init.signal;
+    const first = new TextEncoder().encode(`data: ${JSON.stringify({ model: "qwen3", choices: [{ delta: { content: "Baron Geddon" } }] })}\n\n`);
+    const body = new ReadableStream<Uint8Array>({ start(c) { c.enqueue(first); init.signal.addEventListener("abort", () => c.error(init.signal.reason)); } });
+    return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+  });
+  const entry = { type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3" };
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "q", session: fakeSession([]), send: send as never, signal: stop.signal, onProgress: () => stop.abort() });
+  expect(request?.aborted).toBe(true);
+  expect(r).toEqual({ text: "Baron Geddon", model: "qwen3", sources: [], steps: [], stopped: true });
+});
+
+test("Stop during a tool call ends the loop: the model is not asked again", async () => {
+  const stop = new AbortController();
+  const send = vi.fn(async () => new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: "Looking.", tool_calls: [{ id: "c1", type: "function", function: { name: "my_characters", arguments: "{}" } }] } }] }), { status: 200 }));
+  const local = [{ name: "my_characters", description: "", inputSchema: { type: "object", properties: {} }, run: () => { stop.abort(); return "Volvik: 12g"; } }];
+  const entry = { type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3" };
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "q", session: fakeSession([]), send: send as never, local, signal: stop.signal });
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(r).toMatchObject({ stopped: true, steps: [] });
+});
+
+test("Stop aborts the Anthropic stream mid-answer and keeps the text that had arrived", async () => {
+  const d = dir();
+  writeFileSync(join(d, "k.txt"), "sk-test\n");
+  const stop = new AbortController();
+  let passed: AbortSignal | undefined;
+  // A stand-in for the SDK's message stream: one delta, then it rejects when its signal aborts, as the SDK does.
+  const client = { messages: { stream: vi.fn((_req: unknown, opts: { signal?: AbortSignal }) => {
+    passed = opts.signal;
+    let onText: (delta: string) => void = () => {};
+    return {
+      on(_event: "text", fn: (delta: string) => void) { onText = fn; return this; },
+      finalMessage: () => new Promise((_res, rej) => { opts.signal?.addEventListener("abort", () => rej(new Error("Request was aborted."))); onText("Baron Geddon"); }),
+    };
+  }) } };
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [{ type: "anthropic", apiKeyFile: join(d, "k.txt"), model: "claude-sonnet-5-5" }], history: [], question: "q", session: fakeSession([]), anthropicClient: client as never, signal: stop.signal, onProgress: () => stop.abort() });
+  expect(passed).toBe(stop.signal);
+  expect(r).toEqual({ text: "Baron Geddon", model: "claude-sonnet-5-5", sources: [], steps: [], stopped: true });
+});
+
+test("an empty stopped answer in the history is not sent to the model", async () => {
+  const bodies: { messages: { role: string; content: unknown }[] }[] = [];
+  const send = vi.fn(async (_url: string, init: { body: string }) => { bodies.push(JSON.parse(init.body)); return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: "ok" } }] }), { status: 200 }); });
+  const entry = { type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3" };
+  const history = [{ role: "user" as const, text: "first", at: "", model: null, sources: [], steps: [] }, { role: "assistant" as const, text: "", at: "", model: null, sources: [], steps: [], stopped: true }];
+  await answer({ mcp: { url: "u", token: null }, entries: [entry], history, question: "again", session: fakeSession([]), send: send as never });
+  expect(bodies[0].messages.map((m) => m.content)).toEqual([expect.any(String), "first", "again"]);
+});

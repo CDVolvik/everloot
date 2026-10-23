@@ -137,3 +137,32 @@ test("clear waits while an answer is being written, so the question stays with i
   expect((await pending).messages.map((m) => [m.role, m.text])).toEqual([["user", "q"], ["assistant", "a"]]);
   expect(chat.clear().messages).toEqual([]);
 });
+
+test("Stop keeps the question and the text so far, marked stopped, saved, with no error; the next question works", async () => {
+  const d = dir();
+  const chat = createChat(d, () => settings());
+  // The agent returns what had arrived when its signal aborts, as both provider loops do.
+  mockAnswer.mockImplementationOnce((o) => new Promise((res) => { o.signal!.addEventListener("abort", () => res({ ...reply("Baron Ged"), model: "qwen3", stopped: true })); }));
+  const pending = chat.send("bindings?");
+  expect(chat.info().busy).toBe(true);
+  chat.stop();
+  const stopped = await pending;
+  expect(stopped).toMatchObject({ busy: false, error: null });
+  expect(stopped.messages.map((m) => [m.role, m.text, m.stopped])).toEqual([["user", "bindings?", undefined], ["assistant", "Baron Ged", true]]);
+  expect(JSON.parse(readFileSync(join(d, "chat.json"), "utf8"))[1]).toMatchObject({ text: "Baron Ged", model: "qwen3", stopped: true });
+  mockAnswer.mockResolvedValueOnce(reply("Molten Core."));
+  const next = await chat.send("where?");
+  expect(next.messages.map((m) => m.text)).toEqual(["bindings?", "Baron Ged", "where?", "Molten Core."]);
+  expect(next.messages[3].stopped).toBeUndefined();
+  expect(chat.clear().messages).toEqual([]);
+});
+
+test("Stop before anything was written is not an error either", async () => {
+  const chat = createChat(dir(), () => settings());
+  mockAnswer.mockImplementationOnce((o) => new Promise((_res, rej) => { o.signal!.addEventListener("abort", () => rej(new Error("This operation was aborted"))); }));
+  const pending = chat.send("q");
+  chat.stop();
+  const r = await pending;
+  expect(r).toMatchObject({ busy: false, error: null });
+  expect(r.messages.map((m) => [m.role, m.text, m.stopped])).toEqual([["user", "q", undefined], ["assistant", "", true]]);
+});
