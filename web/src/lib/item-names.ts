@@ -7,8 +7,9 @@ import { formatCopper } from "../../../kb/src/market";
 import type { ItemRecord } from "../../../kb/src/assets/items";
 import { checkedDamageRange, CHECKED_WEAPONS, type CheckedDamageRange, type CheckedWeapon } from "../../../kb/src/assets/weapon-damage";
 import type { ItemFactName, ItemFactState } from "../../../kb/src/item-facts";
+import { PLACEHOLDER } from "./placeholder";
 
-export const PLACEHOLDER = "[?]";
+export { PLACEHOLDER };
 
 export const QUALITY_NAMES = ["Poor", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Artifact", "Heirloom"] as const;
 

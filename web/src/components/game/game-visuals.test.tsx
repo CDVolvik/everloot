@@ -190,6 +190,8 @@ test("raid builder: a raid's loading screen above the title, and a buff's toolti
   const html = await render(() => RaidPage());
   expect(html).toMatch(/<img[^>]*src="[^"]*loading\/9409\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*data-page-banner/);
   expect(html.indexOf("data-page-banner")).toBeLessThan(html.indexOf("<h1"));
+  // The banner is the page's largest paint, so it is fetched first.
+  expect(html).toMatch(/<img(?=[^>]*fetchpriority="high")[^>]*data-page-banner/i);
   // The name stays text, focusable, described by the tooltip text.
   expect(html).toMatch(/data-spell-tip[^>]*><img[^>]*icons\/8001\.webp[^>]*\/?><span tabindex="0"[^>]*aria-describedby="[^"]+"[^>]*>Battle Shout<\/span>/);
   expect(html).toContain("Battle Shout. Raises attack power by 20 for 2 min. found in game files, unconfirmed · build 1.60.1.70450.");
