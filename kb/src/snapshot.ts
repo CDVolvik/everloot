@@ -14,7 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { openDb, type DB } from "./db.js";
+import { fillNameNorm, openDb, SCHEMA, type DB } from "./db.js";
 import { FACET_KEYS } from "./importers/wiki-classify.js";
 import { SOURCES, type SourceId } from "./sources.js";
 import { validate } from "./validate.js";
@@ -202,6 +202,7 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
          ON CONFLICT(id) DO UPDATE SET name = excluded.name, licence = excluded.licence, publishable = 1, homepage = excluded.homepage`,
       );
       for (const id of keep) resync.run(SOURCES[id]);
+      fillNameNorm(out, true);
       out.exec("DELETE FROM api_cache; INSERT INTO entities_fts(entities_fts) VALUES ('rebuild');");
       out.exec("VACUUM"); // required: without it, deleted text survives in free pages of the file
     } finally {
@@ -255,6 +256,22 @@ function expectedSchemaEntries(): Set<string> {
   }
 }
 
+/** The entities table as releases built before `name_norm` define it. */
+function legacyEntitiesEntry(): string {
+  const ref = new Database(":memory:");
+  try {
+    ref.exec(SCHEMA);
+    const r = ref.prepare("SELECT type, name, sql FROM sqlite_master WHERE name = 'entities'").get() as {
+      type: string;
+      name: string;
+      sql: string;
+    };
+    return `${r.type}:${r.name}:${normalizeSchemaSql(r.sql)}`;
+  } finally {
+    ref.close();
+  }
+}
+
 /**
  * Proves an open database holds only publishable data and is clean: exact schema, registry
  * source allowlist, empty API cache, published licences, integrity check and no free pages.
@@ -277,9 +294,15 @@ export function checkPublishedDb(db: DB): Record<string, number> {
       }[]
     ).map((r) => `${r.type}:${r.name}:${normalizeSchemaSql(r.sql)}`),
   );
-  const optional = (entry: string) => OPTIONAL_SCHEMA_NAMES.has(entry.split(":")[1]);
+  // A release built before name_norm has the old entities table and no name_norm index.
+  const legacy = legacyEntitiesEntry();
+  const isLegacy = actual.has(legacy);
+  const optional = (entry: string) => {
+    const name = entry.split(":")[1];
+    return OPTIONAL_SCHEMA_NAMES.has(name) || (isLegacy && (name === "entities" || name === "entities_name_norm"));
+  };
   const missing = [...expected].filter((e) => !actual.has(e) && !optional(e));
-  const extra = [...actual].filter((e) => !expected.has(e));
+  const extra = [...actual].filter((e) => !expected.has(e) && e !== legacy);
   if (missing.length > 0 || extra.length > 0) {
     fail(`unexpected schema — missing: ${missing.join(", ") || "(none)"}; extra: ${extra.join(", ") || "(none)"}`);
   }

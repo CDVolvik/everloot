@@ -15,6 +15,11 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Knowledge base: `entities.name_norm` stores each name's words as the search re-rank reads them, with an index on
+  `(name_norm, kind)`. The exact-name lookup reads it instead of scanning every row through `lower(replace(...))`,
+  and now matches non-ASCII capitals and punctuation the SQL expression missed. A punctuated name with stopwords
+  ("Rise of the Lich-King") is found when asked with all its words. Releases built before the column still open and
+  search through the old expression; the speedup reaches the site with the next knowledge release.
 - Site and MCP: the public page tools count only reports after a recheck scope's date, as the coverage score and
   the site's pages already did. `ToolOptions.recheck` carries the curated scopes into every page tool, the object
   pages cut their loot windows, names and pins the same way, relation edges settle their drop, vendor, quest and zone
