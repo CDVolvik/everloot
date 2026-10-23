@@ -94,17 +94,6 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
 - Knowledge base: `npm run kb -- name-gaps` opens with the counts: how many items, quests, item sets and
   spells carry a name today, and which source each name came from — the game files, the Warcraft Wiki, the
   local baseline, or the players. A source that was not read says so instead of printing a zero.
-- Addon, protocol and site: item numbers players see. When the game shows an item's tooltip, the addon records
-  its armor, block, damage per second, stats and resistances for the plain item, with the client build (record
-  kind `item_fact`, protocol package 1.15.0, record protocol 1.8.0). The item page, the site's hover card and the
-  embeddable card show a number in place of its `[?]` once three installs on the newest build agree, with the
-  installs, the build and when it was last seen; a line installs disagree on stays `[?]` and says so. MCP tools
-  are unchanged. Not yet run in the Forever client.
-- Addon and desktop app: item tooltips show where an item drops. The Desktop App writes the public drop rates
-  (three installs looted the source) into the `EverlootPrices` file beside the prices, at most once a day; the
-  tooltip and `/everloot price` show up to three sources as drops of loot windows, with installs and the upload
-  date. With the file in the game, a missing price or drop source is said in one grey line. Nothing new is
-  written to SavedVariables. Design: `docs/design/specs/2026-10-21-addon-value-loop-design.md`.
 - Knowledge base: `npm run kb -- name-gaps`, a local report of the items, quests, item sets and spells that
   still print as an id, each with the reason and what would fill it (a rule decision, the addon's uploads, or no
   source yet). Ids only, never names.
@@ -130,9 +119,20 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   saying it for the full second and a half even when the thread is redrawn, as when a new question goes out.
   Clear is off while an answer is being written, so the question can no longer be cleared out from under it.
 
-## [0.3.10] - 2026-10-21
+## [0.3.10] - 2026-10-23
 
 ### Added
+- Addon, protocol and site: item numbers players see. When the game shows an item's tooltip, the addon records
+  its armor, block, damage per second, stats and resistances for the plain item, with the client build (record
+  kind `item_fact`, protocol package 1.15.0, record protocol 1.8.0). The item page, the site's hover card and the
+  embeddable card show a number in place of its `[?]` once three installs on the newest build agree, with the
+  installs, the build and when it was last seen; a line installs disagree on stays `[?]` and says so. MCP tools
+  are unchanged. Not yet run in the Forever client.
+- Addon and desktop app: item tooltips show where an item drops. The Desktop App writes the public drop rates
+  (three installs looted the source) into the `EverlootPrices` file beside the prices, at most once a day; the
+  tooltip and `/everloot price` show up to three sources as drops of loot windows, with installs and the upload
+  date. With the file in the game, a missing price or drop source is said in one grey line. Nothing new is
+  written to SavedVariables. Design: `docs/design/specs/2026-10-21-addon-value-loop-design.md`.
 - Places for the world map. When an NPC's window opens (merchant, gossip, quest, trainer, flight map, bank,
   auction house, stable, innkeeper) the addon records where you stand as that NPC's place, with the service the
   window offered, once per NPC, service and zone. When you loot a herb, ore vein, chest or other object, its loot
@@ -146,6 +146,7 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   targeting rows and creature loot, so a full targeting or corpse share pauses only itself.
 - An object's name comes only from a herb, ore or chest cast, never from another spell's target (such as a
   player you healed). A fishing cast counts for 30 seconds, for a slow bite.
+- The raid buff list (`/everloot raid`) is read from the game files of build 1.60.1.70532.
 
 ## [0.3.9] - 2026-10-21
 
