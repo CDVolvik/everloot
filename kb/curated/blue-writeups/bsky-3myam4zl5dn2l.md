@@ -2,7 +2,7 @@
 postId: bluesky:3myam4zl5dn2l
 draft: true
 ---
-This short Bluesky post links to a video on the official World of Warcraft YouTube channel, "Your Leveling Journey Past 30". The post itself says only that levels 30 to 60 in WoW: Forever take you into parts of Azeroth the original game never had.
+This short Bluesky post links to a video on the official World of Warcraft YouTube channel, "Your Leveling Journey Past 30". The post itself says only that levels 30 to 60 in WoW: Forever take you into parts of Azeroth that were previously unknown.
 
 The video's description names two of those areas: the Riverglades and Mount Hyjal. Other Blizzard posts this month say more about both:
 
