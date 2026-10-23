@@ -70,7 +70,9 @@ cut their treasure names and pins with them. Relation edges reuse the page rules
 `recheckLootRecords`, vendor prices are settled together before the best price is chosen, quest zones use the leading
 giver's vote and every reward id, and a rare's `located_in` edge is scoped as a rare pin. The memo key includes them, so a scoped
 and an unscoped read of one corpus never share facts. `kb/test/mcp-recheck-scopes.test.ts` covers the end-to-end path.
-The standalone `mcp-http-main.ts` still has no scopes (it has no curated file to read); the site's mounts do.
+The site's relation edges read the same scopes: `rollup-compute.ts` passes `RECHECK_SCOPES` to `observedEdges`, so
+`loadObservedEdges` and the MCP `entity_relations` tool answer with the same edges. The standalone
+`mcp-http-main.ts` still has no scopes (it has no curated file to read); the site's mounts do.
 
 **The drop rates' cut-off, `kb/src/drop-rollup.ts`.** `lootRecheckSince(records, scopes)` gives each loot source a scope
 covers, and `recheckLootRecords(records, scopes)` drops that source's loot-api windows captured at or before the

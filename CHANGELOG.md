@@ -19,8 +19,9 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   the site's pages already did. `ToolOptions.recheck` carries the curated scopes into every page tool, the object
   pages cut their loot windows, names and pins the same way, relation edges settle their drop, vendor, quest and zone
   facts on the same cut-off, world-map-near drops stale entrance confirmations, and answer_sources stops citing a
-  scoped-out NPC name. The facts memo keys on the scopes so a scoped and an unscoped read never share facts. The
-  standalone MCP server has no curated file and stays unscoped.
+  scoped-out NPC name. The site's relation edges read the same scopes as the MCP tool, so both answer with the same
+  edges. The facts memo keys on the scopes so a scoped and an unscoped read never share facts. The standalone MCP
+  server has no curated file and stays unscoped.
 - Site and knowledge base: the settled list leaves out about 2% of settled facts each ISO week (the spot check), so
   the desktop app re-sends them and a hotfix that never changed a build still reaches the corpus. A loot source under
   a recheck scope counts only its windows after the scope's date and settles again, instead of staying out until the

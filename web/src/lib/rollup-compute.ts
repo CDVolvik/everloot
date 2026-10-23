@@ -92,7 +92,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       crafted: craftedItemsFromRecords(corpus.records),
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
-      edges: observedEdges(corpus.records, corpus.dataAsOf ?? new Date()),
+      edges: observedEdges(corpus.records, corpus.dataAsOf ?? new Date(), RECHECK_SCOPES),
       loot: lootTablesFromRecords(lootRecords, corpus.dataAsOf ?? null),
     };
   }
