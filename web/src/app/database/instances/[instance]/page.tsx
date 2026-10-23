@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { AgreementMeter, Badge, Card, Container, DataTable, DataTitle, EmptyState, SectionHeading, type Column } from "@/components/ui";
 import type { InstanceBoss } from "../../../../../../kb/src/instances";
 import {
-  difficultyLabel, instanceHref, instanceRows, instanceTitle, loadSightings, parseInstanceSegment,
+  difficultyLabel, instanceDescription, instanceHref, instanceRows, instanceTitle, loadSightings, parseInstanceSegment,
   type InstancePlace, type InstanceRow,
 } from "@/lib/instances";
 import { dayLabel } from "@/lib/report-labels";
@@ -40,7 +40,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return {
     ...pageMetadata({
       title: `${title} – WoW Forever ${row.raid === null ? "Instance" : row.raid ? "Raid" : "Dungeon"}: Entrance and Bosses`,
-      description: `${title} in WoW: Forever: where the entrance is, and the bosses players have reported killing.`,
+      description: instanceDescription(row),
       path: instanceHref(row.instanceMapId, row.name),
     }),
     // Storage down: noindex rather than cache a page without its player reports.

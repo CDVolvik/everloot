@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
+import { webApplicationJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { goldFactsFromRecords, handleGoldLedger } from "../../../../../kb/src/gold-ledger";
@@ -8,6 +10,9 @@ import { trailFor } from "@/lib/breadcrumbs";
 import { Card, Container, Disclosure, EmptyState, Field, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+const HEADING = "Gold ledger";
+const lede = "Peak gold and the money events a character uploaded, from that player's own addon file.";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Gold Ledger", description: "Peak gold and the money events a WoW: Forever character uploaded, from that player's own addon file. A missing line means unrecorded, not zero.", path: "/tools/gold-ledger" }),
@@ -34,10 +39,11 @@ export default async function GoldLedgerPage(
 
   return (
     <Container>
+      <JsonLd data={webApplicationJsonLd({ name: HEADING, path: "/tools/gold-ledger", description: lede })} />
       <PageHeader
         trail={trailFor("/tools/gold-ledger")!}
-        title="Gold ledger"
-        lede="Peak gold and the money events a character uploaded, from that player's own addon file."
+        title={HEADING}
+        lede={lede}
         meta={<span>{corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}</span>}
         actions={<>
           <Link href="/tools/auctions" className="btn">Auction House</Link>
