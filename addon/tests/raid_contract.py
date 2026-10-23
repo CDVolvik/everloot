@@ -1,4 +1,5 @@
 """Run with: uv run --with lupa python addon/tests/raid_contract.py"""
+import json
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -11,7 +12,13 @@ for forbidden in ["CastSpellByName", "TargetUnit", "InviteUnit", "UninviteUnit",
                   "PromoteToAssistant", "SendChatMessage", "RunMacro", "UseAction", "SecureActionButton", "E:Store"]:
     assert forbidden not in source, f"raid.lua must not call {forbidden}"
 
-STUBS = """
+# The buff list is generated from the site's game-data layer, so it names that layer's build; the client stub runs it.
+LAYER_BUILD = json.loads((root.parent / "web/src/data/game-data/client-layer.json").read_text(encoding="utf-8"))["build"]["version"]
+VERSION, BUILD_NUMBER = LAYER_BUILD.rsplit(".", 1)
+
+STUBS = f"""
+LAYER_BUILD = '{LAYER_BUILD}'
+BUILD = {{ '{VERSION}', '{BUILD_NUMBER}', 'Oct 1 2026', 11508 }}""" + """
 date = function() return '2026-10-18T00:00:00Z' end
 time = function() return 123456 end
 printed = {}
@@ -22,7 +29,6 @@ CreateFrame = function() return {
  SetScript=function(self, _, f) self.onEvent=f end,
  HookScript=function() end
 } end
-BUILD = { '1.60.1', '70450', 'Oct 1 2026', 11508 }
 GetBuildInfo = function() return unpack(BUILD) end
 """
 
@@ -100,7 +106,7 @@ lua.execute("""
 local note
 for _, line in ipairs(printed) do if line:find('raid:') or line:find('  raid:') then note = line end end
 assert(Everloot.RaidCommand, 'the module registers its command')
-assert(Everloot.RaidData.build == '1.60.1.70450', 'the buff list names its build')
+assert(Everloot.RaidData.build == LAYER_BUILD, 'the buff list names its build')
 assert(EverlootDB.toggles.raid == nil, 'no toggle is needed: nothing is recorded')
 """)
 
@@ -220,6 +226,6 @@ assert(R.Code({ { group = 1, class = 'DEATHKNIGHT' } }, '1.60.1.70450') == 'ELR1
 printed = {}
 SlashCmdList.EVERLOOT('raid code')
 local text = table.concat(printed, '\\n')
-assert(text:find('Everloot raid code: ELR1-10-1.60.1.70450-', 1, true), text)
+assert(text:find('Everloot raid code: ELR1-10-' .. LAYER_BUILD .. '-', 1, true), text)
 """)
 print("raid contract ok")
