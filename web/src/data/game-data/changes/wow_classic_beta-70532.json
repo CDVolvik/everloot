@@ -1,0 +1,347 @@
+{
+  "schema": "everloot.game-changes/2",
+  "label": "found in game files, unconfirmed",
+  "id": "wow_classic_beta-70532",
+  "product": "wow_classic_beta",
+  "live": false,
+  "spoiler": true,
+  "detectedAt": "2026-10-22T22:42:42.780Z",
+  "build": {
+    "version": "1.60.1.70532",
+    "buildId": 70532,
+    "buildConfig": "ad1802f4455e427ed8b7769aab25b0c0"
+  },
+  "previous": {
+    "version": "1.60.1.70450",
+    "buildId": 70450,
+    "buildConfig": "84bea4233331e390fda8724c6f91ffa5"
+  },
+  "initial": false,
+  "encryptedBlocks": {
+    "total": 324,
+    "tables": [
+      {
+        "table": "Achievement",
+        "blocks": 1
+      },
+      {
+        "table": "AnimKit",
+        "blocks": 1
+      },
+      {
+        "table": "AnimKitSegment",
+        "blocks": 1
+      },
+      {
+        "table": "AreaTable",
+        "blocks": 3
+      },
+      {
+        "table": "BattlePetSpecies",
+        "blocks": 5
+      },
+      {
+        "table": "CharacterLoadout",
+        "blocks": 1
+      },
+      {
+        "table": "Creature",
+        "blocks": 6
+      },
+      {
+        "table": "CreatureDifficulty",
+        "blocks": 6
+      },
+      {
+        "table": "CreatureDisplayInfo",
+        "blocks": 10
+      },
+      {
+        "table": "CreatureDisplayInfoExtra",
+        "blocks": 1
+      },
+      {
+        "table": "CreatureDisplayInfoGeosetData",
+        "blocks": 1
+      },
+      {
+        "table": "CreatureDisplayInfoOption",
+        "blocks": 1
+      },
+      {
+        "table": "CreatureMovementInfo",
+        "blocks": 1
+      },
+      {
+        "table": "CreatureSoundData",
+        "blocks": 7
+      },
+      {
+        "table": "CreatureXDisplayInfo",
+        "blocks": 6
+      },
+      {
+        "table": "DungeonEncounter",
+        "blocks": 3
+      },
+      {
+        "table": "Emotes",
+        "blocks": 1
+      },
+      {
+        "table": "GameObjectDisplayInfo",
+        "blocks": 2
+      },
+      {
+        "table": "Item",
+        "blocks": 16
+      },
+      {
+        "table": "ItemAppearance",
+        "blocks": 7
+      },
+      {
+        "table": "ItemDisplayInfo",
+        "blocks": 7
+      },
+      {
+        "table": "ItemDisplayInfoMaterialRes",
+        "blocks": 3
+      },
+      {
+        "table": "ItemEffect",
+        "blocks": 12
+      },
+      {
+        "table": "ItemModifiedAppearance",
+        "blocks": 7
+      },
+      {
+        "table": "ItemNameDescription",
+        "blocks": 1
+      },
+      {
+        "table": "ItemSearchName",
+        "blocks": 7
+      },
+      {
+        "table": "ItemSparse",
+        "blocks": 31
+      },
+      {
+        "table": "ItemXItemEffect",
+        "blocks": 12
+      },
+      {
+        "table": "LFGDungeons",
+        "blocks": 1
+      },
+      {
+        "table": "LoadingScreens",
+        "blocks": 2
+      },
+      {
+        "table": "Lock",
+        "blocks": 1
+      },
+      {
+        "table": "Map",
+        "blocks": 3
+      },
+      {
+        "table": "MapDifficulty",
+        "blocks": 1
+      },
+      {
+        "table": "Mount",
+        "blocks": 3
+      },
+      {
+        "table": "MountXDisplay",
+        "blocks": 3
+      },
+      {
+        "table": "ObjectEffect",
+        "blocks": 2
+      },
+      {
+        "table": "ObjectEffectPackageElem",
+        "blocks": 2
+      },
+      {
+        "table": "QuestV2",
+        "blocks": 5
+      },
+      {
+        "table": "SkillLineAbility",
+        "blocks": 8
+      },
+      {
+        "table": "SoundEnvelope",
+        "blocks": 4
+      },
+      {
+        "table": "SoundKit",
+        "blocks": 7
+      },
+      {
+        "table": "SoundKitAdvanced",
+        "blocks": 7
+      },
+      {
+        "table": "SoundKitChild",
+        "blocks": 2
+      },
+      {
+        "table": "SoundKitEntry",
+        "blocks": 7
+      },
+      {
+        "table": "Spell",
+        "blocks": 29
+      },
+      {
+        "table": "SpellAuraOptions",
+        "blocks": 6
+      },
+      {
+        "table": "SpellCooldowns",
+        "blocks": 9
+      },
+      {
+        "table": "SpellEffect",
+        "blocks": 14
+      },
+      {
+        "table": "SpellItemEnchantment",
+        "blocks": 1
+      },
+      {
+        "table": "SpellLevels",
+        "blocks": 6
+      },
+      {
+        "table": "SpellMisc",
+        "blocks": 14
+      },
+      {
+        "table": "SpellName",
+        "blocks": 14
+      },
+      {
+        "table": "SpellReagents",
+        "blocks": 4
+      },
+      {
+        "table": "SummonProperties",
+        "blocks": 2
+      },
+      {
+        "table": "TotemCategory",
+        "blocks": 1
+      },
+      {
+        "table": "Toy",
+        "blocks": 1
+      },
+      {
+        "table": "TransmogSet",
+        "blocks": 2
+      },
+      {
+        "table": "TransmogSetItem",
+        "blocks": 2
+      },
+      {
+        "table": "ZoneLight",
+        "blocks": 1
+      }
+    ]
+  },
+  "source": {
+    "definitions": "d8b2f0bdd362",
+    "library": "@rhyster/wow-casc-dbc@2.16.15",
+    "extractedAt": "2026-10-22T22:42:27.998Z"
+  },
+  "catalog": {
+    "classes": 9,
+    "nodes": 466
+  },
+  "talents": {
+    "classesAdded": [],
+    "classesRemoved": [],
+    "added": [],
+    "removed": [],
+    "moved": [],
+    "ranks": [],
+    "gates": [],
+    "prereqs": [],
+    "replaced": [],
+    "spellValues": [],
+    "pointLevels": []
+  },
+  "raidBuffs": {
+    "comparedTo": "1.60.1.70450",
+    "scopeChanges": [],
+    "spellChanges": []
+  },
+  "mapChanges": [],
+  "readSet": {
+    "tables": {
+      "before": 321,
+      "after": 329
+    },
+    "rows": {
+      "before": 1140283,
+      "after": 1141983
+    },
+    "addedTables": [
+      {
+        "table": "ItemDamageAmmo",
+        "fileDataID": 1277740,
+        "rows": 1000
+      },
+      {
+        "table": "ItemDamageOneHand",
+        "fileDataID": 1277743,
+        "rows": 100
+      },
+      {
+        "table": "ItemDamageOneHandCaster",
+        "fileDataID": 1277739,
+        "rows": 100
+      },
+      {
+        "table": "ItemDamageRanged",
+        "fileDataID": 6156256,
+        "rows": 100
+      },
+      {
+        "table": "ItemDamageThrown",
+        "fileDataID": 6156257,
+        "rows": 100
+      },
+      {
+        "table": "ItemDamageTwoHand",
+        "fileDataID": 1277738,
+        "rows": 100
+      },
+      {
+        "table": "ItemDamageTwoHandCaster",
+        "fileDataID": 1277742,
+        "rows": 100
+      },
+      {
+        "table": "ItemDamageWand",
+        "fileDataID": 6156258,
+        "rows": 100
+      }
+    ],
+    "removedTables": [],
+    "changedTables": [],
+    "layoutChanged": true
+  },
+  "warnings": [
+    "table definitions differ (WoWDBDefs b9a63096cdd9 vs d8b2f0bdd362): a change may come from the layouts, not the game"
+  ]
+}
