@@ -126,3 +126,14 @@ test("clear empties the transcript on disk too", async () => {
   expect(existsSync(join(d, "chat.json"))).toBe(true);
   expect(JSON.parse(readFileSync(join(d, "chat.json"), "utf8"))).toEqual([]);
 });
+
+test("clear waits while an answer is being written, so the question stays with its answer", async () => {
+  const chat = createChat(dir(), () => settings());
+  let release!: (r: ReturnType<typeof reply>) => void;
+  mockAnswer.mockReturnValueOnce(new Promise((res) => { release = res; }));
+  const pending = chat.send("q");
+  expect(chat.clear().messages.map((m) => m.text)).toEqual(["q"]);
+  release(reply("a"));
+  expect((await pending).messages.map((m) => [m.role, m.text])).toEqual([["user", "q"], ["assistant", "a"]]);
+  expect(chat.clear().messages).toEqual([]);
+});

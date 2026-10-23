@@ -1,6 +1,6 @@
 import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
-import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
+import { ago, clock, copyLabel, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
 import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type ChatProgress, type EverlootApi, type PriceLookup, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
 import { PROVIDER_PRESETS, presetFor, type ModelChoice, type ProviderKind } from "../shared/providers";
 import { inkOn } from "../../../web/src/lib/chat/catalogue";
@@ -46,6 +46,9 @@ const liveModels: Partial<Record<ProviderKind, ModelChoice[]>> = {};
 const askedModels = new Set<ProviderKind>();
 /** The answer being written while a chat question is out; null otherwise. */
 let live: ChatProgress | null = null;
+/** The Copy button just pressed and how it went, kept for its 1.5 s across a redraw of the thread. */
+let copied: { index: number; label: string } | null = null;
+let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 /** The Market page's last price lookup; null before the first. */
 let priceLookup: PriceLookup | null = null;
 const data: { upload?: FileSummary[]; backups?: BackupInfo[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string; characters?: CharactersInfo; chat?: ChatInfo } = {};
@@ -153,12 +156,12 @@ function chat(): string {
       ? `<br>Search alone only matches names in Everloot's data. A model reads the question, fixes the spelling and looks it up for you. <button type="button" class="link" data-addmodel>Add a key or a free model</button>`
       : "";
     const meta = m.role === "assistant"
-      ? `<div class="meta"><button type="button" class="link copy" data-copy="${i}">Copy</button>${m.model ? `<b>${esc(m.model)}</b>` : "<b>search only</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}${nudge}</div>`
+      ? `<div class="meta"><button type="button" class="link copy" data-copy="${i}">${esc(copyLabel(i, copied))}</button>${m.model ? `<b>${esc(m.model)}</b>` : "<b>search only</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}${nudge}</div>`
       : `<div class="meta">${clock(m.at)}</div>`;
     return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
   }).join("");
   return `<div class="page chat">
-    <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : state?.account.signedIn ? "public MCP, your account's limits" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
+    <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : state?.account.signedIn ? "public MCP, your account's limits" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear" ${c?.busy ? "disabled" : ""}>clear</button></span></div>
     <p class="muted small">Ask anything about the game. The model looks it up in Everloot's own MCP tools first and names the sources; when they have nothing it says the answer is its own knowledge. Private: the transcript stays in your data folder.</p>
     ${c && c.mode === "plain search" && !pickOpen ? `<p class="muted small">No model yet, so you get Everloot's search hits as they are. <button type="button" class="link" data-addmodel>Add your own key or a free model</button></p>` : ""}
     ${c && pickOpen ? providerForm(c) : ""}
@@ -941,6 +944,13 @@ api.onChatProgress((p) => {
   if (atEnd) thread.scrollTop = thread.scrollHeight;
 });
 
+/** A polite live region: what a press did, for screen readers. */
+const announcer = document.getElementById("announce")!;
+/** Puts each Copy button's label in step with `copied` without rebuilding the thread. */
+function paintCopy(): void {
+  for (const b of main.querySelectorAll<HTMLElement>("[data-copy]")) b.textContent = copyLabel(Number(b.dataset.copy), copied);
+}
+
 const toast = document.getElementById("toast")!;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 /** A short note in the same corner, for things that went right. */
@@ -1030,17 +1040,25 @@ async function onClick(ev: MouseEvent): Promise<void> {
     return;
   }
   if (t.dataset.copy) {
-    const text = data.chat?.messages[Number(t.dataset.copy)]?.text;
+    const index = Number(t.dataset.copy);
+    const text = data.chat?.messages[index]?.text;
     if (text === undefined) return;
-    try { await navigator.clipboard.writeText(text); t.textContent = "Copied"; } catch { t.textContent = "Copy failed"; }
-    setTimeout(() => { t.textContent = "Copy"; }, 1500);
+    let label = "Copied";
+    try { await navigator.clipboard.writeText(text); } catch { label = "Copy failed"; }
+    copied = { index, label };
+    paintCopy();
+    // Emptied first, so a second copy of the same answer is said again.
+    announcer.textContent = "";
+    setTimeout(() => { announcer.textContent = label; }, 50);
+    if (copiedTimer) clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => { copied = null; paintCopy(); announcer.textContent = ""; }, 1500);
     return;
   }
   if (t.dataset.open) { void api.openExternal(t.dataset.open); return; }
   if (t.dataset.run) { void api.runNow(t.dataset.run as Job); return; }
   if (t.dataset.unfollow) { const gone = t.dataset.unfollow.toLowerCase(); state = await api.saveSettings({ market: { realms: state!.settings.market.realms.filter((r) => r.toLowerCase() !== gone) } }); void load("market"); return; }
   if (t.id === "pause") { await api.setPaused(!state!.engine.paused); return; }
-  if (t.id === "chatClear") { data.chat = await api.chatClear(); render(); return; }
+  if (t.id === "chatClear") { copied = null; data.chat = await api.chatClear(); render(); return; }
   if (t.id === "browse") {
     const folder = await api.pickGameFolder();
     if (!folder) return;

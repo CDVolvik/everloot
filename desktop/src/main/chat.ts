@@ -53,7 +53,8 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
 
   return {
     info,
-    clear(): ChatInfo { messages = []; error = null; save(); return info(); },
+    // Not while an answer is being written: its question would go and the answer land alone.
+    clear(): ChatInfo { if (busy) return info(); messages = []; error = null; save(); return info(); },
     setProvider(choice: ProviderChoice): ChatInfo { setProvider(dataFolder, choice); error = null; return info(); },
     useModel(kind: ProviderKind, model: string): ChatInfo { useModel(dataFolder, kind, model); error = null; return info(); },
     removeProvider(kind?: ProviderKind): ChatInfo { removeProvider(dataFolder, kind); return info(); },
