@@ -65,6 +65,10 @@ export default function UploadPage() {
             </p>
           </div>
         </Card>
+        <p className="text-sm text-fg-2">
+          What Everloot publishes and what it refuses is written down in the{" "}
+          <a className={link} href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener">data policy</a>.
+        </p>
         <UploadClient playerPages={playerPagesOn()} />
       </div>
     </Container>
