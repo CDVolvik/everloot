@@ -20,9 +20,9 @@ import { continentArt, instanceThumbs, loadSiteAssets } from "@/lib/game-assets"
 import { SiteCredit } from "@/components/Footer";
 
 export const TITLE = "WoW Forever World Map";
-const DESCRIPTION = "Zones, entrances, flight masters and flight paths, and player-observed NPCs on one map of WoW: Forever, from the game files. No game art.";
+export const DESCRIPTION = "Zones, entrances, flight masters and flight paths, and player-observed NPCs on one map of WoW: Forever, from game files. No game art.";
 /** The same description when the game's map pictures are shown. */
-const withArt = (text: string) => text.replace(" No game art.", " The map pictures are the game's own.");
+export const withArt = (text: string) => text.replace(" No game art.", " The map pictures are the game's own.");
 
 export type MapQuery = {
   continent?: string | string[]; zone?: string | string[]; x?: string | string[]; y?: string | string[]; spoilers?: string | string[];
@@ -32,7 +32,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 const continentName = (id: number) => CONTINENTS.find((c) => c.id === id)?.name ?? `Continent ${id}`;
 const continentTitle = (id: number) => `WoW Forever Map: ${continentName(id)}`;
-const continentDescription = (id: number) =>
+export const continentDescription = (id: number) =>
   `Every zone, dungeon and raid entrance, flight master and flight path in ${continentName(id)}, WoW: Forever, from game files. No game art.`;
 
 /**

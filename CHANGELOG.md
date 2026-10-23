@@ -117,6 +117,11 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   that only adds fields to an earlier copy, as when an older Desktop App had dropped them, replaces that copy
   instead of withdrawing the event as a conflict. The map shows none of this yet.
 
+### Fixed
+- Desktop app: on the Chat page, a screen reader hears "Copied" or "Copy failed" after Copy, and the button keeps
+  saying it for the full second and a half even when the thread is redrawn, as when a new question goes out.
+  Clear is off while an answer is being written, so the question can no longer be cleared out from under it.
+
 ## [0.3.10] - 2026-10-21
 
 ### Added

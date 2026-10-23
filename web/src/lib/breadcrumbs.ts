@@ -16,6 +16,8 @@ const NAMES: Record<string, string> = {
   "/search": "Search",
   "/changes": "Patch notes and Blizzard posts",
   "/map": "World map",
+  "/map/eastern-kingdoms": "Eastern Kingdoms",
+  "/map/kalimdor": "Kalimdor",
   "/wow-forever": "What is WoW: Forever",
   "/census": "Census",
   "/rankings": "Rankings",
@@ -39,6 +41,8 @@ const NAMES: Record<string, string> = {
   "/database/titles": "Titles",
   "/database/quest-chains": "Quest chains",
   "/database/spells": "Spell lookup",
+  "/database/coverage": "Coverage",
+  "/database/download": "Download the data",
   "/addons": "Addons",
   "/addons/popular": "Popular addons",
   "/addons/ecosystem": "Addon tracker",
@@ -53,6 +57,7 @@ const NAMES: Record<string, string> = {
   "/tools/gold-ledger": "Gold ledger",
   "/tools/professions": "Profession hubs",
   "/tools/farming-routes": "Farming routes",
+  "/docs": "Docs",
 };
 
 /** The parent of a page, when it is not Home. */
@@ -73,6 +78,10 @@ const PARENT: Record<string, string> = {
   "/database/factions": "/database",
   "/database/titles": "/database",
   "/database/quest-chains": "/database",
+  "/database/coverage": "/database",
+  "/database/download": "/database",
+  "/map/eastern-kingdoms": "/map",
+  "/map/kalimdor": "/map",
   "/addons/popular": "/addons",
   "/addons/ecosystem": "/addons",
   "/addons/polestar": "/addons",

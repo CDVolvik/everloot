@@ -30,6 +30,8 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/database/quests", async () => ({ metadata: await (await import("./database/quests/page")).generateMetadata({}) }), true],
   ["/database/vendors", async () => ({ metadata: await (await import("./database/vendors/page")).generateMetadata({}) }), true],
   ["/lore", () => import("./lore/page"), false],
+  ["/lore/coverage", async () => ({ metadata: await (await import("./lore/coverage/page")).generateMetadata() }), false],
+  ["/docs/quickstart", () => import("./docs/quickstart/page"), false],
   // The map's description depends on whether the game's map pictures are on, so it is generated.
   ["/map", async () => ({ metadata: await (await import("./map/page")).generateMetadata({ searchParams: Promise.resolve({}) }) }), true],
   ...(["eastern-kingdoms", "kalimdor"] as const).map((slug): [string, () => Promise<{ metadata: Metadata }>, boolean] => [
@@ -78,6 +80,28 @@ function checkComplete(path: string, m: Metadata, mustLead: boolean) {
 
 test.each(routes)("%s has a complete title, description, Open Graph and Twitter set", async (path, load, mustLead) => {
   checkComplete(path, (await load()).metadata, mustLead);
+});
+
+test("the map descriptions still fit when the game's map pictures are on", async () => {
+  const { DESCRIPTION, continentDescription, withArt } = await import("./map/map-screen");
+  const { CONTINENTS } = await import("@/lib/world-map");
+  for (const text of [DESCRIPTION, ...CONTINENTS.map((c) => continentDescription(c.id))]) {
+    expect(withArt(text), text).not.toBe(text);
+    expect(withArt(text).length, withArt(text)).toBeLessThanOrEqual(DESCRIPTION_MAX);
+  }
+});
+
+test("every MCP tool page has a description that fits", async () => {
+  const { generateMetadata } = await import("./docs/mcp/tools/[tool]/page");
+  const { MCP_TOOL_NAMES } = await import("@everloot/protocol");
+  const { toolHref } = await import("@/lib/docs/nav");
+  for (const name of MCP_TOOL_NAMES) {
+    const slug = toolHref(name).split("/").pop()!;
+    const m = await generateMetadata({ params: Promise.resolve({ tool: slug }) });
+    const description = text(m.description);
+    expect(description.length, name).toBeGreaterThan(0);
+    expect(description.length, `${name}: ${description}`).toBeLessThanOrEqual(DESCRIPTION_MAX);
+  }
 });
 
 test("the routes with their own social card point at it", async () => {

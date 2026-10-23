@@ -30,7 +30,23 @@
         "us"
       ],
       "firstSeen": "2026-10-17T09:14:36.180Z",
-      "lastSeen": "2026-10-22T15:35:10.495Z",
+      "lastSeen": "2026-10-22T22:41:55.330Z",
+      "status": "queued"
+    },
+    {
+      "key": "wow_classic_beta:ad1802f4455e427ed8b7769aab25b0c0",
+      "product": "wow_classic_beta",
+      "buildConfig": "ad1802f4455e427ed8b7769aab25b0c0",
+      "buildId": 70532,
+      "version": "1.60.1.70532",
+      "regions": [
+        "eu",
+        "kr",
+        "tw",
+        "us"
+      ],
+      "firstSeen": "2026-10-22T19:27:13.893Z",
+      "lastSeen": "2026-10-22T22:41:55.330Z",
       "status": "queued"
     }
   ]

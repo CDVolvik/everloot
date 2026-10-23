@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { TALENT_CLASSES as PROTOCOL_TALENT_CLASSES } from "@everloot/protocol";
 import { describe, expect, test } from "vitest";
+import { CURRENT_VERSION } from "../game-version";
 import { CatalogError, normalizeCatalog } from "./adapter";
 import { TALENT_CLASSES, loadCatalog } from "./catalogs";
 import { add, isLegal, pointsAtLevel, pointsSpent, remove } from "./rules";
@@ -9,16 +10,18 @@ import { decodeBuild, encodeBuild, resolveBuild } from "./share";
 import type { Ranks } from "./types";
 
 const dataDir = fileURLToPath(new URL("../../data/game-data/talents/", import.meta.url));
+// The build the committed game-data layers come from; a build bump regenerates the data, not these tests.
+const BUILD = CURRENT_VERSION.build;
 
 test("the protocol's class list is the site's, in the same order, so the MCP talent tools and the pages agree", () => {
   expect([...PROTOCOL_TALENT_CLASSES]).toEqual(TALENT_CLASSES);
 });
 
 describe.each(TALENT_CLASSES)("%s game data", (slug) => {
-  test("is a sound tree from build 1.60.1.70450", async () => {
+  test("is a sound tree from the current game-data build", async () => {
     const c = await loadCatalog(slug);
     expect(c.classSlug).toBe(slug);
-    expect(c.build).toBe("1.60.1.70450");
+    expect(c.build).toBe(BUILD);
     expect(c.label).toBe("found in game files, unconfirmed");
     expect(c.trees).toHaveLength(3);
     expect(c.rules.status).toBe("unconfirmed");
@@ -76,15 +79,15 @@ describe.each(TALENT_CLASSES)("%s game data", (slug) => {
 
 test("a share code with real mage node ids round trips through the catalog", async () => {
   const mage = await loadCatalog("mage");
-  // Arcane Power (spell 12042) and the node it needs, by their trait node ids in build 70450.
+  // Arcane Power (spell 12042) and the node it needs, by their trait node ids (unchanged since build 70450).
   const power = mage.nodes.find((n) => n.entries[0].spellId === 12042)!;
   expect(power.id).toBe(105798);
   expect(power.unlock).toMatchObject({ pointsInTree: 30 });
   const ranks: Ranks = { [power.id]: { rank: 1 } };
   const code = encodeBuild({ classSlug: "mage", specId: mage.specId, build: mage.build, ranks });
-  expect(code).toBe(`EL1-mage-1482-1.60.1.70450-${btoa("105798:1").replace(/=+$/, "")}`);
+  expect(code).toBe(`EL1-mage-1482-${BUILD}-${btoa("105798:1").replace(/=+$/, "")}`);
   const decoded = decodeBuild(code);
-  expect(decoded).toMatchObject({ ok: true, build: { classSlug: "mage", specId: 1482, build: "1.60.1.70450", ranks } });
+  expect(decoded).toMatchObject({ ok: true, build: { classSlug: "mage", specId: 1482, build: BUILD, ranks } });
   if (!decoded.ok) throw new Error("decode failed");
   // Alone, the node cannot be placed: its row gate (30 points above) is not met. The report says why.
   const resolved = resolveBuild(mage, decoded.build);
@@ -107,7 +110,6 @@ describe("licence boundary", () => {
     const readme = readFileSync(dataDir + "../README.md", "utf8");
     expect(readme).toMatch(/Blizzard's data/);
     expect(readme).toMatch(/not under Everloot's licence/);
-    expect(readme).toMatch(/1\.60\.1\.70450/);
   });
 });
 
