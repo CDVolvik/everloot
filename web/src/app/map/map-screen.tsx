@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { preload } from "react-dom";
 import JsonLd from "@/components/JsonLd";
 import { webApplicationJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
@@ -102,6 +103,9 @@ export async function renderMapScreen(query: MapQuery, pageContinent: number | n
   // A held-back zone's picture follows its outline: none unless spoilers are on.
   const assets = vb ? await loadSiteAssets() : null;
   const art = continentArt(assets, continentId, spoilers);
+  // The continent picture is the page's largest paint, but Leaflet asks for it only once the map's script has run.
+  // A preload in the page's head starts it with the HTML.
+  if (art?.continent) preload(art.continent.url, { as: "image", fetchPriority: "high" });
   const lead = pageContinent === null ? DESCRIPTION : continentDescription(continentId);
   // Each dungeon's and raid's loading screen beside its entrance in the list; a later map's only with spoilers on.
   const allThumbs = instanceThumbs(assets, spoilers);
