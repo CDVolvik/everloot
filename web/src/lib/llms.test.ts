@@ -34,12 +34,16 @@ test("both files list every live and collecting tool, the changes pages, connect
     for (const tool of tools.filter((t) => t.status === "live" || t.status === "collecting")) {
       expect(text).toContain(`https://everloot.app${toolHref(tool)})`);
     }
-    for (const needle of ["https://everloot.app/changes)", "https://everloot.app/changes/feed.xml", "https://everloot.app/docs)", "https://everloot.app/api/corpus/public", "https://everloot.app/mcp/public", "https://everloot.app/wow-forever", "https://everloot.app/map)"]) {
+    for (const needle of ["https://everloot.app/changes)", "https://everloot.app/changes/feed.xml", "https://everloot.app/docs)", "https://everloot.app/api/corpus/public", "https://everloot.app/mcp/public", "https://everloot.app/wow-forever", "https://everloot.app/map)", "https://everloot.app/addon)"]) {
       expect(text).toContain(needle);
     }
     expect(text).toContain("Data limitations");
     expect(text).toContain("Not affiliated with or endorsed by Blizzard Entertainment");
   }
+});
+
+test("the map line says nothing about game art, which the map shows when its pictures are set", () => {
+  for (const text of [llmsTxt(), llmsFullTxt()]) expect(text).not.toMatch(/no game art/i);
 });
 
 test("a coming-soon tool is not advertised as a tool", () => {

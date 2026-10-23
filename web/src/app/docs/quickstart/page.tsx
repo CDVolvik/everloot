@@ -9,7 +9,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Everloot Quickstart",
-  description: "Three ways into Everloot: browse the site, install the addon, or use the open data through the API, the MCP server and embeddable tooltips. No account needed to read.",
+  description: "Three ways into Everloot: browse the site, install the addon, or use the open data through the API, the MCP server and embeddable tooltips.",
   path: "/docs/quickstart",
 });
 

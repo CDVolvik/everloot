@@ -279,3 +279,11 @@ test("the tool catalogue documents coverage filters, field grain and withheld va
     expect(text).toContain(words);
   }
 });
+
+test("every docs page's BreadcrumbList starts at Home", () => {
+  const lists = [...page.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)]
+    .map((m) => JSON.parse(m[1]) as { "@type": string; itemListElement?: { name: string }[] })
+    .filter((data) => data["@type"] === "BreadcrumbList");
+  expect(lists.length).toBeGreaterThan(10);
+  for (const list of lists) expect(list.itemListElement?.slice(0, 2).map((c) => c.name)).toEqual(["Home", "Docs"]);
+});
