@@ -107,6 +107,7 @@ p { margin: 0; }
 }
 .btn-lg { min-height: 2.4rem; padding: 0 1.2rem; font-size: 0.95rem; }
 .link { background: none; border: 0; color: rgb(var(--accent)); font: inherit; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; text-align: left; }
+.link:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: rgb(var(--edge)); flex: none; }
 .dot-ok { background: rgb(var(--accent)); }
