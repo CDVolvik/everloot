@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Install the Everloot addon",
-  description: "Download the Everloot addon, put it in the AddOns folder for WoW: Forever, check it is running and update it.",
+  description: "Download the Everloot addon, put it in the AddOns folder for WoW: Forever, check it is running, use its slash commands and update it.",
   path: "/docs/guides/addon",
 });
 

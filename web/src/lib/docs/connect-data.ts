@@ -10,6 +10,7 @@ export const REQUESTS_PER_HOUR = 200;
 
 /** One plain sentence per tool for the page and llms.txt, keyed by name so a new tool in the protocol fails the type check here. */
 const TOOL_TEXT: Record<McpToolName, string> = {
+  coverage: "Database coverage: settled and confirmed field facts over expected counts, by zone, type and field, plus reported fields needing more installs.",
   search_knowledge: "Search lore and reference data. Every hit has its source and licence.",
   get_entity: "One record, by the id a search hit gives you.",
   get_by_name: "Records with exactly this name, for telling similar names apart.",

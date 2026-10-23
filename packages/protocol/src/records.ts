@@ -14,7 +14,7 @@ import { validRealm } from "./realm.js";
  * the generated JSON Schema's description, so a reader of the schema files knows the server checks them.
  */
 export const RULES = {
-  loot: ["loot needs a source: npc or object"],
+  loot: ["loot needs a source: npc or object", "a loot position needs mapId, x and y together"],
   achievement_catalog: ["criteria cannot outnumber criteriaCount"],
   achievement_owned: [
     "quantity and required come together",
@@ -28,6 +28,7 @@ export const RULES = {
   gold_snapshot: ["peak gold cannot be below current gold"],
   map_bounds: ["map bounds need a width and a height"],
   talent_snapshot: ["talent points must equal the sum of node ranks", "talent node ids must be unique"],
+  item_fact: ["an item fact other than damage_per_second is a whole number"],
 } as const satisfies Record<string, readonly string[]>;
 
 export const INSTALL_ID = z.string().min(8).max(64).describe("Random install id, no account needed.");
@@ -49,6 +50,10 @@ export const NPC_CREATURE_TYPES = [
 export const NPC_RANKS = ["normal", "elite", "rare", "rare_elite", "boss"] as const;
 /** The group a quest asks for, from the quest tag the game reports. */
 export const QUEST_TAGS = ["group", "dungeon", "raid", "pvp"] as const;
+/** What the NPC does for players, from the window that opened (a merchant who repairs is `repair`). */
+export const NPC_ROLES = ["vendor", "trainer", "questgiver", "flightmaster", "banker", "auctioneer", "stablemaster", "innkeeper", "repair"] as const;
+/** How an object was opened, from the spell the player cast on it. */
+export const GATHER_KINDS = ["herb", "ore", "chest", "fishing", "other"] as const;
 
 export const npcSighting = base.extend({
   kind: z.literal("npc_sighting"),
@@ -57,9 +62,10 @@ export const npcSighting = base.extend({
   mapId: z.number().int().nonnegative(),
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
-  level: z.number().int().min(1).max(100),
-  reaction: z.enum(["friendly", "neutral", "hostile"]),
-  positionKind: z.enum(["player", "npc"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins."),
+  level: z.number().int().min(1).max(100).optional().describe("The NPC's level. Absent when the source did not record it, as in a converted Polestar Recorder file."),
+  reaction: z.enum(["friendly", "neutral", "hostile"]).optional().describe("How the NPC stood toward the player. Absent when the source did not record it, as in a converted Polestar Recorder file."),
+  positionKind: z.enum(["player", "npc", "interaction", "vignette"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC. `vignette` is the NPC's own position, as the game's vignette API gave it for a rare on the minimap."),
+  role: z.enum(NPC_ROLES).optional().describe("With `interaction`: the window that opened (`NPC_ROLES`). Absent for a gossip window that names no service and from older addons."),
   creatureType: z.enum(NPC_CREATURE_TYPES).optional().describe("The creature type the game shows, as `UnitCreatureType` reports it in English. Older addons send none."),
   rank: z.enum(NPC_RANKS).optional().describe("`UnitClassification`: normal, elite, rare, rare_elite or boss (`worldboss`). Older addons send none."),
 });
@@ -70,8 +76,15 @@ export const lootWindow = base.extend({
   sourceObjectId: z.number().int().positive().optional(),
   sourceEvidence: z.literal("loot-api").optional().describe("Legacy target guesses are withheld from public loot observations."),
   items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).max(50),
+  mapId: z.number().int().nonnegative().optional().describe("With an object source: the map the player stood on when the object was opened. Older addons send none."),
+  x: z.number().min(0).max(100).optional().describe("The player's x on that map, 0 to 100."),
+  y: z.number().min(0).max(100).optional().describe("The player's y on that map, 0 to 100."),
+  gatherKind: z.enum(GATHER_KINDS).optional().describe("How the object was opened, from the spell cast on it (`GATHER_KINDS`); `other` when the spell is not one the addon knows."),
+  sourceObjectName: z.string().min(1).max(120).optional().describe("The object's name as the game showed it. Public only when 3 installs agree on it."),
 }).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined, {
   message: RULES.loot[0],
+}).refine((r) => (r.mapId === undefined) === (r.x === undefined) && (r.x === undefined) === (r.y === undefined), {
+  message: RULES.loot[1],
 });
 
 export const questEvent = base.extend({
@@ -86,6 +99,46 @@ export const questEvent = base.extend({
   faction: z.enum(["alliance", "horde"]).optional().describe("The faction of the character that accepted it. Never the character's name."),
   suggestedGroup: z.number().int().min(2).max(40).optional().describe("The suggested group size the quest log shows; absent for a solo quest."),
   tag: z.enum(QUEST_TAGS).optional().describe("The quest tag the game reports, when it reports one."),
+});
+
+/** The instance kinds `GetInstanceInfo` reports for a dungeon (`party`) and a raid. */
+export const INSTANCE_TYPES = ["party", "raid"] as const;
+const INSTANCE_MAP_ID = z.number().int().positive().describe("The instance's map id, the 8th return of `GetInstanceInfo`: a map, not a UiMap.");
+const DIFFICULTY = z.number().int().nonnegative().max(255).optional().describe("The difficulty id `GetInstanceInfo` reports. Absent when the source did not record it.");
+
+/** Zoning into a dungeon or raid, with the last position outside it: the entrance. */
+export const instanceEntrance = base.extend({
+  kind: z.literal("instance_entrance"),
+  instanceMapId: INSTANCE_MAP_ID,
+  name: z.string().min(1).max(120).describe("The instance's name as the game showed it, in the client's language. Public only when 3 installs agree on it."),
+  instanceType: z.enum(INSTANCE_TYPES),
+  difficulty: DIFFICULTY,
+  mapId: z.number().int().nonnegative().describe("The UiMap the player stood on last before zoning in."),
+  x: z.number().min(0).max(100).describe("The player's x there, 0 to 100."),
+  y: z.number().min(0).max(100).describe("The player's y there, 0 to 100."),
+});
+
+/** A boss encounter's end, as `ENCOUNTER_END` reports it. */
+export const encounterEnd = base.extend({
+  kind: z.literal("encounter"),
+  encounterId: z.number().int().positive(),
+  name: z.string().min(1).max(120).describe("The encounter's name in the client's language. Public only when 3 installs agree on it."),
+  instanceMapId: INSTANCE_MAP_ID,
+  difficulty: DIFFICULTY,
+  size: z.number().int().min(1).max(40).optional().describe("The group size the encounter reports."),
+  success: z.boolean().describe("True for a kill, false for a wipe."),
+  npcIds: z.array(z.number().int().positive()).max(40).optional().describe("The bosses' creature ids the client listed for the encounter, or the creatures that died in it. Absent when there were none."),
+});
+
+/** A game object the game's vignette API showed on the minimap, such as a treasure chest, at its own position. */
+export const objectSighting = base.extend({
+  kind: z.literal("object_sighting"),
+  objectId: z.number().int().positive(),
+  name: z.string().min(1).max(120).describe("The object's name in the client's language. Public only when 3 installs agree on it."),
+  mapId: z.number().int().nonnegative(),
+  x: z.number().min(0).max(100).describe("The object's own x on that map, 0 to 100, from the vignette: not the player's."),
+  y: z.number().min(0).max(100).describe("The object's own y on that map, 0 to 100."),
+  instanceMapId: INSTANCE_MAP_ID.optional(),
 });
 
 export const vendorList = base.extend({
@@ -356,6 +409,7 @@ export const trainerSeen = base.extend({
   recipe: z.string().min(1).max(120),
   requiredRank: z.number().int().min(1).max(500),
   costCopper: z.number().int().nonnegative().max(2_000_000_000).optional(),
+  trainerNpcId: z.number().int().positive().optional().describe("The trainer whose window listed it. Older addons send none."),
 });
 
 export const priceSeen = base.extend({
@@ -413,6 +467,32 @@ export const mapBounds = base.extend({
 
 /** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
 export const CLIENT_BUILD = z.string().max(32).regex(/^\d+(\.\d+)+$/);
+
+// --- Addon 0.3.10: the numbers an item's tooltip shows that the game files do not hold ---
+
+/**
+ * The tooltip numbers a player can see and the game files do not give: armour, block, the weapon's damage per
+ * second, each stat and each resistance. The addon reads them with `GetItemStats` on the plain item (no enchant,
+ * no random suffix), whose keys do not depend on the client's language.
+ */
+export const ITEM_FACTS = [
+  "armor", "block", "damage_per_second",
+  "health", "mana", "agility", "strength", "intellect", "spirit", "stamina",
+  "defense_rating", "dodge_rating", "parry_rating", "block_rating", "hit_rating", "crit_rating", "haste_rating",
+  "expertise_rating", "resilience_rating", "attack_power", "mana_regeneration", "spell_power",
+  "holy_resistance", "fire_resistance", "nature_resistance", "frost_resistance", "shadow_resistance", "arcane_resistance",
+] as const;
+
+/** One number on an item's tooltip, as the player's own client showed it: anonymous, like `item_seen`. */
+export const itemFact = base.extend({
+  kind: z.literal("item_fact"),
+  itemId: z.number().int().positive(),
+  fact: z.enum(ITEM_FACTS).describe("Which tooltip line the value is (`ITEM_FACTS`)."),
+  value: z.number().min(-10_000).max(10_000).describe("The number on that line. A whole number, except damage_per_second, which has one decimal."),
+  clientBuild: CLIENT_BUILD.describe("The build of the client that showed it, from GetBuildInfo(): a patch can change an item's numbers."),
+}).refine((row) => row.fact === "damage_per_second" || Number.isInteger(row.value), {
+  message: RULES.item_fact[0],
+});
 
 // --- Addon 0.2.7: the player's own talent build, read through the game's trait API ---
 
@@ -592,6 +672,10 @@ export const recordSchemas = {
   quest: questEvent,
   vendor: vendorList,
   item_seen: itemSeen,
+  instance_entrance: instanceEntrance,
+  encounter: encounterEnd,
+  object_sighting: objectSighting,
+  item_fact: itemFact,
   guild_snapshot: guildSnapshot,
   raid_lockout: raidLockout,
   attendance,
@@ -635,6 +719,10 @@ const PUBLIC_KIND_LIST = [
   "npc_sighting", "loot", "quest", "vendor", "item_seen", "guild_snapshot", "raid_lockout", "attendance",
   "loot_award", "gear_snapshot", "collection_catalog", "collection_owned", "auction_scan", "recipe_seen",
   "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
+  // Open-world facts like npc_sighting: anonymous rows, each shown on a page only once 3 installs agree.
+  "instance_entrance", "encounter", "object_sighting",
+  // A tooltip number, anonymous like item_seen: shown on an item page only once 3 installs agree on it.
+  "item_fact",
   // The eight completion kinds are deliberately absent. Catalog rows reflect one character's visible factions
   // and quest lines under a per-install event id, so they are never served raw: pages and MCP show an entry
   // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
@@ -646,7 +734,7 @@ const PUBLIC_KIND_LIST = [
 export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
 export const anyRecord = z.discriminatedUnion("kind", [
-  npcSighting, lootWindow, questEvent, vendorList, itemSeen,
+  npcSighting, lootWindow, questEvent, vendorList, itemSeen, instanceEntrance, encounterEnd, objectSighting, itemFact,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
   collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
   achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
@@ -660,10 +748,15 @@ export type IntakeRecord = z.infer<typeof anyRecord>;
  */
 export type StoredRecord = Exclude<IntakeRecord, { kind: "census_self" | "census_seen" | "player_seen" | "character_link" }> | StoredCensusRecord;
 
+/** Where an upload's rows came from when the Everloot addon did not write them. */
+export const UPLOAD_SOURCES = ["polestar_recorder"] as const;
+export type UploadSource = (typeof UPLOAD_SOURCES)[number];
+
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export const uploadPayload = z.object({
   addonVersion: z.string().min(1).max(UPLOAD_LIMITS.addonVersionMax),
   clientBuild: CLIENT_BUILD.optional(),
   protocol: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+  source: z.enum(UPLOAD_SOURCES).optional().describe("Absent for the Everloot addon's own file. `polestar_recorder`: the rows were converted in the browser from a Polestar Recorder file, and the server assigns their install id."),
   records: z.array(z.unknown()).min(1).max(UPLOAD_LIMITS.recordsPerBatch),
 });

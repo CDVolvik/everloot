@@ -126,6 +126,13 @@ const SHOWS_ART = new Set([
   "web/src/lib/shown-item-names.ts", "web/src/app/sitemap.ts", "web/scripts/upload-item-names.mjs",
   // The same names and the quest titles for the site's own search (/search and /search/suggest), never /api/suggest.
   "web/src/lib/shown-search-names.ts",
+  // The hover card on the site's own database links, one entity per request, under the pages' rules; and the
+  // icons beside the item hits of /search and the type-ahead, for the items whose pages show them.
+  "web/src/lib/site-card.ts", "web/src/lib/item-icons.ts",
+  // The same names and quest titles for the entity tokens on a wiki page.
+  "web/src/lib/wiki-names.ts",
+  // The coverage score's expected counts (coverage-expected.json, counts only) sit beside the names in the private bucket.
+  "web/src/lib/coverage-compute.ts",
 ]);
 
 test("nothing outside the pages that show the art can read the asset URL or the manifest modules", () => {

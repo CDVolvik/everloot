@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { ago, esc, gold, kb, msg, sparkline, statusText } from "../src/renderer/format";
+import { ago, copyLabel, esc, gold, kb, msg, sparkline, statusText } from "../src/renderer/format";
 
 test("gold reads as gold, silver and copper, with the dash for unknown", () => {
   expect(gold(null)).toBe("–");
@@ -25,6 +25,13 @@ test("an IPC error shows only its reason", () => {
   expect(msg(new Error("Error invoking remote method 'restoreBackup': Error: not a backup"))).toBe("not a backup");
   expect(msg(new TypeError("TypeError: bad"))).toBe("bad");
   expect(msg("plain")).toBe("plain");
+});
+
+test("the Copy button says how the last press went on that answer only, and Copy otherwise", () => {
+  expect(copyLabel(3, null)).toBe("Copy");
+  expect(copyLabel(3, { index: 3, label: "Copied" })).toBe("Copied");
+  expect(copyLabel(3, { index: 3, label: "Copy failed" })).toBe("Copy failed");
+  expect(copyLabel(1, { index: 3, label: "Copied" })).toBe("Copy");
 });
 
 test("job status text follows the state", () => {

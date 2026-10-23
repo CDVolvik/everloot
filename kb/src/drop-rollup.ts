@@ -3,7 +3,14 @@
  * A rate is public after 3 distinct install reports. These are observed loot
  * windows, not a census of kills or independent people. The legacy `kills`
  * field names the window count for compatibility. Unobserved kills are unknown.
+ *
+ * A source under a recheck scope counts only the windows captured after the scope's date (`recheckLootRecords`).
  */
+import type { RecheckScope } from "./coverage.js";
+import { objectSightingRowsFromRecords, objectSpawnRowsFromRecords, type ObjectSpawnRow } from "./object-spawns.js";
+import { pendingLootFromRecords, type PendingLoot } from "./pending-loot.js";
+import { busiestMap, npcZones, scopeSince } from "./recheck-scopes.js";
+import { isPinPosition } from "./world-pages.js";
 
 export const INDEPENDENT_INSTALLS = 3;
 
@@ -42,7 +49,8 @@ export interface RollupResult {
 
 export type ItemNameRow = { installId: string; itemId: number; name: string };
 export type NpcPinRow = { installId: string; npcId: number; name: string; mapId: number; x: number; y: number };
-export type ItemFactRows = { rates: DropRate[]; names: ItemNameRow[]; npcs: NpcPinRow[] };
+/** Object rows that carry a name, for the agreed object names. */
+export type ItemFactRows = { rates: DropRate[]; names: ItemNameRow[]; npcs: NpcPinRow[]; objects: ObjectSpawnRow[]; pending: PendingLoot };
 
 /** Frequency among source-attributed observations; missing kills are not inferred. */
 export function rollupDrops(windows: LootRow[]): RollupResult {
@@ -147,8 +155,76 @@ export function lootWindowsFromRecords(records: unknown[]): LootRow[] {
   return windows;
 }
 
-/** Rates, names, and pins from one upload record list. Same rows the item page renders. */
-export function itemFactsFromRecords(records: unknown[]): ItemFactRows {
+const lootSource = (row: Record<string, unknown>): { key: string; id: number } | null => {
+  if (row.kind !== "loot" || row.sourceEvidence !== "loot-api") return null;
+  const id = typeof row.sourceNpcId === "number" ? row.sourceNpcId : typeof row.sourceObjectId === "number" ? row.sourceObjectId : null;
+  return id === null ? null : { key: typeof row.sourceNpcId === "number" ? `npc:${id}` : `obj:${id}`, id };
+};
+
+/**
+ * Each loot source a recheck scope covers, with the scope's date (`npc:<id>` or `obj:<id>`). A rate is the windows
+ * holding an item over the source's windows, so the cut-off is per source, never per item: a scope that names an item
+ * covers every source that dropped it. A source is placed where the coverage score places it: an NPC on the map most
+ * installs pinned it on, an object on the map most installs saw it on.
+ */
+export function lootRecheckSince(records: readonly unknown[], recheck: readonly RecheckScope[]): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!recheck.length) return out;
+  const items = new Map<string, { id: number; npc: boolean; items: Set<number> }>();
+  const npcRows: { npcId: number; mapId: number; installId: string; pin: boolean }[] = [];
+  for (const raw of records) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = raw as Record<string, unknown>;
+    if (row.kind === "npc_sighting" && typeof row.npcId === "number" && typeof row.mapId === "number" && typeof row.installId === "string") {
+      npcRows.push({ npcId: row.npcId, mapId: row.mapId, installId: row.installId, pin: isPinPosition(row.positionKind) });
+    }
+    const source = lootSource(row);
+    if (!source) continue;
+    const entry = items.get(source.key) ?? { id: source.id, npc: source.key.startsWith("npc:"), items: new Set<number>() };
+    if (Array.isArray(row.items)) for (const item of row.items as { itemId?: unknown }[]) if (typeof item?.itemId === "number") entry.items.add(item.itemId);
+    items.set(source.key, entry);
+  }
+  const npcZone = npcZones(npcRows);
+  const objectMaps = new Map<number, Map<number, Set<string>>>();
+  for (const r of [...objectSpawnRowsFromRecords(records as unknown[]), ...objectSightingRowsFromRecords(records as unknown[])]) {
+    if (typeof r.mapId !== "number") continue;
+    const maps = objectMaps.get(r.objectId) ?? new Map<number, Set<string>>();
+    maps.set(r.mapId, (maps.get(r.mapId) ?? new Set<string>()).add(r.installId.trim()));
+    objectMaps.set(r.objectId, maps);
+  }
+  for (const [key, source] of items) {
+    const zone = source.npc ? npcZone.get(source.id) ?? null : busiestMap(objectMaps.get(source.id) ?? new Map());
+    const since = scopeSince(recheck, { types: ["drops"], zones: [zone], ids: [source.id, ...source.items] });
+    if (since !== null) out.set(key, since);
+  }
+  return out;
+}
+
+/**
+ * The records with the drop rates' recheck cut-off applied: a loot-api window of a source under a recheck scope is
+ * kept only when it was captured after the scope's date, whether or not the source's rates were public before. Old
+ * windows came from a table the patch may have changed, so they would bias the new rate either way; a window without a
+ * capture time cannot be placed after the date and is left out. Every other record passes through. Without scopes the
+ * same array comes back, so a memo keyed on it still holds.
+ */
+export function recheckLootRecords(records: unknown[], recheck: readonly RecheckScope[]): unknown[] {
+  const since = lootRecheckSince(records, recheck);
+  if (!since.size) return records;
+  return records.filter((raw) => {
+    const row = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+    const source = row && lootSource(row);
+    const cut = source ? since.get(source.key) : undefined;
+    if (cut === undefined) return true;
+    const t = typeof row!.capturedAt === "string" ? Date.parse(row!.capturedAt) : NaN;
+    return Number.isFinite(t) && t > Date.parse(cut);
+  });
+}
+
+/**
+ * Rates, names, and pins from one upload record list. Same rows the item page renders. `recheck` cuts only the rates
+ * (`recheckLootRecords`); names and places from older windows still count.
+ */
+export function itemFactsFromRecords(records: unknown[], recheck: readonly RecheckScope[] = []): ItemFactRows {
   const names: ItemNameRow[] = [];
   const npcs: NpcPinRow[] = [];
   for (const raw of records) {
@@ -160,7 +236,7 @@ export function itemFactsFromRecords(records: unknown[]): ItemFactRows {
     }
     if (
       row.kind === "npc_sighting" &&
-      row.positionKind === "npc" &&
+      isPinPosition(row.positionKind) &&
       typeof row.npcId === "number" &&
       typeof row.name === "string" &&
       typeof row.mapId === "number" &&
@@ -170,5 +246,8 @@ export function itemFactsFromRecords(records: unknown[]): ItemFactRows {
       npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y });
     }
   }
-  return { rates: rollupDrops(lootWindowsFromRecords(records)).rates, names, npcs };
+  // Names from loot windows and from minimap sightings agree together: both are the name the client showed.
+  const objects = [...objectSpawnRowsFromRecords(records), ...objectSightingRowsFromRecords(records)].filter((row) => row.name !== undefined);
+  // Recorder windows are counted apart and never reach rollupDrops: lootWindowsFromRecords keeps loot-api rows only.
+  return { rates: rollupDrops(lootWindowsFromRecords(recheckLootRecords(records, recheck))).rates, names, npcs, objects, pending: pendingLootFromRecords(records) };
 }

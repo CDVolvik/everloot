@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fetchRealmPrices, readRealms, writePricesAddon, type RealmPrices } from "../../../companion/src/prices";
+import { fetchRealmPrices, readRealms, writePricesAddon, type DropRow, type DropSources, type RealmPrices } from "../../../companion/src/prices";
 import type { RealmSummary } from "../shared/types";
 
 /** The companion's cap on realms in one prices file. */
@@ -88,14 +88,77 @@ export function itemIdFrom(text: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-/** Fetches every chosen realm and rewrites the EverlootPrices slot addon. Any failure keeps the previous file. */
+/** The most drop rows the file carries (about 110 KB); past it, the sources with the most loot windows stay. */
+export const MAX_DROP_ROWS = 5000;
+/** Pages of /api/rollups/drops read in one refresh: with the data guard on, a page is 500 rates for a caller without a key. */
+export const MAX_DROP_PAGES = 10;
+/** Drop rates move slowly: they are fetched at most once a day, and the hourly price refresh carries them over. */
+export const DROPS_EVERY_MS = 24 * 3600_000;
+
+const count = (n: unknown): n is number => Number.isSafeInteger(n) && (n as number) >= 0;
+const ISO = /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/;
+
+/**
+ * The public drop rates from `GET /api/rollups/drops`, following `next` on the same site. Only rates three installs
+ * looted (the site sends no others; a row under 3 is dropped here too) with one NPC or object source and at least
+ * one loot window. Measured zeros name no item and are not carried. A failed or unreachable answer throws.
+ */
+export async function fetchDropSources(endpoint: string, send: typeof fetch = fetch, now = new Date()): Promise<DropSources> {
+  const site = new URL(endpoint).origin;
+  let url: string | null = `${site}/api/rollups/drops`;
+  const rows: DropRow[] = [];
+  let dataAsOf: string | null = null;
+  for (let page = 0; url && page < MAX_DROP_PAGES; page++) {
+    const res = await send(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) throw new Error(`drop rates: ${res.status}`);
+    const body = (await res.json()) as { unreachable?: unknown; rates?: unknown; dataAsOf?: unknown; next?: unknown };
+    if (body.unreachable !== false || !Array.isArray(body.rates)) throw new Error("drop rates: unexpected or unreachable answer");
+    if (typeof body.dataAsOf === "string" && ISO.test(body.dataAsOf)) dataAsOf = body.dataAsOf;
+    for (const raw of body.rates as Record<string, unknown>[]) {
+      const npc = raw?.sourceNpcId, object = raw?.sourceObjectId;
+      const kind = count(npc) && npc > 0 && object === undefined ? "n" : count(object) && object > 0 && npc === undefined ? "o" : null;
+      const source = (kind === "n" ? npc : object) as number;
+      if (!kind || !count(raw.itemId) || raw.itemId < 1 || !count(raw.drops) || !count(raw.kills) || !count(raw.reporters)) continue;
+      if (raw.kills < 1 || raw.drops > raw.kills || raw.reporters < 3) continue;
+      rows.push([raw.itemId, kind, source, raw.drops, raw.kills, raw.reporters]);
+    }
+    const next: unknown = body.next;
+    url = typeof next === "string" && next.startsWith(`${site}/api/rollups/drops?`) ? next : null;
+  }
+  rows.sort((a, b) => b[4] - a[4]);
+  return { dataAsOf, fetchedAt: now.toISOString(), rows: rows.slice(0, MAX_DROP_ROWS) };
+}
+
+/** The drops block of the file this app last wrote, to carry over between daily fetches; null when absent. */
+export function readDropsBlock(addonsDir: string): DropSources | null {
+  let text: string;
+  try { text = readFileSync(join(addonsDir, "EverlootPrices", "EverlootPrices.lua"), "utf8"); } catch { return null; }
+  const m = /\["drops"\] = \{ \["data"\] = "([\w,;]*)", \["sum"\] = \d+, \["dataAsOf"\] = "([^"\\]*)", \["fetchedAt"\] = "([^"\\]*)" \}/.exec(text);
+  if (!m) return null;
+  const rows = m[1] ? m[1].split(";").map((r) => {
+    const [item, kind, source, drops, kills, reporters] = r.split(",");
+    return [Number(item), kind as "n" | "o", Number(source), Number(drops), Number(kills), Number(reporters)] as DropRow;
+  }) : [];
+  return { dataAsOf: m[2] || null, fetchedAt: m[3], rows };
+}
+
+/**
+ * Fetches every chosen realm and rewrites the EverlootPrices slot addon. Any price failure keeps the previous file.
+ * Drop rates are refetched once a day; between fetches, or when the drop fetch fails, the last good block is kept.
+ */
 export async function refreshMarket(options: {
-  svFiles: string[]; followed: string[]; addonsDir: string; endpoint: string; send?: typeof fetch;
-}): Promise<{ realms: RealmSummary[]; items: number }> {
+  svFiles: string[]; followed: string[]; addonsDir: string; endpoint: string; send?: typeof fetch; now?: Date;
+}): Promise<{ realms: RealmSummary[]; items: number; drops: number }> {
+  const now = options.now ?? new Date();
   const chosen = mergeRealms(ownRealms(options.svFiles), options.followed);
   // Independent GETs to the same site; together they take one round trip, not one per realm (at most 20).
   const fetched: RealmPrices[] = await Promise.all(chosen.map(({ realm }) => fetchRealmPrices(options.endpoint, realm, options.send)));
   const summaries: RealmSummary[] = fetched.map((prices, i) => ({ realm: prices.realm, items: prices.items.length, dataAsOf: prices.dataAsOf, source: chosen[i].source }));
-  writePricesAddon(options.addonsDir, fetched);
-  return { realms: summaries, items: summaries.reduce((n, r) => n + r.items, 0) };
+  let drops = readDropsBlock(options.addonsDir);
+  const age = drops ? now.getTime() - Date.parse(drops.fetchedAt) : Infinity;
+  if (!(age >= 0 && age < DROPS_EVERY_MS)) {
+    try { drops = await fetchDropSources(options.endpoint, options.send, now); } catch { /* keep the last good block, or none */ }
+  }
+  writePricesAddon(options.addonsDir, fetched, drops ?? undefined);
+  return { realms: summaries, items: summaries.reduce((n, r) => n + r.items, 0), drops: drops?.rows.length ?? 0 };
 }

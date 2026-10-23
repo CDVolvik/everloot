@@ -7,9 +7,9 @@ companion, and adds auction prices to item tooltips. It uses only the game's add
 plays the character. Records match the upload contract (`packages/protocol`, see its `schema/records/`) field for
 field.
 
-**Status:** 0.3.7 beta. The automated contract tests pass; the in-client checks in
-`docs/2026-10-08-beta-client-checklist.md`, `docs/2026-10-18-addon-0.3.2-beta-checklist.md` and
-`docs/2026-10-19-addon-0.3.3-beta-checklist.md` are still open, and the full scan
+**Status:** 0.3.10 beta. The automated contract tests pass; the in-client checks in
+`docs/2026-10-08-beta-client-checklist.md`, `docs/2026-10-18-addon-0.3.2-beta-checklist.md`,
+`docs/2026-10-19-addon-0.3.3-beta-checklist.md` and `docs/2026-10-21-addon-0.3.10-launch-checklist.md` are still open, and the full scan
 (`docs/design/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
 
 ## Run it
@@ -31,6 +31,10 @@ its preview. `/everloot addons off` stops it and deletes every recorded addon ro
 
 A scan that gets no answer from the auction house in 30 seconds stops and gives the cooldown back.
 Tooltip prices show the date the companion last fetched them and flag them as stale after two days.
+Below the prices, the tooltip shows where the item drops when three installs looted the source: each rate as
+drops of loot windows, with its installs and the date of the uploads behind it, from the drop rates the Desktop
+App writes into the same `EverlootPrices` file. Once that file is in the game, a missing price or drop source is
+said in one grey line; nothing is written to your SavedVariables. `addon/tests/drops_contract.py` holds the rules.
 Nothing in the addon calls a buy, bid or post API; `addon/tests/market_contract.py` traps them.
 
 Each scan records your faction (`faction`) and which house it read (`house`): Alliance or Horde from the
@@ -47,9 +51,32 @@ button and `/everloot scan` still work). With scans off, the first visit prints 
 
 When you target an NPC the addon also notes its creature type and rank, and when you accept a quest it
 records the quest's title, level, quest log header (category), suggested group size, tag, giver and your
-faction (Alliance or Horde, no name). The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
+faction (Alliance or Horde, no name).
+
+For the world map, an NPC window (merchant, gossip, quest, trainer, flight map, bank, auction house, stable,
+innkeeper) records where you stand as that NPC's place (`positionKind = "interaction"`) with a `role` for the
+service, once per NPC, role and zone. Targeting still records `positionKind = "player"`, which never becomes a
+pin. Looting an object adds where you stand (`mapId`, `x`, `y`), a `gatherKind` (herb, ore, chest, fishing,
+other) from the spell you cast just before (`UNIT_SPELLCAST_SENT`) and the object's name from that cast's
+target (`sourceObjectName`). Trainer rows carry `trainerNpcId`. Targeting rows are kept once per NPC, zone and
+spot (rounded to 1 on the 0..100 scale). Window rows and object loot rows each have their own 2,000-row cap,
+apart from targeting rows and creature loot, so `/everloot status` can show `npc_sighting (targeting)` paused
+while windows still record. A rare or a treasure the minimap shows (`C_VignetteInfo`) is recorded at its own
+position, as the vignette API gives it: a creature as an `npc_sighting` with `positionKind = "vignette"` (its own
+share and cap), a game object as an `object_sighting`, once per vignette, zone and spot. Zoning into a dungeon or
+raid records an `instance_entrance`: the instance from `GetInstanceInfo` and where you stood outdoors when the
+loading screen started (`PLAYER_LEAVING_WORLD`), once per instance and zone; a dungeon finder teleport records
+none. A boss fight's end inside one (`ENCOUNTER_END`) records an `encounter`: kill or wipe, difficulty, group size
+and the bosses' creature ids when the client sends them. None of these has run in the Forever client yet. The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
 have not been tried in the Forever client; a call that is missing or returns something unexpected records
 nothing for that field. The site shows each value only after 3 installs agree.
+
+When the game shows you an item's tooltip, `modules/itemfacts.lua` records the numbers the game files do not
+hold: armor, block, damage per second, each stat and each resistance, one `item_fact` row per line with the item
+id, the number and the client build. It reads them with `GetItemStats` on the plain item from `GetItemInfo`, so
+an enchant or a random suffix on your copy never counts, and a tooltip whose GUID is not an item's records
+nothing. Each item is read once per client build; an item with no numbers is read once per session and not kept.
+It follows the open-world toggle and shares the 2,000-row cap. Not yet run in the Forever client.
 
 ## Gold per hour
 
@@ -214,6 +241,8 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python -m pip install lupa==2.6
     python addon/tests/event_identity.py
     python addon/tests/collection_contract.py
+    python addon/tests/map_positions_contract.py
+    python addon/tests/item_facts_contract.py
     python addon/tests/auction_contract.py
     python addon/tests/auction_tab_contract.py
     python addon/tests/options_contract.py
@@ -245,7 +274,8 @@ addon/
 ├── Everloot.toc        Interface 16001 (Forever 1.60.1), SavedVariables: EverlootDB
 ├── core.lua            event dispatch, module registry, toggles, rolling store, /everloot
 ├── modules/
-│   ├── openworld.lua   target/mouseover sightings, loot windows, merchant windows
+│   ├── openworld.lua   target/mouseover sightings, NPC window places, loot windows, merchant windows
+│   ├── itemfacts.lua   armor, stats and resistances from the item tooltips you see, once per item and build
 │   ├── guild.lua       roster, attendance, saved lockouts (published only through an officer)
 │   ├── gear.lua        equipped item level sample, at most once an hour
 │   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; on in a new install
@@ -263,6 +293,7 @@ addon/
 │   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json
 │   ├── raid.lua        /everloot raid: buffs missing per group, and a raid share code; display only
 │   ├── prices.lua      item tooltips: your latest scan and the companion's community prices
+│   ├── drops.lua       item tooltips: where an item drops, from the public rates in the same file
 │   └── gph.lua         gold per hour sessions, kept in your file only
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```

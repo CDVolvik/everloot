@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { asOfLine, EVIDENCE_KEY, entitySummary, evidenceLine, itemSummary, observedLine, sameAnnouncement, type ItemSummaryInput } from "./evidence";
+import { asOfLine, EVIDENCE_KEY, entitySummary, evidenceLine, itemSummary, observedLine, type ItemSummaryInput } from "./evidence";
 import type { Edge } from "../../../kb/src/edges";
 
 const NOW = Date.parse("2026-10-20T12:00:00.000Z");
@@ -120,15 +120,5 @@ describe("when the numbers were current", () => {
 
   test("says nothing when the moment cannot be read", () => {
     expect(asOfLine("not a date", NOW)).toBeNull();
-  });
-});
-describe("two wordings of one announcement", () => {
-  test("the day said two ways is the same announcement", () => {
-    expect(sameAnnouncement("Heads Up -- Stress Test on 21 October", "Heads Up -- Stress Test on October 21")).toBe(true);
-  });
-
-  test("different announcements are not the same", () => {
-    expect(sameAnnouncement("Stress Test on 21 October", "Stress Test on 22 October")).toBe(false);
-    expect(sameAnnouncement("Good News, Everyone!", "Heads Up -- Stress Test")).toBe(false);
   });
 });

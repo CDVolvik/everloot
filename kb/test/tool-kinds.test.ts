@@ -2,14 +2,14 @@ import { expect, test, vi } from "vitest";
 import { answerSourcesFactsFromRecords } from "../src/answer-sources.js";
 import { auctionSightingsFromRecords } from "../src/auction-history.js";
 import { collectionFactsFromRecords } from "../src/collection-gap.js";
-import { itemFactsFromRecords } from "../src/drop-rollup.js";
+import { itemToolFactsFromRecords } from "../src/item-page-tool.js";
 import { observedEdgesFromRecords } from "../src/edges.js";
 import { objectFactsFromRecords } from "../src/object-page.js";
 import { goldFactsFromRecords } from "../src/gold-ledger.js";
 import { guildFactsFromRecords } from "../src/guild-board.js";
 import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
 import { pathFactsFromRecords, recipeFactsFromRecords } from "../src/recipe-thresholds.js";
-import { worldFactsFromRecords } from "../src/world-pages.js";
+import { npcFactsFromRecords, worldFactsFromRecords } from "../src/world-pages.js";
 import { mapFactsFromRecords } from "../src/world-map-near.js";
 import { ALL_RECORD_KINDS, CENSUS_KINDS, COMPLETION_KINDS, LINK_KINDS, PLAYER_KINDS, parseRecords } from "@everloot/protocol";
 import { MCP_CREDIT } from "@everloot/protocol";
@@ -39,6 +39,13 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:18", kind: "recipe_observed", profession: "Alchemy", rank: 60, recipe: "Lesser Healing Potion", difficulty: "optimal", reagents: [] },
   { ...base, eventId: "e:19", kind: "trainer_seen", profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 55, costCopper: 250 },
   { ...base, eventId: "e:20", kind: "addon_seen", name: "Questie", title: "Questie", version: "9.5.1", loaded: true },
+  // A Polestar Recorder loot window: counted as pending, never in the rates.
+  { ...base, installId: "ps-1111111111111111-2222222222222222", eventId: "e:36", kind: "loot", sourceNpcId: 42, items: [{ itemId: 5, count: 1 }] },
+  { ...base, eventId: "e:37", kind: "instance_entrance", instanceMapId: 36, name: "Deadmines", instanceType: "party", mapId: 1436, x: 42, y: 71 },
+  { ...base, eventId: "e:38", kind: "encounter", encounterId: 1144, name: "Edwin VanCleef", instanceMapId: 36, success: true, npcIds: [639] },
+  { ...base, eventId: "e:39", kind: "object_sighting", objectId: 2843, name: "Battered Chest", mapId: 1436, x: 30, y: 50 },
+  // Read by item_page as well as the site's item pages; the tool input stays frozen.
+  { ...base, eventId: "e:40", kind: "item_fact", itemId: 5, fact: "stamina", value: 3, clientBuild: "1.60.1.70450" },
   { ...base, eventId: "e:21", kind: "map_bounds", mapId: 1429, continentId: 0, left: 1535.4, top: -7939.6, right: -1599.6, bottom: -10254.2 },
   // Read by the completion rollup (kb/src/completion-rollup.ts), never by a corpus tool.
   { ...base, eventId: "e:24", kind: "achievement_catalog", achievementId: 11, name: "Explorer", categoryId: 3, category: "Exploration", points: 10, criteriaCount: 1, criteria: [{ text: "Elwynn Forest", required: 1 }] },
@@ -65,8 +72,8 @@ const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = 
   answer_sources: answerSourcesFactsFromRecords,
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
-  item_page: itemFactsFromRecords,
-  npc_page: worldFactsFromRecords,
+  item_page: itemToolFactsFromRecords,
+  npc_page: npcFactsFromRecords,
   object_page: objectFactsFromRecords,
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,

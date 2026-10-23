@@ -50,6 +50,8 @@ export interface ChangeEntry {
   postNumber?: number;
   /** True when this post opened the thread, false for a reply. */
   startedThread?: boolean;
+  /** The other copies of the same announcement (the other region's forum, or a repeat thread); see groupAnnouncements. */
+  copies?: ChangeEntry[];
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -127,6 +129,55 @@ export function buildTimeline(posts: unknown[], builds: unknown[]): ChangeEntry[
     });
   }
   return [...fromPosts, ...fromBuilds].sort((a, b) => b.at.localeCompare(a.at) || a.id.localeCompare(b.id));
+}
+
+const DAY_MONTH = /\b(\d{1,2}) (January|February|March|April|May|June|July|August|September|October|November|December)\b/g;
+/** A title or excerpt with the day written one way ("21 October" reads "October 21"), spaces and case evened out. */
+const announcementText = (s: string) => s.replace(DAY_MONTH, "$2 $1").replace(/\s+/g, " ").trim().toLowerCase();
+
+/**
+ * Two titles that say the same thing: the same announcement can be worded "on 21 October" in one
+ * region and "on October 21" in another, and a list that shows both reads as a repetition.
+ */
+export function sameAnnouncement(a: string, b: string): boolean {
+  return announcementText(a) === announcementText(b);
+}
+
+/** US first, then the earliest, then by id: which copy of an announcement the timeline shows. */
+const primaryFirst = (a: ChangeEntry, b: ChangeEntry) =>
+  Number((a.region ?? "us") !== "us") - Number((b.region ?? "us") !== "us") || a.at.localeCompare(b.at) || a.id.localeCompare(b.id);
+const threadOf = (e: ChangeEntry) => (e.topicId === undefined ? e.id : `${e.region ?? "us"}:${e.topicId}`);
+
+/**
+ * One entry per announcement. Blizzard posts the same news on the US and the EU forum, sometimes twice on
+ * one forum, with the day worded per region. Forum posts of the same game and type, posted the same day
+ * (UTC) under the same title, in different threads, are one announcement; a reply also needs the same
+ * excerpt, since every reply in a thread carries the thread's title. The US copy, else the earliest, is
+ * the entry; the rest are its `copies`. Bluesky posts and builds pass through.
+ */
+export function groupAnnouncements(entries: ChangeEntry[]): ChangeEntry[] {
+  const groups = new Map<string, ChangeEntry[][]>();
+  const out: ChangeEntry[] = [];
+  for (const e of [...entries].sort(primaryFirst)) {
+    if (e.source !== "forum" || e.type === "build") {
+      out.push(e);
+      continue;
+    }
+    const key = `${e.game}|${e.type}|${e.at.slice(0, 10)}|${announcementText(e.title)}`;
+    const candidates = groups.get(key) ?? [];
+    const group = candidates.find((g) => g.every((c) => threadOf(c) !== threadOf(e))
+      && ((g[0].startedThread !== false && e.startedThread !== false) || sameAnnouncement(g[0].excerpt ?? "", e.excerpt ?? "")));
+    if (group) group.push(e);
+    else groups.set(key, [...candidates, [e]]);
+  }
+  for (const [primary, ...copies] of [...groups.values()].flat()) out.push(copies.length ? { ...primary, copies } : primary);
+  return out.sort((a, b) => b.at.localeCompare(a.at) || a.id.localeCompare(b.id));
+}
+
+/** The forums an announcement was posted on, US first; empty for Bluesky and builds. */
+export function forumRegions(e: ChangeEntry): BlueRegion[] {
+  const posted = [e, ...(e.copies ?? [])].filter((c) => c.source === "forum").map((c) => c.region ?? "us");
+  return (["us", "eu"] as const).filter((r) => posted.includes(r));
 }
 
 const FILTER_TYPES: Record<Exclude<ChangeFilter, "all">, ChangeType[]> = {

@@ -13,7 +13,7 @@ vi.mock("@/lib/rollup-compute", () => ({
   computeRollups: async () => ({ rates: [], measuredZeros: [], stats: mocks.stats }),
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
 }));
-vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "unreachable", uploadStore: { loadCompletion: async () => ({ state: null, dataAsOf: null, unreachable: true }), loadCorpus: async () => ({ records: [], unreachable: false, dataAsOf: "2026-10-17T00:00:00.000Z" }) } }));
+vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "unreachable", uploadStore: { loadCompletion: async () => ({ state: null, dataAsOf: null, unreachable: true }), loadCorpus: async () => ({ records: [], unreachable: false, dataAsOf: "2026-10-17T00:00:00.000Z" }), loadMarket: async () => ({ state: null, dataAsOf: null, unreachable: false }) } }));
 vi.mock("@/lib/release", () => ({ getRelease: () => null }));
 
 const mocks = vi.hoisted(() => ({ path: "/", stats: { uploads: 0, lootWindows: 0, unreachable: false, dataAsOf: "2026-10-17T18:20:27.999Z" } as Record<string, unknown> }));
@@ -92,6 +92,40 @@ test("the raid page lists the talent-gated buffs from the raid data and its JSON
   expect(visible(html)).toContain("Which raid buffs need a talent?");
   expect(visible(html)).toContain("Trueshot Aura");
   expect(visible(html)).toContain("Hunter, Marksmanship tree");
+});
+
+test.each([
+  ["/tools/professions", () => import("./tools/professions/page")],
+  ["/tools/guild-board", () => import("./tools/guild-board/page")],
+  ["/tools/collections", () => import("./tools/collections/page")],
+  ["/tools/gold-ledger", () => import("./tools/gold-ledger/page")],
+])("%s carries WebApplication named by its H1 and described by its visible lead line", async (path, load) => {
+  const { default: Page } = await load();
+  const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
+  const [app] = blocks(html);
+  expect(app["@type"]).toBe("WebApplication");
+  expect(app.name).toBe(h1(html));
+  expect(app.url).toBe(`https://everloot.app${path}`);
+  expect(visible(html)).toContain(app.description);
+  // Only what the page shows: no rating, price or user count.
+  for (const key of ["aggregateRating", "offers", "interactionStatistic"]) expect(app).not.toHaveProperty(key);
+});
+
+test("/tools/auctions carries WebApplication named by its H1; with no lead line, its meta description describes it", async () => {
+  const { default: Page, metadata } = await import("./tools/auctions/page");
+  const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
+  const [app] = blocks(html);
+  expect(app["@type"]).toBe("WebApplication");
+  expect(app.name).toBe(h1(html));
+  expect(app.url).toBe("https://everloot.app/tools/auctions");
+  expect(app.description).toBe(metadata.description);
+});
+
+test("the profession hub's H1 names WoW Forever and is its title", async () => {
+  const { default: Page, metadata } = await import("./tools/professions/page");
+  const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
+  expect(h1(html)).toBe("WoW Forever Profession Hubs");
+  expect(metadata.title).toBe(h1(html));
 });
 
 test("/changes opens with the latest build and its ItemList items are the entries shown", async () => {

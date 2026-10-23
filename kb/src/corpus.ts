@@ -1,4 +1,5 @@
 import { CENSUS_KINDS, COMPLETION_KINDS, parseRecords, type IntakeRecord } from "@everloot/protocol";
+import { foldRecorderInstalls } from "./recorder-installs.js";
 
 export interface CorpusEvent { record: IntakeRecord; grants: string[] }
 export interface CorpusState {
@@ -20,6 +21,16 @@ export function namedRecord(row: IntakeRecord): boolean {
 export function canonicalJson(value: unknown): string {
   return JSON.stringify(value, (_, v) => v && typeof v === "object" && !Array.isArray(v)
     ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, v[k]])) : v);
+}
+
+/**
+ * True when `rich` is `poor` plus fields `poor` lacks, every shared field equal. An uploader built on an older
+ * protocol drops the fields it does not know; the same event sent later with them is the same event, not a conflict.
+ */
+function addsFieldsOnly(rich: IntakeRecord, poor: IntakeRecord): boolean {
+  const r = rich as Record<string, unknown>;
+  const p = poor as Record<string, unknown>;
+  return Object.keys(p).every((k) => k in r && canonicalJson(r[k]) === canonicalJson(p[k]));
 }
 
 /** No time/hash backfill for legacy observations: it could merge legitimate events. */
@@ -45,11 +56,16 @@ export function mergeCorpus(previous: CorpusState | undefined, raw: readonly unk
     const key = eventKey(row);
     if (conflicts.has(key)) continue;
     const old = events.get(key);
-    if (old && canonicalJson(old.record) !== canonicalJson(row)) {
+    const grants = [...new Set([...(old?.grants ?? []), ...grantIds])].sort();
+    if (!old || canonicalJson(old.record) === canonicalJson(row) || addsFieldsOnly(row, old.record)) {
+      // New, the same, or the same event with fields an older uploader dropped: keep the fuller copy.
+      events.set(key, { record: row, grants });
+    } else if (addsFieldsOnly(old.record, row)) {
+      // An older uploader's copy arriving after the fuller one: keep the fuller one.
+      events.set(key, { record: old.record, grants });
+    } else {
       events.delete(key);
       conflicts.add(key);
-    } else {
-      events.set(key, { record: row, grants: [...new Set([...(old?.grants ?? []), ...grantIds])].sort() });
     }
   }
   return {
@@ -85,13 +101,16 @@ export function mergeCorpusBatches(
   return key === null ? state ?? mergeCorpus(undefined, []) : mergeCorpus(state, raw, grants);
 }
 
-/** Named publication is evaluated against CURRENT authority, never a cached assertion. */
+/**
+ * Named publication is evaluated against CURRENT authority, never a cached assertion. Polestar Recorder install ids
+ * are folded into one voter per player (recorder-installs.ts) here, so every reader counts them the same way.
+ */
 export function publicRecords(state: CorpusState,
   authorize?: (row: IntakeRecord, grants: string[]) => IntakeRecord | null,
 ): IntakeRecord[] {
-  return state.events.flatMap(({ record, grants }) => {
+  return foldRecorderInstalls(state.events.flatMap(({ record, grants }) => {
     if (!namedRecord(record)) return [record];
     const allowed = authorize?.(record, grants);
     return allowed ? [allowed] : [];
-  });
+  }));
 }

@@ -107,13 +107,15 @@ export default function PrivacyPage() {
                 Battle.net above.
               </li>
               <li>
-                <strong>API keys (optional):</strong> if you make a free API key on the
-                Connect page, we store a one-way hash of it, the last four characters,
-                your label, which account it belongs to, when it was made, last used
-                and revoked, and a daily count of its requests per endpoint. Not what
-                was asked. Revoking a key stops it at once. Daily counts are kept {USAGE_KEPT_DAYS}{" "}
-                days. A revoked key and its counts are deleted {REVOKED_KEPT_DAYS} days after it was
-                revoked, or at once when you delete it on the Connect page. To delete
+                <strong>API keys (optional):</strong> if you make a free API key on your
+                account page, we store a one-way hash of it, the last four characters,
+                its name, what you say it is for, its permissions, which account it
+                belongs to, when it was made, when it expires, when it was last used and
+                revoked, and a daily count of its requests per endpoint. Not what was
+                asked. Revoking a key stops it at once, and so does its end date. Daily
+                counts are kept {USAGE_KEPT_DAYS} days. A revoked key and its counts are deleted{" "}
+                {REVOKED_KEPT_DAYS} days after it was revoked, or at once when you delete it on your
+                account page. To delete
                 your account and everything tied to it, email us (below).
               </li>
               <li id="saved-builds">
@@ -143,7 +145,8 @@ export default function PrivacyPage() {
                 <strong>Uploads:</strong> files you send on the upload page
                 (addon records plus a random install id — no account, no character
                 login). Your anonymous observations are published as individual
-                records without the install id, so anyone can check our counts. The
+                records without the install id, each with a per-install pseudonym (a keyed
+                hash that cannot be turned back into the id), so anyone can check our counts. The
                 facts the site states, such as drop rates, spawn points and recipe
                 ranges, appear only after at least three installs report them.
                 Install IDs are not proof of independent people. An upload that contains a scan is stored with a keyed
@@ -152,7 +155,11 @@ export default function PrivacyPage() {
                 which address hash and install produced each entry until it is rebuilt. Guild data publishes only through an authorized officer upload. A
                 character owner with a verified sharing grant can opt out on the upload
                 page; anyone else can ask us by email (below). Uploads build the public database; we never
-                sell them. Player rows are not part of the public records.
+                sell them. Player rows are not part of the public records. A Polestar Recorder file you choose
+                is converted in your browser into NPC positions, quests, loot, dungeon entrances, boss encounters and treasures; its character names, realms,
+                session names and notes are not sent. Its install id is made by our server from a keyed hash of
+                the character and one of the address the upload came from, and the upload keeps a keyed hash of
+                the address like a scan does. Neither is published.
               </li>
               <li>
                 <strong>Census (optional):</strong> on in a new install of the addon,
@@ -180,7 +187,9 @@ export default function PrivacyPage() {
                 realm, race, class, level and guild of your own characters, and of players you
                 target, mouse over or group with, and the day it saw them. It never records where a
                 player is, what they wear or what they do. You send these rows only from the upload
-                page, after a preview. We keep one row per character, the newest, and show it on a
+                page, after a preview, or from the Everloot Desktop App if you turn on{" "}
+                <em>Send the player pages with the uploads</em> in its settings. We keep one row per
+                character, the newest, and show it on a
                 public page you can find by searching for the name. The row says nothing about who
                 reported it, and we delete it 90 days after the character was last seen. The players
                 it names have not been asked. Anyone can have a character hidden, without an

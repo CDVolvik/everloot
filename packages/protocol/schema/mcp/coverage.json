@@ -1,0 +1,40 @@
+{
+  "$id": "https://everloot.app/schema/mcp/coverage.json",
+  "title": "Database coverage by zone, type and field",
+  "description": "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field, plus scoped totals and the current build's whole-fact settled-list size, separately dated and measured. Coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). Confirmed includes settled. Reported fields needing one or two more installs are counted without their values. A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "zone": {
+        "description": "Released UiMap zone id, such as 1429 for Elwynn Forest. Omit for all released zones.",
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991
+      },
+      "type": {
+        "description": "Coverage type. Omit for all types.",
+        "type": "string",
+        "enum": [
+          "quests",
+          "npcs",
+          "pins",
+          "vendors",
+          "drops",
+          "rares",
+          "entrances",
+          "bosses",
+          "treasures"
+        ]
+      }
+    }
+  },
+  "x-everloot-output": {
+    "type": "text",
+    "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"
+  }
+}

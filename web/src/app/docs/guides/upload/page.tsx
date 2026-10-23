@@ -89,9 +89,24 @@ export default function Page() {
       <P>
         The <Link href="/docs/guides/desktop" className={docLink}>Desktop App</Link> finds your save files, then uploads
         after every logout or <C>/reload</C>. It sends anonymous open-world events, and census rows if you allowed the
-        census on its setup screen or in its settings. It never sends named data (guild, gear, gold, collection), player
-        rows or the installed addon list. Those stay on your computer, so if you want to share them, use the upload page.
+        census on its setup screen or in its settings. It never sends named data (guild, gear, gold, collection) or the
+        installed addon list. Those stay on your computer, so if you want to share them, use the upload page. Player rows
+        stay there as well, unless you turn on <em>Send the player pages with the uploads</em> in the app&apos;s settings.
       </P>
+
+      <H2 id="recorder">Upload a Polestar Recorder file</H2>
+      <P>
+        You can send a recording without installing Everloot&apos;s addon. If you play with the{" "}
+        <a href="https://github.com/fitzforge/polestar" rel="noopener" className={docLink}>Polestar Recorder</a>, choose its{" "}
+        <C>Polestar_Recorder.lua</C> on the <Link href="/upload" className={docLink}>upload page</Link>, the same way as{" "}
+        <C>Everloot.lua</C>. You need no account.
+      </P>
+      <List>
+        <li>Your browser converts the file, one session at a time, and the preview shows what it found. Nothing is sent before you press Send.</li>
+        <li>What goes out is NPC positions, quests, loot, dungeon entrances, boss encounters and treasures. Character names, realms, session names and notes typed in game stay on your computer.</li>
+        <li>It is a report, not a fact. A fact from a Recorder file is shown only when three different characters, uploading from three different addresses, report it. Your own alts, or two uploads from one connection, count as one reporter.</li>
+        <li>Loot windows from a Recorder file are counted and kept out of the drop rates, because the file does not say what the loot came from. The pages say how many were reported and are not in the rates yet.</li>
+      </List>
 
       <H2 id="get-a-grant">Get a sharing grant</H2>
       <P>
@@ -119,7 +134,7 @@ export default function Page() {
       <H2 id="after">What happens next</H2>
       <P>
         Your anonymous observations are published as individual records, without character names and without the
-        addon&apos;s install id. A fact such as a drop rate, a spawn point or a vendor price appears on the site only after
+        addon&apos;s install id; a per-install pseudonym takes its place, so installs can be counted. A fact such as a drop rate, a spawn point or a vendor price appears on the site only after
         3 installs have reported it. Until then it waits. Names appear only in named records you share with a grant, on
         guild boards a guild&apos;s officers publish, and on{" "}
         <Link href="/docs/guides/privacy#player-pages" className={docLink}>player pages</Link>.

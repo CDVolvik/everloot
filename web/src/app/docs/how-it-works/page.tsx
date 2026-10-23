@@ -39,8 +39,8 @@ export default function Page() {
         computer. See <Link href="/docs/guides/upload" className={docLink}>Upload your data</Link>.
       </P>
       <P>
-        Uploaded observations are public as anonymous records, with no character names and without your install id, so anyone
-        can check our counts. Names appear only in named records their owner shares (gear, gold, collection), on guild boards
+        Uploaded observations are public as anonymous records, with no character names and without your install id. Each
+        carries a per-install pseudonym instead, a keyed hash that cannot be turned back into the id, so anyone can check our counts. Names appear only in named records their owner shares (gear, gold, collection), on guild boards
         a guild&apos;s officers publish, and on player pages. What is published, what is never published, and why, is on{" "}
         <Link href="/docs/guides/privacy" className={docLink}>Privacy and your data</Link>.
       </P>

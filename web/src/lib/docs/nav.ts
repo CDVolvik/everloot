@@ -54,7 +54,7 @@ export function routeFromSlug(slug: string): ApiRoute | undefined {
 
 /** Endpoints by what they are for, in the protocol's order inside each group. */
 const ENDPOINT_GROUPS: { title: string; icon: DocsIcon; paths: string[] }[] = [
-  { title: "Player data", icon: "database", paths: ["/api/corpus/public", "/api/rollups/drops", "/api/market/prices"] },
+  { title: "Player data", icon: "database", paths: ["/api/corpus/public", "/api/rollups/drops", "/api/coverage/settled", "/api/market/prices"] },
   { title: "Game data", icon: "box", paths: ["/api/items", "/api/items/categories", "/api/edges", "/api/edges/client-layer"] },
   { title: "Tools and cards", icon: "spark", paths: ["/api/tools/{tool}", "/api/tooltip/{type}/{id}"] },
   { title: "Uploads and status", icon: "upload", paths: ["/api/intake", "/api/health"] },
@@ -66,7 +66,7 @@ const TOOL_GROUPS: { title: string; icon: DocsIcon; names: McpToolName[] }[] = [
   { title: "Database", icon: "database", names: ["item_page", "npc_page", "object_page", "quest_page", "vendor_page", "entity_relations", "item_categories", "world_map_near"] },
   { title: "Planning", icon: "compass", names: ["talent_tree", "talent_plan", "profession_path", "recipe_thresholds"] },
   { title: "Market and characters", icon: "chart", names: ["market_value", "auction_history", "gold_ledger", "collection_gap", "completion_progress", "guild_board"] },
-  { title: "World and project", icon: "home", names: ["population", "recent_changes", "ecosystem_projects", "everloot_plan"] },
+  { title: "World and project", icon: "home", names: ["coverage", "population", "recent_changes", "ecosystem_projects", "everloot_plan"] },
 ];
 
 function endpointPages(paths: string[]): DocsPage[] {

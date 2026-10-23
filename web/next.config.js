@@ -1,4 +1,5 @@
 const path = require("node:path");
+const versions = require("./src/data/build-versions.json");
 
 const reportOnlyCsp = [
   "default-src 'self'",
@@ -48,6 +49,11 @@ const nextConfig = {
     "/lore/[slug]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/search": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    // The wiki's pages are read from kb/wiki when a page is rebuilt (the key covers /wiki and /wiki/[slug]).
+    "/wiki": ["../kb/wiki/*.md", "../kb/wiki/categories.yaml"],
+    // The sitemap lists the wiki pages too, so it reads them from kb/wiki on every request. Without the
+    // folder in its own bundle the route answers 500 and the site has no sitemap at all.
+    "/sitemap.xml": ["../kb/wiki/*.md", "../kb/wiki/categories.yaml"],
     "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     // The build-link previews draw their card on each request, so they read the Geist fonts at run time.
@@ -56,8 +62,19 @@ const nextConfig = {
   },
   // /lore/[slug] already owns one dynamic segment under /lore, so the browse pages live at
   // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.
+  // A game version's prefix (src/data/build-versions.json, read by lib/build-versions.ts): the served version's
+  // prefix shows the same pages, whose canonical stays the unprefixed URL; any other version's prefix shows
+  // the page saying the site holds no snapshot of it, never another version's data. Once a rewrite lands on a
+  // route, dynamic ones included, Next stops there: /beta/lore/npcs rewritten to /lore/npcs would be /lore/[slug].
+  // So each of the site's own rewrites gets a copy under the served prefix, ahead of the prefix's catch-all.
   async rewrites() {
-    return [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
+    const own = [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
+    return [
+      ...Object.entries(versions.prefixes).flatMap(([id, prefix]) => id === versions.served
+        ? [...own.map((r) => ({ source: `${prefix}${r.source}`, destination: r.destination })), { source: prefix, destination: "/" }, { source: `${prefix}/:path+`, destination: "/:path+" }]
+        : [{ source: prefix, destination: `/game-version/${id}` }, { source: `${prefix}/:path+`, destination: `/game-version/${id}` }]),
+      ...own,
+    ];
   },
   // One page, one URL: the internal route name is never a second address. Redirects match the
   // original URL, so this does not loop with the rewrite above. The source is constrained to the
@@ -76,6 +93,8 @@ const nextConfig = {
       { source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 },
       // The developer page became the docs; docs/page.tsx sends its old #anchors on to the matching page.
       { source: "/connect", destination: "/docs", permanent: true },
+      // The notice for a version without a snapshot lives at its prefix, not at its internal route.
+      { source: `/game-version/:id(${Object.keys(versions.prefixes).join("|")})`, destination: "/:id", permanent: true },
     ];
   },
   // Security headers on every route. The full CSP is report-only: it lists what the site loads (the analytics
@@ -84,8 +103,19 @@ const nextConfig = {
   // here: the `*` seen on pages is added by Vercel for prerendered responses, and a header set here could not
   // remove it.
   async headers() {
+    const databaseItemsCdnHeaders = [
+      { key: "Vercel-CDN-Cache-Control", value: "max-age=3600, stale-while-revalidate=86400" },
+      { key: "CDN-Cache-Control", value: "max-age=3600, stale-while-revalidate=86400" },
+    ];
     return [
       { source: "/:path*", headers: securityHeaders },
+      // These pages read no cookies, so the CDN can serve them. Next overwrites Cache-Control on
+      // dynamic pages, so the CDN-specific headers are used.
+      { source: "/database/items", headers: databaseItemsCdnHeaders },
+      { source: "/database/items/:path*", headers: databaseItemsCdnHeaders },
+      // Zone and instance pages read no cookies either, and each one renders from the whole corpus on every request.
+      { source: "/database/zones/:path*", headers: databaseItemsCdnHeaders },
+      { source: "/database/instances/:path*", headers: databaseItemsCdnHeaders },
       // The embeddable tooltip script other sites load: an hour in browsers and at the CDN, so a fix reaches them quickly.
       { source: "/tooltips.js", headers: [
         { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },

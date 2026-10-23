@@ -1,4 +1,6 @@
 import { expect, test } from "vitest";
+import { itemFactsFromRecords } from "../src/drop-rollup.js";
+import { itemPage } from "../src/item-page.js";
 import { handleObjectPage, objectFactsFromRecords, objectList, objectPage } from "../src/object-page.js";
 
 const loot = (installId: string, objectId: number, items: number[], n = 0) => ({
@@ -44,8 +46,22 @@ test("the object answer says what is known and what is not", () => {
   const text = handleObjectPage({ objectId: 1731 }, facts);
   expect(text).toContain("Object 1731");
   expect(text).toContain("Item 2770 Copper Ore  4 observed loot windows  2 windows with this item  50.0%  3 distinct install reports");
-  expect(text).toContain("No object names yet");
+  expect(text.split("\n").slice(0, 2)).toEqual(["Object 1731", "No agreed name yet. A name needs 3 installs reporting the same one."]);
   expect(handleObjectPage({ objectId: 2843 }, facts)).toContain("0 items in 3 observed loot windows");
   expect(handleObjectPage({ objectId: 1618 }, facts)).toContain("Loot observations unrecorded");
   expect(handleObjectPage({ objectId: 0 }, facts)).toBe("Name an object id.");
+});
+
+test("an object name shows once 3 installs agree on it, on its page and on the item page", () => {
+  const named = (installId: string, objectName: string) => ({ ...loot(installId, 1731, [2770], 5), sourceObjectName: objectName });
+  const three = [...records, named("a", "Copper Vein"), named("b", "copper vein"), named("c", "Copper Vein")];
+  const agreed = objectFactsFromRecords(three);
+  expect(objectPage(1731, agreed).name).toBe("Copper Vein");
+  expect(handleObjectPage({ objectId: 1731 }, agreed).split("\n")[0]).toBe("Object 1731 — Copper Vein");
+  expect(handleObjectPage({ objectId: 1731 }, agreed)).not.toContain("No agreed name yet");
+  expect(itemPage(2770, itemFactsFromRecords(three)).drops.map((d) => d.source)).toEqual(["Object 1731 Copper Vein"]);
+  const two = objectFactsFromRecords([...records, named("a", "Copper Vein"), named("b", "Copper Vein")]);
+  expect(objectPage(1731, two).name).toBeNull();
+  expect(handleObjectPage({ objectId: 1731 }, two)).toContain("No agreed name yet");
+  expect(itemPage(2770, itemFactsFromRecords(records)).drops.map((d) => d.source)).toEqual(["Object 1731"]);
 });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { preload } from "react-dom";
 import JsonLd from "@/components/JsonLd";
 import { webApplicationJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
@@ -11,7 +12,8 @@ import { dataAgeLabel } from "@/lib/data-age";
 import {
   categoryCounts, continentPath, parseDeepLink, parseMapUrl, parseViewState, parseZoneLink, visibleItems, type MapItems,
 } from "@/lib/map-view";
-import { CONTINENTS, continentCandidates, continentMap, continentPinSet, observedFacts, WORLD_MAP } from "@/lib/world-map";
+import { CONTINENTS, continentCandidates, continentMap, continentPinSet, continentTreasureCandidates, observedFacts, WORLD_MAP } from "@/lib/world-map";
+import { instanceHref, instanceRows, loadSightings } from "@/lib/instances";
 import { publicZones, zoneHref } from "@/lib/zones";
 import WorldMapView from "@/components/WorldMapView";
 import { LIST_LIMIT } from "@/components/map/MapList";
@@ -19,9 +21,9 @@ import { continentArt, instanceThumbs, loadSiteAssets } from "@/lib/game-assets"
 import { SiteCredit } from "@/components/Footer";
 
 export const TITLE = "WoW Forever World Map";
-const DESCRIPTION = "Zones, entrances, flight masters and flight paths, and player-observed NPCs on one map of WoW: Forever, from the game files. No game art.";
+export const DESCRIPTION = "Zones, entrances, flight masters and flight paths, and player-observed NPCs on one map of WoW: Forever, from game files. No game art.";
 /** The same description when the game's map pictures are shown. */
-const withArt = (text: string) => text.replace(" No game art.", " The map pictures are the game's own.");
+export const withArt = (text: string) => text.replace(" No game art.", " The map pictures are the game's own.");
 
 export type MapQuery = {
   continent?: string | string[]; zone?: string | string[]; x?: string | string[]; y?: string | string[]; spoilers?: string | string[];
@@ -31,7 +33,7 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 const continentName = (id: number) => CONTINENTS.find((c) => c.id === id)?.name ?? `Continent ${id}`;
 const continentTitle = (id: number) => `WoW Forever Map: ${continentName(id)}`;
-const continentDescription = (id: number) =>
+export const continentDescription = (id: number) =>
   `Every zone, dungeon and raid entrance, flight master and flight path in ${continentName(id)}, WoW: Forever, from game files. No game art.`;
 
 /**
@@ -88,16 +90,22 @@ export async function renderMapScreen(query: MapQuery, pageContinent: number | n
   const path = continentPath(continentId);
   const title = pageContinent === null ? TITLE : continentTitle(pageContinent);
 
-  const corpus = await uploadStore.loadCorpus();
+  const [corpus, sightings] = await Promise.all([uploadStore.loadCorpus(), loadSightings()]);
   const records = corpus.unreachable ? [] : corpus.records;
+  const seen = sightings.unreachable ? {} : sightings;
   const map = continentMap(continentId, mapBoundsFromRecords(records), WORLD_MAP, spoilers);
   const facts = observedFacts(records);
-  const all = continentPinSet(continentId, facts, spoilers);
+  const all = continentPinSet(continentId, facts, spoilers, WORLD_MAP, seen);
+  // Each instance's page, for an entrance card's Open instance page.
+  const instancePages = Object.fromEntries([...instanceRows(seen).values()].map((r) => [r.instanceMapId, instanceHref(r.instanceMapId, r.name)]));
   const vb = map.viewBox;
   // The game's own map pictures under the outlines, only when the asset URL is set and the upload has them.
   // A held-back zone's picture follows its outline: none unless spoilers are on.
   const assets = vb ? await loadSiteAssets() : null;
   const art = continentArt(assets, continentId, spoilers);
+  // The continent picture is the page's largest paint, but Leaflet asks for it only once the map's script has run.
+  // A preload in the page's head starts it with the HTML.
+  if (art?.continent) preload(art.continent.url, { as: "image", fetchPriority: "high" });
   const lead = pageContinent === null ? DESCRIPTION : continentDescription(continentId);
   // Each dungeon's and raid's loading screen beside its entrance in the list; a later map's only with spoilers on.
   const allThumbs = instanceThumbs(assets, spoilers);
@@ -109,7 +117,9 @@ export async function renderMapScreen(query: MapQuery, pageContinent: number | n
   const full: MapItems = { zones: map.zones, ...all };
   const url = parseMapUrl(query);
   const shownPins = visibleItems(full, { ...url.show, npc: true, vendor: true }, spoilers).pins;
-  const items: MapItems = { ...full, flightLines: [], pins: shownPins.slice(0, LIST_LIMIT) };
+  // The instance ids only open a card's instance page, so they come with the pins answer and not the page.
+  const entrances = full.entrances.map(({ instanceMapIds: _ids, ...e }) => e);
+  const items: MapItems = { ...full, entrances, flightLines: [], pins: shownPins.slice(0, LIST_LIMIT) };
   const focus = zoneId ?? link?.mapId ?? null;
   const scope = focus !== null ? map.zones.find((z) => z.mapId === focus) ?? null : null;
   const zonePages = Object.fromEntries(publicZones().filter((z) => z.continentId === continentId).map((z) => [z.mapId, zoneHref(z.mapId, z.name)]));
@@ -167,8 +177,9 @@ export async function renderMapScreen(query: MapQuery, pageContinent: number | n
             counts: categoryCounts(full, spoilers, scope),
             pins: { npc: shownPins.filter((p) => p.kind === "npc").length, vendor: shownPins.filter((p) => p.kind === "vendor").length },
           }}
-          candidates={continentCandidates(continentId, facts, spoilers)}
+          candidates={[...continentCandidates(continentId, facts, spoilers), ...continentTreasureCandidates(continentId, seen)]}
           zonePages={zonePages}
+          instancePages={instancePages}
           spoilers={spoilers}
           spoilerHref={switchHref}
           art={art}

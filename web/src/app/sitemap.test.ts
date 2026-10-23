@@ -4,11 +4,19 @@ import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-sta
 import { loadTimeline, postPath } from "@/lib/changes";
 import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, itemsHref } from "@/lib/items";
 import { filterItems } from "../../../kb/src/item-taxonomy";
+import { instanceHref, instanceRows } from "@/lib/instances";
 import sitemap from "./sitemap";
 
 const facts = vi.hoisted(() => ({ rates: [] as unknown[], names: [] as { installId: string; itemId: number; name: string }[], npcs: [] as unknown[], unreachable: false }));
 const world = vi.hoisted(() => ({ npcs: [] as unknown[], quests: [] as unknown[], vendors: [] as unknown[], unreachable: false }));
-vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: async () => facts, loadWorldFacts: async () => world }));
+const instances = vi.hoisted(() => ({ entrances: [] as unknown[], encounters: [] as unknown[], sightings: [] as unknown[], unreachable: false, dataAsOf: null as string | null }));
+vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: async () => facts, loadWorldFacts: async () => world, loadInstanceFacts: async () => instances }));
+// Two hubs a later lane might add: one that asks to be indexed and one that does not.
+vi.mock("@/lib/database-hubs", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/database-hubs")>();
+  const hubs = [...real.DATABASE_HUBS, { href: "/database/example-listed", label: "Example" }, { href: "/database/example-unlisted", label: "Example, noindex", unlisted: true as const }];
+  return { ...real, DATABASE_HUBS: hubs, DATABASE_HUB_PATHS: ["/database", "/database/items", ...hubs.filter((h) => !("unlisted" in h && h.unlisted)).map((h) => h.href)] };
+});
 const blue = vi.hoisted(() => ({ writeups: new Map<string, { postId: string; reviewed: { by: string; on: string }; body: string }>() }));
 vi.mock("@/lib/changes", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/changes")>()), loadWriteups: () => blue.writeups }));
 
@@ -93,5 +101,57 @@ test("an item category is listed only once half its first page has an agreed nam
     expect((await sitemap()).map((e) => new URL(e.url).pathname)).toContain(itemsHref("weapons"));
   } finally {
     facts.names = [];
+  }
+});
+
+test("every hub on /database is listed, the instance index and a hub added later included, unless it asks to be left out", async () => {
+  const { DATABASE_HUBS } = await import("@/lib/database-hubs");
+  for (const hub of DATABASE_HUBS) expect(byPath.has(hub.href), hub.href).toBe(!hub.unlisted);
+  for (const path of ["/database/instances", "/database/spells", "/database/example-listed"]) expect(byPath.has(path), path).toBe(true);
+  expect(byPath.has("/database/example-unlisted")).toBe(false);
+  // The landing page and the all-items list stay, hub rows or not.
+  for (const path of ["/database", "/database/items"]) expect(byPath.has(path), path).toBe(true);
+});
+
+test("each dungeon and raid page is listed, once, as many as the instance index has rows", () => {
+  const paths = [...byPath.keys()].filter((p) => p.startsWith("/database/instances/"));
+  const rows = [...instanceRows().values()];
+  expect(rows.length).toBeGreaterThan(0);
+  expect(paths.sort()).toEqual(rows.map((r) => instanceHref(r.instanceMapId, r.name)).sort());
+  expect(paths).toContain("/database/instances/36-deadmines");
+  // Dated by nothing the site knows: no made-up date on the page.
+  expect(byPath.get("/database/instances/36-deadmines")?.lastModified).toBeUndefined();
+});
+
+test("an instance page is listed only while storage is readable, and one entered only from a held-back zone has none", async () => {
+  const paths = async () => (await sitemap()).map((e) => new URL(e.url).pathname);
+  const zoned = (mapId: number) => ["a", "b", "c"].map((installId) => ({ installId, instanceMapId: 9999, name: "Secret Vault", instanceType: "party", mapId, x: 40, y: 40, capturedAt: "2026-10-10T00:00:00.000Z" }));
+  try {
+    instances.entrances = zoned(2482);
+    expect(await paths()).not.toContain("/database/instances/9999-secret-vault");
+    instances.entrances = zoned(1436);
+    expect(await paths()).toContain("/database/instances/9999-secret-vault");
+    instances.unreachable = true;
+    const down = await paths();
+    expect(down.filter((p) => p.startsWith("/database/instances/"))).toEqual([]);
+    // The index stays: it shows the files' entrances without storage.
+    expect(down).toContain("/database/instances");
+  } finally {
+    instances.entrances = [];
+    instances.unreachable = false;
+  }
+});
+
+test("a zone with only a treasure on it is listed, as its page counts the treasures players pinned", async () => {
+  const chest = (installId: string) => ({ installId, objectId: 500, mapId: 1450, x: 50, y: 50, capturedAt: "2026-10-10T00:00:00.000Z" });
+  const paths = async () => (await sitemap()).map((e) => new URL(e.url).pathname);
+  try {
+    expect(await paths()).not.toContain("/database/zones/1450-moonglade");
+    instances.sightings = ["a", "b"].map(chest);
+    expect(await paths()).not.toContain("/database/zones/1450-moonglade");
+    instances.sightings = ["a", "b", "c"].map(chest);
+    expect(await paths()).toContain("/database/zones/1450-moonglade");
+  } finally {
+    instances.sightings = [];
   }
 });

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { expect, test, vi } from "vitest";
 import { adler32 } from "../src/bridge/lua";
 import { fetchRealmPrices, readRealms, refreshPrices, renderPricesAddon, PRICES_ADDON } from "../src/prices";
-import { FIXTURE_REALMS } from "../scripts/write-prices-fixture";
+import { FIXTURE_DROPS, FIXTURE_REALMS } from "../scripts/write-prices-fixture";
 
 const FIXTURE = new URL("../../addon/tests/fixtures/EverlootPrices.lua", import.meta.url);
 
@@ -50,7 +50,7 @@ test("a failed fetch is an error, never an empty price list", async () => {
 });
 
 test("the slot addon holds one checksummed string per realm and matches the golden file", () => {
-  const { toc, lua } = renderPricesAddon(FIXTURE_REALMS);
+  const { toc, lua } = renderPricesAddon(FIXTURE_REALMS, FIXTURE_DROPS);
   expect(toc).toContain(`## Interface: 16001`);
   expect(toc).toContain(`${PRICES_ADDON}.lua`);
   const data = "2589,205,200,190,40,2026-10-20,3;765,,30,33,900,2026-10-05,4";
@@ -61,6 +61,15 @@ test("the slot addon holds one checksummed string per realm and matches the gold
   // A hostile realm name stays a string literal.
   expect(lua).not.toMatch(/\n[^"\n]*os\.execute/);
   expect(lua).toBe(readFileSync(FIXTURE, "utf8").replace(/\r\n/g, "\n"));
+});
+
+test("drop rates sit beside the realms in one checksummed string, grouped by item and best rate first", () => {
+  const { lua } = renderPricesAddon(FIXTURE_REALMS, FIXTURE_DROPS);
+  const data = "2589,n,116,42,340,5;2589,n,94,12,200,3;2589,n,474,5,120,4;2589,n,6,1,90,3;2770,o,1731,300,310,6;12345,n,61,1,80,3";
+  expect(lua).toContain(`}, ["drops"] = { ["data"] = "${data}", ["sum"] = ${adler32(data)}, ["dataAsOf"] = "2026-10-20T06:00:00.000Z", ["fetchedAt"] = "2026-10-20T06:30:00.000Z" } }`);
+  // Without drops the file ends as it did before drops existed.
+  expect(renderPricesAddon(FIXTURE_REALMS).lua).toMatch(/\n\} \}\n$/);
+  expect(renderPricesAddon(FIXTURE_REALMS).lua).not.toContain("drops");
 });
 
 test("realm keys lower-case ASCII only, as Lua's string.lower does", () => {

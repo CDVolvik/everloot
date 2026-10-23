@@ -8,7 +8,8 @@ import { GET } from "./route";
 import { ALL_RECORD_KINDS, CENSUS_KINDS, COMPLETION_KINDS, LINK_KINDS, PLAYER_KINDS, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { ANON_PAGE, KEY_PAGE } from "@/lib/data-guard";
 import { newKey } from "@/lib/api-keys";
-import { corpusPublicResponse } from "@everloot/protocol";
+import { corpusPublicResponse, parseRecords } from "@everloot/protocol";
+import { publicInstallId } from "@/lib/public-install";
 
 const base = { installId: "install-1", capturedAt: "2026-10-09T00:00:00.000Z" };
 const gold = { ...base, eventId: "e:1", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 1, peakCopper: 1 };
@@ -28,12 +29,35 @@ test("without kinds the whole public corpus is returned", async () => {
   expect(body.records).toEqual([published(gold), published(scan)]);
 });
 
-test("no record leaves the site with its install id, so one player's observations cannot be linked", async () => {
+test("without a key no record leaves the site with an install id at all", async () => {
   for (const query of ["", "?kinds=auction_scan"]) {
     const body = await (await GET(req(query))).json();
     expect(body.records.length).toBeGreaterThan(0);
     for (const record of body.records) expect(record).not.toHaveProperty("installId");
   }
+});
+
+test("with a key every record carries its install's pseudonym, the real id never appears, and the records parse", async () => {
+  const secret = "k".repeat(32);
+  vi.stubEnv("EVERLOOT_CHARACTER_KEY", secret);
+  const loot = { installId: "real-install-0002", capturedAt: base.capturedAt, eventId: "e:5", kind: "loot", sourceNpcId: 1, items: [] };
+  store.loadCorpus.mockResolvedValue({ uploads: 2, records: [gold, scan, loot] });
+  for (const query of ["", "?kinds=loot,gold_snapshot"]) {
+    const res = await GET(req(query));
+    const text = await res.text();
+    expect(text).not.toContain("install-1");
+    expect(text).not.toContain("real-install-0002");
+    const { records } = JSON.parse(text);
+    for (const record of records) expect(record.installId).toMatch(/^pub-[0-9a-f]{32}$/);
+    const parsed = parseRecords(records);
+    expect(parsed.receipt.rejected).toEqual([]);
+    expect(parsed.records).toHaveLength(records.length);
+  }
+  const { records } = await (await GET(req())).json();
+  const byEvent = Object.fromEntries(records.map((r: { eventId: string; installId: string }) => [r.eventId, r.installId]));
+  expect(byEvent["e:1"]).toBe(publicInstallId("install-1", secret));
+  expect(byEvent["e:1"]).toBe(byEvent["e:2"]);
+  expect(byEvent["e:5"]).not.toBe(byEvent["e:1"]);
 });
 
 test("kinds narrows the body to the record kinds a tool reads", async () => {

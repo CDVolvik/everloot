@@ -9,6 +9,7 @@ vi.mock("next/link", () => ({
 }));
 
 import Home from "./page";
+import { loadTimeline } from "@/lib/changes";
 
 const html = renderToStaticMarkup(await Home());
 
@@ -52,6 +53,15 @@ test("the panel shows a post that arrived from two regions once", () => {
   const panel = html.slice(start, html.indexOf("</section>", start));
   const titles = [...panel.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]).filter((t) => !t.startsWith("Every change"));
   expect(titles.length).toBeGreaterThan(1);
+  // No title is on two lines: the panel takes the folded timeline, where the regional copies are one entry.
   expect(new Set(titles).size).toBe(titles.length);
-  expect(titles.filter((t) => t.includes("Character Names")).length).toBe(1);
+  // The fold itself: an announcement that arrived from two regions is one entry, with the other region's
+  // copy under it rather than beside it. Which announcement that is changes with the day's posts, so the
+  // test finds it in the data instead of naming one.
+  const timeline = loadTimeline();
+  const twoRegions = timeline.find((e) => (e.copies ?? []).some((c) => (c.region ?? "us") !== (e.region ?? "us")));
+  expect(twoRegions).toBeDefined();
+  for (const copy of twoRegions!.copies ?? []) {
+    expect(timeline.some((e) => e.id === copy.id)).toBe(false);
+  }
 });

@@ -1,7 +1,10 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditSources } from "./audit-sources.js";
+import { compareBaseline, readBaseline, writeBaselineReport } from "./baseline-report.js";
+import { buildCoverageReport, readCoverageBaseline, writeCoverageReport } from "./coverage-report.js";
 import { BlizzardClient } from "./blizzard/client.js";
 import {
   backfillBluePosts, ingestBluePosts, loadFetchState, loadOverrides, loadStore, saveFetchState, saveStore, type BlueGame, type BlueRegion, type IngestResult,
@@ -16,26 +19,38 @@ import { diffSnapshots } from "./client-diff.js";
 import { parseRegistry } from "./ecosystem.js";
 import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem-fetch.js";
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
+import { readTerrainAreas } from "./terrain-area.js";
 import { writeCatalogs } from "./client-catalog.js";
 import { buildClientAssets } from "./client-assets.js";
-import { CLIENT_EDGES } from "./client-layer-file.js";
+import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
+import { OPEN_DATA_KINDS } from "./open-data/build.js";
+import { readRecordsFile } from "./open-data/read.js";
+import { writeOpenData } from "./open-data/write.js";
 import { writeWorldMapData } from "./world-map-data.js";
-import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
+import { WORLD_MAP_DATA } from "./world-map-file.js";
+import { worldFactsFromRecords } from "./world-pages.js";
+import { clientSnapshotName, readClientMeta, readClientRows, writeClientSnapshot } from "./client-snapshot.js";
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
 import { runItemNames } from "./item-names.js";
 import { runGameNames } from "./game-names.js";
-import { SHOWN_MAX_QUEST_ID, SHOWN_MAX_SET_ID, SHOWN_MAX_SPELL_ID } from "./game-name-rule.js";
-import { SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
+import { baselineNames, formatNameGaps, playerNames, runNameGaps } from "./name-gaps.js";
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
+import { addRecheckScopes, readRecheck, RECHECK_FILE, scopesFromClientDiff } from "./build-watch/recheck.js";
+import { isoWeek, spotCheckConflicts } from "./spot-check.js";
+import { foldRecorderInstalls } from "./recorder-installs.js";
+import { parseRecords } from "@everloot/protocol";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
+import { importPfquest } from "./importers/pfquest.js";
 import { importWikiDump } from "./importers/wiki-dump.js";
+import { lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
 import { startHttpBridge } from "./mcp-http.js";
-import { serveStdio } from "./mcp-server.js";
+import { readCorpusRecords, serveStdio } from "./mcp-server.js";
+import { objectSpawnRowsFromRecords } from "./object-spawns.js";
 import { openPublicSnapshot } from "./public-snapshot.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
@@ -103,6 +118,8 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client] [--refresh]
     (reads items, spells, talent (Trait) and spell effect tables of the product's current build from Blizzard's CDN into a snapshot
     <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
+    It also reads the terrain tiles under each dungeon entrance and taxi node and keeps each chunk's area id
+    (TerrainArea), so client-map can say which zone a spot is in.
     A table that fails to read is reported, the rest are still written, the build stays queued and
     the exit is 1. Encrypted blocks are skipped, never decrypted. A build already extracted is skipped
     unless --refresh is given. Table layouts come from one pinned WoWDBDefs commit, recorded in the
@@ -120,6 +137,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     facts into <out>/<product>-<build>-<config>-private/ (private bucket only). Needs Python with Pillow. Never
     commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
+  recheck-scopes <diff.json> --since <ISO time> --source <build or post url> [--root ..]
+    (adds recheck scopes to kb/curated/recheck.json from a client-diff: changed QuestV2 rows put their quests to
+    recheck, changed UiMap rows the pins on those maps; a scope already there is not added twice)
   client-coverage <snapshot.sqlite> [--out coverage.md]   (rows, encrypted blocks and needed fields per client table)
   client-scan [--product wow_classic_beta] [--manifest <path|url>] [--out data/client-scan]
     (measures the product's current CDN build against every table WoWDBDefs knows: which exist in the
@@ -131,23 +151,58 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     labelled found in game files, unconfirmed. See docs/DATA_POLICY.md)
   item-names <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--ledger data/item-names/ledger.json] [--out data/assets]
     (adds the snapshot's item names and the Warcraft Wiki dump's item names to the name ledger, which only
-    grows, and writes the names the site may show, where both agree, to <out>/<product>-<build>-<config>-names/
-    item-names.json for the private bucket. Prints the count per tier and the mismatches. The ledger holds every
+    grows, and writes the name the site shows for every item a source names (the game files' first, with the wiki
+    page where the wiki agrees) to <out>/<product>-<build>-<config>-names/item-names.json for the private bucket. Prints the count per tier and the mismatches. The ledger holds every
     name in the build, so it stays on this machine; never commit either file. See docs/DATA_POLICY.md)
   game-names <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--out data/assets]
     (writes, beside item-names.json, the quest titles where the build's QuestV2 lists the quest id and the
-    Warcraft Wiki dump's quest infoboxes give it one title (quest-names.json), and the game files' names of the
-    item sets and spells the client layer's relations name (item-set-names.json, spell-names.json), each held to
-    the id ranges in kb/src/game-name-rule.ts. For the private bucket only; never commit them. See docs/DATA_POLICY.md)
+    Warcraft Wiki dump's quest infoboxes give it a title (quest-names.json), and the game files' names of every
+    item set and spell in the build (item-set-names.json, spell-names.json). For the private bucket only; never
+    commit them. See docs/DATA_POLICY.md)
+  name-gaps <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--baseline-db <source db>] [--out name-gaps.md] [--json name-gaps.json]
+    (for items, quests, item sets and spells: how many ids each source names (the game files, the wiki, the local
+    baseline, and the names 3 installs agree on from EVERLOOT_PUBLIC_CORPUS_URL or EVERLOOT_UPLOADS), out of the ids
+    the game files and the baseline list; then where each id's name comes from, and for every id without one what
+    would fill it: the addon's uploads, or no source yet. Without --baseline-db or uploads those columns print [?].
+    Reads the same sources as item-names and game-names and writes no name file. Ids and counts only, never names; keep it local)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
-    (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
-    snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
+    (zone rectangles in world coordinates, continents, dungeon and raid entrances and flight masters, each with
+    the zone the ground under it belongs to, from a client snapshot, for the world map page. Game file data,
+    stamped with the build. See docs/DATA_POLICY.md)
   build-watch [--product id] [--dry-run] [--check] [--redo] [--force] [--root ..] [--out data/build-watch/out]
     (notices a new game build, regenerates the committed game data and prepares a pull request body and
     a changelog entry; the scheduled workflow opens the PR. --dry-run writes only under --out and changes
     nothing else. --check only says whether there is work. See docs/BUILD_WATCH.md)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
+  import-pfquest <pfQuest checkout> [--client <snapshot.sqlite>] [--unpinned]
+    (the Classic 1.12 baseline: reads the vanilla db/*.lua of a local pfQuest download as data, never running
+    it, into pfquest-classic rows, which are never published. Only names and quest titles from enUS, no quest
+    text. Refuses a checkout not at the pinned commit unless --unpinned. --client maps each spawn's AreaTable
+    zone to the UiMap id uploads use. See docs/design/specs/2026-10-17-classic-baseline-design.md)
+  baseline-report --db <source db> [--out <folder outside the repository>]
+    (the baseline against the corroborated uploads from EVERLOOT_PUBLIC_CORPUS_URL or EVERLOOT_UPLOADS:
+    confirmed, changed, new in Forever and not seen yet, by zone and level. Writes baseline-report.md and
+    .json, by default to <temp>/everloot-baseline-report; never inside the repository, never published)
+  coverage-report --db <source db> --out <folder outside the repository> [--client <snapshot.sqlite>]
+    [--recheck-since <ISO timestamp>] [--root ..]
+    (local per-field missing, reported, contested, spread and recheck detail by zone and level, baseline
+    names included, and the plateau per type over the released zones. Also writes coverage-expected.json:
+    zone/type/field counts only, no entity ids. Uses the same upload sources as baseline-report. The recheck
+    scopes in kb/curated/recheck.json apply per fact; --recheck-since adds one cutoff for every fact.
+    --client adds QuestV2 and boss candidates; without it those game-file-only facts are unknown. Never
+    publishes or uploads either artifact)
+  spot-check [--week <YYYY-Www>] [--root ..] [--dry-run]
+    (the weekly spot check over the uploads: how many settled NPCs, pins, quests and vendors the week leaves
+    out of the settled list, and the spot-checked facts that got a conflicting report since their week began,
+    added to kb/curated/recheck.json as scopes that raise their zone's rate. The week defaults to the current
+    UTC week; the pick is a hash of each fact's key and the week, so a rerun picks the same facts)
+  open-data <folder> [--records <file>]
+    (the open data export: the published data as NDJSON files under CC BY-SA 4.0, plus the game-file layer
+    as Blizzard's, with a manifest, a README, the licence and a JSON Schema per file. Only facts that 3
+    installs agree on leave the records; it refuses a row under that and an install id in any row. The
+    records come from EVERLOOT_PUBLIC_CORPUS_URL (EVERLOOT_API_KEY for the whole feed) or EVERLOOT_UPLOADS,
+    or from --records, a saved corpus answer. The folder must be new or empty. See docs/OPEN_DATA.md)
   wiki-check [--dir <kb>/wiki]
     (the wiki's page check: front matter, ids and slugs, categories, bindings and tokens against the committed
     game data and the shown id ranges, [[links]], hand-typed gameplay numbers, section order, credit fields,
@@ -420,6 +475,8 @@ async function main(): Promise<number> {
       const { tables, missing } = await extractTables(source);
       const fileStatus = probeFiles(source, iconIds(tables));
       if (fileStatus) tables.push(fileStatus);
+      const terrain = source.readFile && await readTerrainAreas(source.readFile, tables);
+      if (terrain) tables.push(terrain);
       mkdirSync(outDir, { recursive: true });
       const manifest = writeClientSnapshot(out, { ...build, extractedAt: now.toISOString(), library: CASC_LIBRARY, definitions }, tables, missing);
       // A table that failed to read leaves the build queued, so the next run tries it again.
@@ -479,6 +536,16 @@ async function main(): Promise<number> {
       for (const w of diff.warnings) console.log(`warning: ${w}`);
       return 0;
     }
+    case "recheck-scopes": {
+      const since = flags.get("since"), source = flags.get("source");
+      if (args.length < 1 || !since || !source || !Number.isFinite(Date.parse(since))) break;
+      const root = flags.get("root") || "..";
+      const scopes = scopesFromClientDiff(JSON.parse(readFileSync(args[0], "utf8")), { since, source });
+      const added = addRecheckScopes(root, root, scopes);
+      for (const s of scopes) console.log(`${s.type}: ${(s.ids ?? s.zones ?? []).length} ${s.ids ? "ids" : "zones"} since ${s.since}`);
+      console.log(added ? `-> ${RECHECK_FILE}` : `${RECHECK_FILE} already holds these scopes`);
+      return 0;
+    }
     case "client-catalog": {
       if (!args[0]) break;
       const run = writeCatalogs(args[0], flags.get("out") || "data/catalog", flags.get("list") || "lists/raid-buffs.yaml");
@@ -521,8 +588,8 @@ async function main(): Promise<number> {
       const run = runItemNames({ snapshotPath: args[0], kbPath, ledgerPath: flags.get("ledger") || "data/item-names/ledger.json", outDir: flags.get("out") || "data/assets" });
       console.log(`build ${run.build}: ${run.items} items`);
       for (const [tier, n] of Object.entries(run.counts)) console.log(`  ${tier}: ${n}`);
-      console.log(`shown: ${run.shownCount} of the ${run.counts.match} matches; held back: ${run.held.highId} with an id from ${SHOWN_MAX_ITEM_ID}, ${run.held.internalName} with a placeholder name`);
-      console.log(`mismatches (kept in the ledger, not shown), first 25 of ${run.mismatches.length}:`);
+      console.log(`shown: ${run.shownCount} of ${run.items}`);
+      console.log(`mismatches (the game files' name is shown), first 25 of ${run.mismatches.length}:`);
       for (const m of run.mismatches.slice(0, 25)) console.log(`  ${m.id}: files "${m.files}", wiki "${m.wiki.join('" | "')}"`);
       console.log(`ledger: ${run.ledger.runs.length} runs, ${Object.keys(run.ledger.items).length} items; this run added ${run.ledger.runs.at(-1)!.added.files} game file and ${run.ledger.runs.at(-1)!.added.wiki} wiki names`);
       console.log(`shown -> ${run.shownPath} (${run.shown.count} names)`);
@@ -531,16 +598,36 @@ async function main(): Promise<number> {
     case "game-names": {
       const kbPath = flags.get("wiki");
       if (!args[0] || !kbPath) break;
-      const run = runGameNames({ snapshotPath: args[0], kbPath, outDir: flags.get("out") || "data/assets", edges: CLIENT_EDGES });
+      const run = runGameNames({ snapshotPath: args[0], kbPath, outDir: flags.get("out") || "data/assets" });
       const q = run.quests.counts;
       console.log(`build ${run.build}, wiki dump ${run.wikiDump} (${run.wikiQuestIds} quest ids with a title)`);
-      console.log(`quests: ${q.quests} in QuestV2; ${q.match} with one wiki title, ${q.mismatch} where wiki pages disagree, ${q.files} the wiki lacks; held back ${q.held} with an id from ${SHOWN_MAX_QUEST_ID}`);
-      console.log(`wiki pages that disagree (not shown), first 15 of ${run.quests.mismatches.length}:`);
+      console.log(`quests: ${q.quests} in QuestV2; ${q.match} with one wiki title, ${q.mismatch} where wiki pages disagree, ${q.files} the wiki lacks; held back ${q.held} a Forever source contradicts`);
+      console.log(`wiki pages that disagree (the first page's title is shown), first 15 of ${run.quests.mismatches.length}:`);
       for (const m of run.quests.mismatches.slice(0, 15)) console.log(`  ${m.id}: "${m.wiki.join('" | "')}"`);
-      for (const [label, r, cap] of [["item sets", run.sets, SHOWN_MAX_SET_ID], ["spells", run.spells, SHOWN_MAX_SPELL_ID]] as const) {
-        console.log(`${label}: ${r.counts.referenced} in the client layer's relations, ${r.counts.named} named in the files, held back ${r.counts.held} (id from ${cap} or a placeholder name)`);
-      }
+      for (const [label, r] of [["item sets", run.sets], ["spells", run.spells]] as const) console.log(`${label}: ${r.counts.ids} in the files, ${r.counts.named} named`);
       for (const r of [run.quests, run.sets, run.spells]) console.log(`shown -> ${r.path} (${r.file.count} names)`);
+      return 0;
+    }
+    case "name-gaps": {
+      const kbPath = flags.get("wiki");
+      if (!args[0] || !kbPath) break;
+      const baselineDb = flags.get("baseline-db");
+      let baseline = null;
+      if (baselineDb) {
+        const source = openExistingReadOnlyDb(baselineDb);
+        baseline = baselineNames(source);
+        source.close();
+        if (!baseline.items.size && !baseline.quests.size) throw new Error("name-gaps: no pfquest-classic rows in --baseline-db; run import-pfquest first");
+      }
+      const corpus = await readCorpusRecords(["item_seen", "quest"]);
+      if (!corpus) console.error("uploads not connected or unreadable (EVERLOOT_PUBLIC_CORPUS_URL, EVERLOOT_UPLOADS): the Players column prints [?]");
+      const report = runNameGaps({ snapshotPath: args[0], kbPath, baseline, players: corpus && playerNames(corpus.records, corpus.dataAsOf) });
+      const md = formatNameGaps(report);
+      const out = flags.get("out"), json = flags.get("json");
+      if (out) writeFileSync(out, md);
+      if (json) writeFileSync(json, `${JSON.stringify(report, null, 2)}
+`);
+      process.stdout.write(md);
       return 0;
     }
     case "client-map": {
@@ -582,6 +669,107 @@ async function main(): Promise<number> {
         if (audit.unexpected.length) clean = false;
       }
       return clean ? 0 : 1;
+    }
+    case "import-pfquest": {
+      if (!args[0]) break;
+      const snapshotPath = flags.get("client") || undefined;
+      if (!snapshotPath) console.error("no --client snapshot: spawns keep only their AreaTable zone id, so the report cannot place them on upload maps");
+      const run = await importPfquest(db(), args[0], { snapshotPath, allowOtherCommit: flags.has("unpinned") });
+      db().pragma("wal_checkpoint(TRUNCATE)");
+      const { units, objects, items, quests } = run.rows;
+      console.log(`pfQuest ${run.commit.slice(0, 8)}: ${units} units, ${objects} objects, ${items} items, ${quests} quests as pfquest-classic (local only)`);
+      console.log(`skipped ${run.skipped.junk} GM, test or placeholder entries and ${run.skipped.unnamed} without an English name`);
+      const unmapped = Object.entries(run.spawns.unmappedAreas).sort((a, b) => b[1] - a[1]);
+      console.log(`spawns: ${run.spawns.mapped} of ${run.spawns.total} placed on a UiMap; ${run.spawns.total - run.spawns.mapped} in ${unmapped.length} areas keep only their area id`);
+      if (unmapped.length) console.log(`  most unplaced: ${unmapped.slice(0, 10).map(([area, n]) => `area ${area} (${n})`).join(", ")}`);
+      return 0;
+    }
+    case "coverage-report": {
+      const out = flags.get("out");
+      if (!out) throw new Error("coverage-report: --out must name a folder outside the repository");
+      const recheckSince = flags.get("recheck-since") || undefined;
+      if (recheckSince && !Number.isFinite(Date.parse(recheckSince))) throw new Error("coverage-report: --recheck-since must be an ISO timestamp");
+      const source = openExistingReadOnlyDb(requireDbPath(flags, "coverage-report"));
+      let local: ReturnType<typeof readCoverageBaseline>;
+      try { local = readCoverageBaseline(source); } finally { source.close(); }
+      if (!local.baseline.units.size && !local.baseline.quests.size) throw new Error("coverage-report: no pfquest-classic rows in this database; run import-pfquest first");
+      const client = flags.get("client");
+      const questIds = client ? readClientRows(client, "QuestV2").keys() : undefined;
+      const bosses: { encounterId: number; instanceMapId?: number }[] = [];
+      if (client) {
+        for (const [encounterId, row] of readClientRows(client, "DungeonEncounter")) {
+          bosses.push({ encounterId, ...(typeof row.MapID === "number" ? { instanceMapId: row.MapID } : {}) });
+        }
+        const instances = readClientRows(client, "JournalInstance");
+        for (const row of readClientRows(client, "JournalEncounter").values()) {
+          // The encounter API reports DungeonEncounter ids; journal-only ids cannot be matched to it.
+          if (typeof row.DungeonEncounterID !== "number" || row.DungeonEncounterID <= 0) continue;
+          const instance = instances.get(Number(row.JournalInstanceID));
+          bosses.push({ encounterId: row.DungeonEncounterID, ...(typeof instance?.MapID === "number" ? { instanceMapId: instance.MapID } : {}) });
+        }
+      }
+      const corpus = await readCorpusRecords(["npc_sighting", "quest", "vendor", "loot", "instance_entrance", "encounter", "object_sighting"]);
+      const recheck = readRecheck(flags.get("root") || "..").scopes;
+      const report = buildCoverageReport({ ...local, records: corpus?.records ?? [], dataAsOf: corpus?.dataAsOf ?? null,
+        connected: corpus !== null, clientConnected: Boolean(client), questIds, bosses, recheckSince, recheck });
+      const paths = writeCoverageReport(report, out);
+      console.log(`${report.rows.length} local fact fields, ${report.rows.filter((r) => r.state === "recheck").length} in recheck (${recheck.length} scopes); uploads ${report.connected ? "connected" : "disconnected ([?])"}`);
+      const plateau = report.plateau;
+      console.log(`plateau: ${plateau?.site === true ? "yes" : plateau?.site === false ? "no" : "[?]"}${plateau ? ` (${plateau.types.map((t) => `${t.type} ${t.atPlateau === null ? "[?]" : t.atPlateau ? "yes" : "no"}`).join(", ")})` : ""}`);
+      console.log(`-> ${paths.markdown}\n-> ${paths.json}\n-> ${paths.expected}`);
+      return 0;
+    }
+    case "spot-check": {
+      const root = flags.get("root") || "..";
+      const corpus = await readCorpusRecords(["npc_sighting", "quest", "vendor"]);
+      if (!corpus) throw new Error("spot-check: uploads not connected or unreadable (EVERLOOT_PUBLIC_CORPUS_URL, EVERLOOT_UPLOADS)");
+      // The week this runs in, as the settled list's own pick: an idle corpus must not hold one week's pick forever.
+      const week = flags.get("week") || isoWeek(new Date());
+      if (!/^\d{4}-W\d{2}$/.test(week)) throw new Error("spot-check: --week must read YYYY-Www");
+      const records = foldRecorderInstalls(parseRecords(corpus.records).records);
+      const run = spotCheckConflicts(records, week, readRecheck(root).scopes);
+      console.log(`${week}: ${run.checked} of ${run.settled} settled NPCs, pins, quests and vendors left out of the settled list`);
+      for (const c of run.conflicts) console.log(`conflict: ${c.key} (zone ${c.zone ?? "[?]"}), spot-checked in ${c.checkedIn}`);
+      if (!run.conflicts.length) console.log("no spot-checked fact got a conflicting report");
+      else if (flags.has("dry-run")) console.log(`dry run: ${run.conflicts.length} scopes not written`);
+      else console.log(addRecheckScopes(root, root, run.conflicts.map((c) => c.scope)) ? `-> ${RECHECK_FILE}` : `${RECHECK_FILE} already holds these scopes`);
+      return 0;
+    }
+    case "baseline-report": {
+      const source = openExistingReadOnlyDb(requireDbPath(flags, "baseline-report"));
+      const baseline = readBaseline(source);
+      source.close();
+      if (!baseline.units.size && !baseline.quests.size) throw new Error("baseline-report: no pfquest-classic rows in this database; run import-pfquest first");
+      const corpus = await readCorpusRecords(["npc_sighting", "quest", "vendor", "loot"]);
+      if (!corpus) console.error("uploads not connected or unreadable (EVERLOOT_PUBLIC_CORPUS_URL, EVERLOOT_UPLOADS): comparing against no uploads");
+      const records = corpus?.records ?? [];
+      const zoneNames = new Map([...WORLD_MAP_DATA.zones, ...WORLD_MAP_DATA.heldBackZones].map((z) => [z.uiMapId, z.name]));
+      const report = compareBaseline(baseline, {
+        world: worldFactsFromRecords(records), drops: rollupDrops(lootWindowsFromRecords(records)).rates,
+        objects: objectSpawnRowsFromRecords(records), dataAsOf: corpus?.dataAsOf ?? null, connected: corpus !== null,
+      }, zoneNames);
+      const paths = writeBaselineReport(report, flags.get("out") || join(tmpdir(), "everloot-baseline-report"));
+      console.log(`${records.length} upload records read`);
+      for (const [subject, c] of Object.entries(report.counts)) {
+        console.log(`${subject}: ${c.confirmed} confirmed, ${c.changed} changed, ${c.new} new in Forever, ${c.not_seen} not seen yet`);
+      }
+      console.log(`-> ${paths.markdown}\n-> ${paths.json}`);
+      return 0;
+    }
+    case "open-data": {
+      if (!args[0]) break;
+      const file = flags.get("records");
+      const corpus = file ? readRecordsFile(file) : await readCorpusRecords(OPEN_DATA_KINDS);
+      // No records is not an empty export: a folder that says nothing was confirmed would be a false statement.
+      if (!corpus) throw new Error("open-data: no records. Set EVERLOOT_PUBLIC_CORPUS_URL (and EVERLOOT_API_KEY for the whole feed) or EVERLOOT_UPLOADS, or pass --records <file>");
+      const { manifest, paths } = writeOpenData(args[0], {
+        records: corpus.records, dataAsOf: corpus.dataAsOf, generatedAt: new Date().toISOString(),
+        gameFiles: { build: CLIENT_LAYER.build, edges: CLIENT_EDGES, taxonomy: CLIENT_TAXONOMY, map: WORLD_MAP_DATA },
+      });
+      for (const f of manifest.files) console.log(`${f.path}: ${f.rows} rows${f.candidates === null ? "" : ` of ${f.candidates} (${f.candidatesAre})`}`);
+      console.log(`${manifest.source.records} records from ${manifest.source.installs} installs; data as of ${manifest.dataAsOf ?? "[?]"}; game build ${manifest.gameFiles.version}`);
+      console.log(`${paths.length} files -> ${args[0]}`);
+      return 0;
     }
     case "wiki-check": {
       const dir = flags.get("dir") || WIKI_DIR;

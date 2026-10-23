@@ -26,7 +26,7 @@ variables (`GAME_DATA_*`), item links stay plain while the other art still shows
 | `/tools/talents/<class>` | Talent icons, tooltips, node frames and spec backgrounds |
 | `/database/drops`, `/database/vendors/<id>`, `/tools/auctions` | Item icon beside each item link, the item's tooltip on hover and keyboard focus |
 | `/database/items/<id>` | The item's tooltip as a card, once players have reported the item; the icon of each spell that creates or uses the item, beside that relation; the item's name, quality colour and icon where the game files and the Warcraft Wiki give the same name |
-| `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported, and name, quality colour and icon where the game files and the Warcraft Wiki agree; other rows stay "Item N" |
+| `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported, and name, quality colour and icon for every item the game files or the Warcraft Wiki name; other rows stay "Item N" |
 | `/tools/professions` | Profession icons as a picker |
 | `/tools/raid` | Class, talent tree and buff icons, each buff's tooltip on hover and keyboard focus, and Molten Core's loading screen as the banner |
 | `/map` | The game's own continent and zone pictures under the zone outlines, with a switch to hide them; the continent's loading screen as the banner; each dungeon's and raid's loading screen, small, beside its entrance |
@@ -101,7 +101,16 @@ How it works, and what it will not do:
 - **Item icons and tooltips.** `Item.IconFileDataID` for the icon; name, quality, item level,
   required level, binding, slot, armour or weapon kind, weapon speed, stat kinds, flavour text and
   sell price from `ItemSparse` and `Item`. Stat amounts, armour and damage are worked out by the
-  client from tables we do not read, so the tooltip shows `[?]` for them and says so. Which stat
+  client from tables we do not read, so the tooltip shows `[?]` for them and says so: `+[?] Stamina`,
+  `[?] Armor` on cloth to plate and shields, and `[?] - [?] Damage` with `([?] damage per second)` on
+  weapons. Build 1.60.1's `ItemSparse` has no `MinDamage`/`MaxDamage` columns (WoWDBDefs layout
+  6FCC3191, shared with retail 12.1.7); the client works damage out from the `ItemDamage*` tables (damage
+  per second by item level, one column per quality, one table per weapon kind), the weapon speed and
+  `ItemSparse.DmgVariance`. The snapshot now reads those tables, and each weapon's record keeps the
+  inputs as `w` (`t` table, `dps`, `dv` variance, `ds` damage school); the site does not print numbers
+  from them yet. Before it does, a maintainer checks a few weapons' `w` against the game's own tooltip
+  (which table each weapon kind uses, and how min and max are rounded), and the item name rule's list
+  of tooltip facts in `docs/DATA_POLICY.md` gains weapon damage. Which stat
   slots count is read from `StatPercentEditor` (a slot with a zero share is left out); that reading
   still has to be checked against a real snapshot.
 - **Class, tree, profession and buff icons.** `ChrClasses.IconFileDataID`; each talent tree's
@@ -169,12 +178,19 @@ build, so a build bump cannot leave one layer behind.
    older version keeps working.
 3. In `game-version.ts`, fill in `product` and `build` for its entry and set `available: true`. The
    test then expects every layer to name the build of the version the site shows, so regenerate the
-   layers from the new snapshot in the same change.
+   layers from the new snapshot in the same change. Beta's entry reads its build from the layer today,
+   so give it its own build as a fixed value there, or it would show the new build under its name.
+4. In `web/src/data/build-versions.json`, set `served` to the version the layers now hold. The test
+   fails while it names another one.
 
-**URL plan, not built yet.** Live is the default and has no prefix. Other versions get a path prefix
-(`/ptr/...`, `/beta/...`), each page with a canonical tag to the same page of its own version and the
-Live page as the only one in the sitemap, so search engines do not mix versions. Until then the label is
-information only; the menu does not switch anything.
+**Version addresses.** The unprefixed pages show the served version; their URLs do not change when it
+does, and only they are in the sitemap. `/beta/...` and `/ptr/...` (the `prefixes` in
+`build-versions.json`, rewritten in `web/next.config.js`) show the same pages when that version is the
+served one, with the canonical tag on the unprefixed page. Any other version's prefix shows one noindex
+page saying the site holds no snapshot of it (`web/src/app/game-version/[id]`); no page is filled in
+from another version's files. Showing two versions' data at once needs a second snapshot, which the site
+does not have yet (`docs/2026-10-22-lane-version-routing-closeout.md`). The header label is information
+only; the menu does not switch anything.
 
 ## Owner steps for the buckets
 
@@ -243,8 +259,8 @@ repeat these steps for a new build or another deployment.
    Redeploy. Open `/`, `/tools/talents/hunter`, `/database/drops`, `/tools/raid`, `/map` and
    `/changes`: the icons, pictures, banners and the credit line appear. Pages read the manifest and item files again at most once an
    hour. To turn it off, clear the variables and redeploy.
-8. **Item names.** The category lists and item pages name an item before players do where the game
-   files and the Warcraft Wiki agree ([data policy](DATA_POLICY.md), "Item names from the game files
+8. **Item names.** The category lists and item pages name an item before players do wherever the game
+   files or the Warcraft Wiki name it ([data policy](DATA_POLICY.md), "Item names from the game files
    and the Warcraft Wiki"). In `kb/`, with the snapshot and a knowledge base or release that holds the
    wiki dump:
 
@@ -253,7 +269,7 @@ repeat these steps for a new build or another deployment.
    ```
 
    It adds both sources to the name ledger (`data/item-names/ledger.json`, which only grows and stays on
-   this machine), prints the count per tier and the mismatches, and writes the matched names to
+   this machine), prints the count per tier and the mismatches, and writes the names to show to
    `data/assets/<product>-<build>-<config>-names/item-names.json`. Check the counts and a sample of the
    names in a pull request, then upload that one file to the private bucket from `web/`, with the same
    upload key in the environment:
@@ -282,6 +298,16 @@ repeat these steps for a new build or another deployment.
    It prints the counts and writes `quest-names.json`, `item-set-names.json` and `spell-names.json` beside
    `item-names.json`. Upload each one with the same script, dry run first. Without them, the pages read
    "Quest N", "item set N" and "spell N".
+
+   To see what is still unnamed and why, run the gap report with the same two files:
+
+   ```
+   npm run kb -- name-gaps data/client/<product>-<build>-<config>.sqlite --wiki data/release/<release>.sqlite --out data/name-gaps.md
+   ```
+
+   For items, quests, item sets and spells it gives every id the source of its name, or, for an id without
+   one, what would fill it: the addon's uploads, or no source yet. It lists ids, never names, and writes no
+   name file; keep it local.
 9. **Next build.** Repeat steps 5 to 8 with the new build. Check the counts against the last run
    before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved`, `mapsSkipped` or
    `loadingScreensSkipped`, or `logoExtracted` falling to 0, means Blizzard changed something.

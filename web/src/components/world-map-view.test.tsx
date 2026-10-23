@@ -27,6 +27,7 @@ const items: MapItems = {
   ],
   entrances: [{ id: "x", names: ["Ragefire Chasm"], raid: false, x: 400, y: 300, worldX: 1, worldY: 2 }],
   pins: [],
+  treasures: [],
   flightMasters: [
     { id: "f1", name: "Orgrimmar, Durotar", x: 500, y: 100, heldBack: false },
     { id: "f2", name: "Crossroads, The Barrens", x: 1500, y: 800, heldBack: false },
@@ -118,7 +119,7 @@ test("Show all and Hide all switch every category; the map and the list follow t
 
   await click(button("Hide all"));
   expect(boxes().every((b) => !b.checked)).toBe(true);
-  expect(leaflet.props.items).toEqual({ zones: [], entrances: [], pins: [], flightMasters: [], flightLines: [] });
+  expect(leaflet.props.items).toEqual({ zones: [], entrances: [], pins: [], treasures: [], flightMasters: [], flightLines: [] });
   expect(listRows("map-list-entrances")).toEqual([]);
   expect($("[aria-labelledby=map-list-entrances]").textContent).toContain("This category is off.");
 

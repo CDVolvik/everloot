@@ -29,6 +29,11 @@ A maintainer reviews it. Nothing merges itself.
    `kb/src/build-watch/changes.ts`; it carries the build, extraction source and encrypted block counts, so
    there is no separate manifest) and a pull request body. The workflow commits, pushes and opens or updates
    the pull request.
+6. Adds recheck scopes to `kb/curated/recheck.json` for the zones and entrances the entry lists as moved or
+   removed: a zone's pins and entrances, a moved entrance's own (coverage and plateau design, section 5). The
+   coverage score then counts only reports made after the build was seen. A changed `QuestV2` or `UiMap` needs
+   the row-level answer, which only the maintainer's two local snapshots give: `npm run kb -- client-diff <old>
+   <new> --out diff.json`, then `npm run kb -- recheck-scopes diff.json --since <first seen> --source <build>`.
 
 Every item from a product with `live: false` carries `spoiler: true` and the body says so. The body
 also states the encrypted block count. No decryption keys are loaded; encrypted blocks are skipped.
@@ -55,7 +60,7 @@ downloaded files. `watch` has a read-only token and no credentials left in the c
 no npm and no parser; it alone has write access, and `BUILD_WATCH_TOKEN` appears only in its push step,
 passed to git for that call. `report` can only write issues. Branches are replaced with `--force-with-lease`.
 Before committing, `publish` checks the plan's values, accepts only the files the generators write (the
-talents, raid file, `raid.ts`, map, spell values, client digests, changelog entry and `raid_data.lua`) and requires that
+talents, raid file, `raid.ts`, map, spell values, client digests, changelog entry and `raid_data.lua`), plus `kb/curated/recheck.json`, and requires that
 `raid.ts` changes nothing but its import line.
 
 ## Repeated failure

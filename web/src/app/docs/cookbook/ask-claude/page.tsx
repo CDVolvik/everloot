@@ -8,7 +8,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = pageMetadata({
   title: "Ask Claude about WoW: Forever",
-  description: "Connect Everloot to Claude.ai or Claude Code, then ask questions about WoW: Forever and get answers with their sources.",
+  description: "Connect Everloot to Claude.ai or Claude Code, with no sign-in or key, then ask questions about WoW: Forever and get answers with their sources.",
   path: "/docs/cookbook/ask-claude",
 });
 

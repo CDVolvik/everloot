@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MCP_CREDIT } from "./attribution.js";
+import { ITEM_FACTS } from "./records.js";
 /**
  * The Everloot MCP server's tools: names, titles, descriptions, input schemas and annotations, in the
  * order the server lists them. kb/src/mcp-server.ts registers from this table and supplies the handlers;
@@ -109,16 +110,30 @@ export const itemDrop = z.object({
     reporters: z.number().int(),
 });
 export const mapPin = z.object({ npcId: z.number().int(), name: z.string().nullable(), mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() });
+/** Loot windows players reported that the public rates do not count yet. A count, never a rate. */
+export const pendingLoot = z.object({
+    windows: z.number().int().describe("Reported loot windows not yet in the rates."),
+    reporters: z.number().int().describe("Distinct reporters behind those windows."),
+}).describe("Loot windows reported but not yet in the rates. Absent when there are none.");
 export const itemPage = z.object({
     itemId: z.number().int(),
     name: z.string().nullable().describe("Null until 3 installs report the same name."),
     drops: z.array(itemDrop),
     pins: z.array(mapPin).describe("Agreed positions of the NPCs it drops from; a pin needs 3 installs on the same map."),
+    pendingLoot: pendingLoot.optional(),
+    reported: z.object({
+        shown: z.array(z.object({
+            fact: z.enum(ITEM_FACTS), value: z.number(), reporters: z.number().int().min(3),
+            build: z.string(), lastSeen: z.string().nullable().describe("Latest agreeing report not after the corpus date; null means [?]."),
+        })),
+        contested: z.array(z.enum(ITEM_FACTS)).describe("No unique value has 3 agreeing installs; no value is disclosed."),
+    }).optional().describe("Player-reported item numbers, decided per line in the newest build with 3 reporting installs. Missing lines are unknown, never zero."),
 });
 export const npcPage = z.object({
     npcId: z.number().int(),
     name: z.string().nullable(),
     pins: z.array(z.object({ mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() })),
+    pendingLoot: pendingLoot.optional(),
 });
 export const questPage = z.object({
     questId: z.number().int(),
@@ -138,9 +153,13 @@ export const vendorOffer = z.object({
 export const vendorPage = z.object({ vendorNpcId: z.number().int(), offers: z.array(vendorOffer) });
 export const objectPage = z.object({
     objectId: z.number().int(),
+    name: z.string().nullable(),
     drops: z.array(z.object({ itemId: z.number().int(), itemName: z.string().nullable(), kills: z.number().int(), drops: z.number().int(), rate: z.number(), reporters: z.number().int() })),
     zero: z.object({ kills: z.number().int(), reporters: z.number().int() }).nullable().describe("Public windows with no item at all: a measured zero."),
     queued: z.boolean().describe("Observations exist but fewer than 3 installs reported them."),
+    pendingLoot: pendingLoot.optional(),
+    pins: z.array(z.object({ mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() })).optional()
+        .describe("Where players saw the object on the minimap, at its own position; a pin needs 3 installs at one spot. Absent when there is none."),
 });
 export const auctionHistory = z.object({
     realm: z.string(),
@@ -290,10 +309,17 @@ export const mapNear = z.object({
     origin: z.string().optional().describe("The spot in words."),
     radius: z.number().optional(),
     limit: z.number().int().optional(),
-    entrances: z.array(z.object({ names: z.array(z.string()), raid: z.boolean(), zone: z.string().nullable(), yards: z.number() })).optional()
-        .describe("From the game files, found in game files, unconfirmed. Nearest first."),
+    entrances: z.array(z.object({
+        names: z.array(z.string()), raid: z.boolean(), zone: z.string().nullable(), yards: z.number(),
+        confirmed: z.number().int().optional().describe("Installs that zoned in from this entrance, once 3 agree on it; absent until then."),
+    })).optional()
+        .describe("From the game files, found in game files, unconfirmed unless confirmed is set. Nearest first."),
     npcs: z.array(nearPin).optional().describe("Players saw them; a pin needs 3 installs on the same map."),
     vendors: z.array(nearPin).optional(),
+    treasures: z.array(z.object({
+        objectId: z.number().int(), name: z.string().nullable(), mapId: z.number().int(), zoneName: z.string(),
+        x: z.number(), y: z.number(), yards: z.number(), reporters: z.number().int(),
+    })).optional().describe("Game objects players saw on the minimap at their own position, such as treasure chests; a pin needs 3 installs at one spot."),
 });
 /** The census's factions and windows (population). */
 export const CENSUS_FACTIONS = ["Alliance", "Horde"];
@@ -486,21 +512,21 @@ export const MCP_TOOLS = {
     },
     item_page: {
         title: "Item page for a drop",
-        description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "One Forever item: agreed name, observed loot-window drop frequency, agreed map pins, and player-reported armor, block, damage per second, stats and resistances. Each item number needs one value with 3 agreeing installs in the newest build with 3 reporting installs, and no competing value with 3; contested values are withheld. Each number states its agreeing installs, build and last seen, with the corpus date and method. Missing numbers are [?] with a reason. No baseline rows or player names. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
         outputSchema: { ...uploadsAnswer, page: itemPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     npc_page: {
         title: "NPC page",
-        description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "One Forever NPC: agreed name and map pins, and loot windows reported but not yet in the rates. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: { npcId: z.number().int().positive().describe("NPC id.") },
         outputSchema: { ...uploadsAnswer, page: npcPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     object_page: {
         title: "Game object page",
-        description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
+        description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. The name is shown when 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.",
         inputSchema: { objectId: z.number().int().positive().describe("The object's entry id, as in /database/objects/1731.") },
         outputSchema: { ...uploadsAnswer, page: objectPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
@@ -521,7 +547,7 @@ export const MCP_TOOLS = {
     },
     world_map_near: {
         title: "What is near a place on the map",
-        description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`,
+        description: `Entrances, NPCs, vendors and treasures near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files; one is confirmed once 3 installs zoned in from it. NPCs, vendors and treasures are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Reads Everloot's current authorized public corpus when connected.`,
         inputSchema: {
             zone: z.string().max(80).optional().describe("Zone name or map id, such as Elwynn Forest or 1429. Needs x and y."),
             x: z.number().min(0).max(100).optional().describe("Across the zone map, 0 (west) to 100 (east)."),
@@ -687,6 +713,15 @@ export const MCP_TOOLS = {
         outputSchema: { ...uploadsAnswer, page: goldLedger.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
+    coverage: {
+        title: "Database coverage by zone, type and field",
+        description: "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field, plus scoped totals and the current build's whole-fact settled-list size, separately dated and measured. Coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). Confirmed includes settled. Reported fields needing one or two more installs are counted without their values. A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.",
+        inputSchema: {
+            zone: z.number().int().positive().optional().describe("Released UiMap zone id, such as 1429 for Elwynn Forest. Omit for all released zones."),
+            type: z.enum(["quests", "npcs", "pins", "vendors", "drops", "rares", "entrances", "bosses", "treasures"]).optional().describe("Coverage type. Omit for all types."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+    },
     population: {
         title: "Who plays what: population by race, class, faction and level",
         description: "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 addresses, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.",
@@ -752,8 +787,8 @@ export const MCP_TOOL_LIST = MCP_TOOL_NAMES.map((name) => ({ name, ...MCP_TOOLS[
 /**
  * What every tool returns: one text content block. Answers built on player data end with the
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
- * their sources inside the text instead. Every tool also declares an outputSchema and returns
- * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
+ * their sources inside the text instead. Tools with an outputSchema also return structuredContent
+ * of that shape (STRUCTURED_TOOLS lists them; coverage is text only).
  * When one everloot.app page shows the answer, its structured `url` holds it and the text carries a
  * `More: <url>` line, last before the data age and credit lines.
  */
@@ -766,7 +801,7 @@ export const CHATGPT_TOOLS = ["search", "fetch"];
 export const PLAYER_DATA_TOOLS = [
     "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
     "world_map_near", "entity_relations", "collection_gap", "completion_progress", "guild_board", "auction_history",
-    "market_value", "gold_ledger", "population",
+    "market_value", "gold_ledger", "population", "coverage",
 ];
 /** One game build as the version service listed it. Everloot records identifiers only, never game files. */
 export const buildEntry = z.object({

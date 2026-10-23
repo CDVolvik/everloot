@@ -81,7 +81,9 @@ async function call(c: Client, name: McpToolName, args: Record<string, unknown>)
   const result = await c.callTool({ name, arguments: args });
   expect(result.isError, name).not.toBe(true);
   // Parsing drops any key the shape does not declare; a field the frozen schemas lack would show up here.
-  const parsed = z.object(MCP_TOOLS[name].outputSchema!).parse(result.structuredContent);
+  const def = MCP_TOOLS[name];
+  if (!("outputSchema" in def)) throw new Error("Expected a structured tool");
+  const parsed = z.object(def.outputSchema).parse(result.structuredContent);
   expect(canonical(parsed), name).toBe(canonical(result.structuredContent));
   return (result.content as { text: string }[])[0]!.text;
 }
@@ -175,8 +177,11 @@ test("the game-file tools link before Blizzard's credit", async () => {
 
 test("the structured answers carry the same page as url, and no url where the text has no link", async () => {
   const c = await client();
-  const structured = async (name: McpToolName, args: Record<string, unknown>) =>
-    z.object(MCP_TOOLS[name].outputSchema!).parse((await c.callTool({ name, arguments: args })).structuredContent) as Record<string, unknown>;
+  const structured = async (name: McpToolName, args: Record<string, unknown>) => {
+    const def = MCP_TOOLS[name];
+    if (!("outputSchema" in def)) throw new Error("Expected a structured tool");
+    return z.object(def.outputSchema).parse((await c.callTool({ name, arguments: args })).structuredContent) as Record<string, unknown>;
+  };
   const hits = (await structured("search_knowledge", { query: "Thrall" })).hits as { id: number; name: string; url?: string }[];
   expect(Object.fromEntries(hits.map((h) => [h.name, h.url]))).toEqual({
     Thrall: THRALL, "Thrall stub": undefined, "Thrall redirect": undefined, "Thrall's Blade": undefined,

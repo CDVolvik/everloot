@@ -29,7 +29,7 @@ test("descriptions stay within the snippet length and say nothing about where th
     npcDescription({ name: long, id: 448, positions: 0 }),
     questDescription({ name: "Wanted: \"Hogger\"", id: 176, level: 11, giver: true, turnIn: true, rewards: 3 }),
     questDescription({ name: "Quest 176", id: 176, level: null, giver: false, turnIn: false, rewards: 0 }),
-    objectDescription({ id: 1731, items: 4, windows: 120 }),
+    objectDescription({ name: "Object 1731", id: 1731, items: 4, windows: 120 }),
     vendorDescription({ name: "Tharynn Bouden", id: 66, offers: 14 }),
   ];
   for (const d of all) {
@@ -46,5 +46,5 @@ test("quest, NPC, object and vendor descriptions name what the page holds", () =
     .toBe("Wanted: Hogger is a level 11 quest in WoW: Forever. With its quest giver and 2 rewards. Who gives it, where to turn it in and what it rewards. Quest ID 176.");
   expect(npcDescription({ name: "Hogger", id: 448, positions: 0 })).toBe("Hogger is an NPC in WoW: Forever. Where it stands on the map, what it drops and the quests it gives. NPC ID 448.");
   expect(vendorDescription({ name: "Tharynn", id: 66, offers: 1 })).toMatch(/^Tharynn is a vendor in WoW: Forever\. Sells 1 item at agreed prices\./);
-  expect(objectDescription({ id: 1731, items: 2, windows: 30 })).toMatch(/^Object 1731 is a chest, herb, ore vein or fishing pool in WoW: Forever\. 2 items looted from it and 30 loot windows counted\./);
+  expect(objectDescription({ name: "Object 1731", id: 1731, items: 2, windows: 30 })).toMatch(/^Object 1731 is a chest, herb, ore vein or fishing pool in WoW: Forever\. 2 items looted from it and 30 loot windows counted\./);
 });

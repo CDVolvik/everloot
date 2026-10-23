@@ -115,6 +115,19 @@ export function createIntakeQuota(opts: {
       }
     },
     /**
+     * The install id of a Polestar Recorder upload: `ps-`, a keyed hash of the character id the browser sent (itself a
+     * hash, never a name), `-`, and a keyed hash of the upload address. Readers fold ids that share either half into
+     * one voter (kb/src/recorder-installs.ts). Undefined when no trusted address is available.
+     */
+    recorderInstall(req: Request, character: string): string | undefined {
+      try {
+        const mac = (label: string, value: string) => createHmac("sha256", secret || "everloot-dev-reporter").update(`${label}:${value}`).digest("hex").slice(0, 16);
+        return `ps-${mac("recorder-character", character)}-${mac("recorder-address", clientIp(req))}`;
+      } catch {
+        return undefined;
+      }
+    },
+    /**
      * Anonymous bulk reads (the corpus feed and the drop list): their own hourly global and per-IP
      * buckets, only used when EVERLOOT_DATA_GUARD=1, after 20261019120000_data_guard.sql is applied.
      */

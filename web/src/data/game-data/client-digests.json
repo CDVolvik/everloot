@@ -1,4 +1,4 @@
-{"schema":"everloot.client-digests/1","label":"found in game files, unconfirmed","hashVersion":1,"build":{"product":"wow_classic_beta","buildId":70450,"version":"1.60.1.70450","buildConfig":"84bea4233331e390fda8724c6f91ffa5","definitions":"b9a63096cdd9","extractedAt":"2026-10-18T18:29:51.807Z"},"tables":{
+{"schema":"everloot.client-digests/1","label":"found in game files, unconfirmed","hashVersion":1,"build":{"product":"wow_classic_beta","buildId":70532,"version":"1.60.1.70532","buildConfig":"ad1802f4455e427ed8b7769aab25b0c0","definitions":"d8b2f0bdd362","extractedAt":"2026-10-22T22:42:27.998Z"},"tables":{
   "Achievement": {"rows":441,"hash":"a7a75bb3b475"},
   "Achievement_Category": {"rows":56,"hash":"6484849bef14"},
   "AnimKit": {"rows":805,"hash":"480a603755f1"},
@@ -150,6 +150,14 @@
   "ItemChildEquipment": {"rows":0,"hash":"e3b0c44298fc"},
   "ItemClass": {"rows":17,"hash":"df8db9dc4849"},
   "ItemCurrencyCost": {"rows":0,"hash":"e3b0c44298fc"},
+  "ItemDamageAmmo": {"rows":1000,"hash":"3a4b3e7e72aa"},
+  "ItemDamageOneHand": {"rows":100,"hash":"d5fccb03ad06"},
+  "ItemDamageOneHandCaster": {"rows":100,"hash":"d5fccb03ad06"},
+  "ItemDamageRanged": {"rows":100,"hash":"b47866dbd2e9"},
+  "ItemDamageThrown": {"rows":100,"hash":"1e719d0421b1"},
+  "ItemDamageTwoHand": {"rows":100,"hash":"07000612cb50"},
+  "ItemDamageTwoHandCaster": {"rows":100,"hash":"07000612cb50"},
+  "ItemDamageWand": {"rows":100,"hash":"80c58b698357"},
   "ItemDisenchantLoot": {"rows":54,"hash":"acca364eeb9b"},
   "ItemDisplayInfo": {"rows":42524,"hash":"3e96ad31b1ce"},
   "ItemDisplayInfoMaterialRes": {"rows":55644,"hash":"97b23a04e19f"},

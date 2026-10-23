@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
-  deleteConversation, keyReady, loadConversations, loadProviders, maskKey, pickModel, removeProvider, saveConversation, saveProvider, titleFor,
+  deleteConversation, keyReady, loadConversations, loadProviders, maskKey, pickModel, recordCheck, removeProvider, saveConversation, saveProvider,
+  setDefault, setModel, titleFor,
   type ChatMessage,
 } from "./store";
 
@@ -71,6 +72,35 @@ test("conversations: newest first, titled by their first question, deletable; th
 test("a key counts as ready once any provider is saved, and the list shows only its last four characters", () => {
   expect(keyReady([])).toBe(false);
   expect(keyReady([{ kind: "ollama", model: "qwen3:8b", key: "" }])).toBe(true);
-  expect(maskKey(OR)).toBe("ending mple");
+  expect(maskKey(OR)).toBe("ending ••••mple");
   expect(maskKey("")).toBe("no key needed");
+});
+
+test("the account page's cards: a new provider keeps the default, the model changes in place, the default is chosen apart", () => {
+  const s = memory();
+  saveProvider(s, { kind: "openrouter", model: "deepseek/deepseek-v4.1-flash", key: OR }, { asDefault: false });
+  saveProvider(s, { kind: "anthropic", model: "claude-sonnet-5-5", key: ANT }, { asDefault: false });
+  expect(loadProviders(s).map((p) => p.kind)).toEqual(["openrouter", "anthropic"]);
+  expect(setModel(s, "anthropic", "claude-haiku-5-5").map((p) => [p.kind, p.model])).toEqual([["openrouter", "deepseek/deepseek-v4.1-flash"], ["anthropic", "claude-haiku-5-5"]]);
+  expect(setDefault(s, "anthropic").map((p) => p.kind)).toEqual(["anthropic", "openrouter"]);
+  // Replacing a key in place keeps the order.
+  saveProvider(s, { kind: "openrouter", model: "deepseek/deepseek-v4.1-flash", key: `${OR}x` }, { asDefault: false });
+  expect(loadProviders(s).map((p) => p.kind)).toEqual(["anthropic", "openrouter"]);
+  expect(() => setModel(s, "ollama", "qwen3:8b")).toThrow(/not saved/);
+  expect(() => setModel(s, "anthropic", "bad model id")).toThrow(/model id/);
+  expect(() => setDefault(s, "ollama")).toThrow(/not saved/);
+});
+
+test("a Test's result is kept with the key, and forgotten when the key changes", () => {
+  const s = memory();
+  saveProvider(s, { kind: "openrouter", model: "deepseek/deepseek-v4.1-flash", key: OR });
+  expect(recordCheck(s, "openrouter", false, "2026-10-20T10:00:00.000Z")[0].check).toEqual({ ok: false, at: "2026-10-20T10:00:00.000Z" });
+  expect(loadProviders(s)[0].check).toEqual({ ok: false, at: "2026-10-20T10:00:00.000Z" });
+  // A model change keeps it; a new key drops it.
+  expect(saveProvider(s, { kind: "openrouter", model: "qwen/qwen3.7-flash" })[0].check?.ok).toBe(false);
+  expect(saveProvider(s, { kind: "openrouter", model: "qwen/qwen3.7-flash", key: `${OR}x` })[0]).not.toHaveProperty("check");
+  // An unsaved provider records nothing; a damaged check is dropped on read.
+  expect(recordCheck(s, "anthropic", true)).toHaveLength(1);
+  s.setItem("everloot.chat.providers.v1", JSON.stringify([{ kind: "openrouter", model: "m", key: OR, check: { ok: "yes" } }]));
+  expect(loadProviders(s)[0]).toEqual({ kind: "openrouter", model: "m", key: OR });
 });

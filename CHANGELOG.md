@@ -15,11 +15,88 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Knowledge base: `entities.name_norm` stores each name's words as the search re-rank reads them, with an index on
+  `(name_norm, kind)`. The exact-name lookup reads it instead of scanning every row through `lower(replace(...))`,
+  and now matches non-ASCII capitals and punctuation the SQL expression missed. A punctuated name with stopwords
+  ("Rise of the Lich-King") is found when asked with all its words. Releases built before the column still open and
+  search through the old expression; the speedup reaches the site with the next knowledge release.
+- Site and MCP: the public page tools count only reports after a recheck scope's date, as the coverage score and
+  the site's pages already did. `ToolOptions.recheck` carries the curated scopes into every page tool, the object
+  pages cut their loot windows, names and pins the same way, relation edges settle their drop, vendor, quest and zone
+  facts on the same cut-off, world-map-near drops stale entrance confirmations, and answer_sources stops citing a
+  scoped-out NPC name. The site's relation edges read the same scopes as the MCP tool, so both answer with the same
+  edges. The facts memo keys on the scopes so a scoped and an unscoped read never share facts. The standalone MCP
+  server has no curated file and stays unscoped.
+- Site and knowledge base: the settled list leaves out about 2% of settled facts each ISO week (the spot check), so
+  the desktop app re-sends them and a hotfix that never changed a build still reaches the corpus. A loot source under
+  a recheck scope counts only its windows after the scope's date and settles again, instead of staying out until the
+  scope is removed. The cron rewrites the list once per ISO week even when no uploads arrive, so the spot check keeps
+  rotating across an idle week; the heartbeat keeps the week it last wrote, and a failed rewrite is retried next run.
+- Site: an upload whose R2 PUT rejects on the network logs `R2 put failed` and the error, like a refused PUT,
+  rather than the generic `store failed`, so the half behind a 503 is named in the log.
+- Site: the snapshot cron stops rewriting the whole corpus when nothing arrived. One query asks whether an
+  upload is newer than the snapshot; if not, the snapshot and the completion rollup are skipped, the market fold
+  runs only when the UTC day changed, and `/api/health` reads the last successful run from a heartbeat instead
+  of the corpus's age. An idle week no longer reads as an outage, and the cron does no work for nothing.
+- Site: the item pages and the hover card say the item's set, its restrictions, its class and race
+  requirements, the skill it needs and its Use, Equip and Chance-on-hit lines, read from the game files. A
+  value the files do not carry reads `[?]` and says which table the game uses and the extract does not: the
+  stat amounts and the armour, which the game works out from tables we do not read, and the weapon damage,
+  which it works out from its weapon damage tables, the weapon speed and its own rounding. The numbers are
+  checked against the game's own tooltip before any range is printed.
+- Site: the sitemap is back. It had answered 500 since the wiki landed, because the build traced the wiki's
+  pages into the `/wiki` routes only, and the sitemap reads them on every request. The site had no sitemap for
+  two days; a build now fails for any route that reads the wiki without carrying it.
+- Site: records in `/api/corpus/public` and the bulk `corpus.ndjson` carry a per-install pseudonym (`pub-` and 32
+  hex, a keyed hash) in place of the install id, so they pass the protocol's parser again and anyone can count
+  installs. The addon's install id still never leaves. Protocol package 1.13.0, description only.
+- Site and knowledge base: game objects show the name three installs agree on, on the object page, the objects
+  and drops lists, hover cards, search and the item pages that list them as a source, and in the `object_page`
+  answer. Until three agree, they still read Object and the id.
+- Site: every item, quest, item set and spell the game files or the Warcraft Wiki name is named on its page,
+  with no id range and no placeholder filter. A name from the game files alone carries the unconfirmed marker;
+  a name from the wiki says so in its tooltip. Items no source names still read "Item N" until players name them.
 - Site: the player pages are live. A player page shows what the addon last saw of a character — race, class,
   level, guild and the day — found by the start of the name, and every page carries a hide link and a hide
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Desktop app: a Stop button on the Chat page while an answer is being written. It ends the request to the
+  provider (Anthropic or an OpenAI-compatible server) and any tool calls still to come; the question and the text
+  that had arrived stay in the transcript, marked "Stopped", and a screen reader hears "Stopped".
+- Site: the open data export, at `/database/download`. The published data as NDJSON files anyone can download
+  and build on, under CC BY-SA 4.0: what three installs agree on, and the game files' own layer, with a
+  manifest that says the build, the date the data was current, the method, the row count of every file and
+  what each one counts. The local Classic baseline is never in it — it is GPL-derived and stays on the
+  maintainer's machine — and a fact fewer than three installs agree on is not in it either. The page says so
+  in the same words as the policy.
+- Site: `/database/coverage` says how much of the game three players have agreed on, per zone, per type and
+  per field, with the confirmed share beside the settled one, and the zones that need players first. A type is
+  at its plateau when 90% of its expected facts are confirmed, 75% are settled, and under 0.5% became confirmed
+  in the 28 days before the data date; about 2% of the settled facts are left out each week, picked by a hash
+  of the fact and the week, so every settled fact is looked at again about once a year and the load stays
+  flat. A fact a patch may have changed counts as neither confirmed nor settled.
+- Knowledge base: `npm run kb -- coverage-report`, a local report of the facts that are missing, reported,
+  contested or spread, by zone and level, with the expected counts written beside it. Local only: the counts
+  are uploaded, never the rows.
+- Knowledge base: the settled list, one list per client build of the facts three players confirmed and two
+  more agreed on, and the uploaders that stop sending what is already settled. The site's copy is served at
+  `/api/coverage/settled`; the Desktop App keeps it beside its sent log, refreshes it once a day, and says
+  how many rows it skipped. The server-side tally of the extra agreement is behind a switch that stays off
+  until the data policy says how it is published.
+- Site and MCP server: a `coverage` tool, the same counts as the coverage page as text, per zone and per
+  type. The public tool list is 29 tools; the directory submissions carry the older count until they are
+  updated.
+- Site: a page per dungeon and raid, with the entrance players confirmed, the bosses and their kill counts,
+  and the treasure markers on the map, all read from the same readers the zone and object pages use, so a
+  marker on the map and a row on a page cannot disagree. The pages are in the sitemap and `/database` links
+  the index.
+- Knowledge base: `npm run kb -- name-gaps` opens with the counts: how many items, quests, item sets and
+  spells carry a name today, and which source each name came from — the game files, the Warcraft Wiki, the
+  local baseline, or the players. A source that was not read says so instead of printing a zero.
+- Knowledge base: `npm run kb -- name-gaps`, a local report of the items, quests, item sets and spells that
+  still print as an id, each with the reason and what would fill it (a rule decision, the addon's uploads, or no
+  source yet). Ids only, never names.
 - Site: the data layer for linking a character to an account, off by default. A signed-in player gets a code
   (live 15 minutes, good once), and a `character_link` row with that code is sent to `/api/me/characters/links`
   from the site or with an API key that has the new `link:own` scope. The GUID is replaced by a keyed hash, the
@@ -30,6 +107,63 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   usual rule, with a weekly chart and each rank's change against the week before. They start with the first
   full week after launch.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
+- Knowledge base: an NPC seen at its window places a pin like a spawn position (three installs on one map);
+  a targeting position still never does. Object spawn points are clustered per object and zone, become a pin
+  at three installs with a key that stays put once published, and an object's name needs three installs to
+  agree. Fishing (the bobber, or an object installs agree is fished) is never a pin. An upload of an event
+  that only adds fields to an earlier copy, as when an older Desktop App had dropped them, replaces that copy
+  instead of withdrawing the event as a conflict. The map shows none of this yet.
+
+### Fixed
+- Desktop app: on the Chat page, a screen reader hears "Copied" or "Copy failed" after Copy, and the button keeps
+  saying it for the full second and a half even when the thread is redrawn, as when a new question goes out.
+  Clear is off while an answer is being written, so the question can no longer be cleared out from under it.
+
+## [0.3.10] - 2026-10-23
+
+### Added
+- Addon, protocol and site: item numbers players see. When the game shows an item's tooltip, the addon records
+  its armor, block, damage per second, stats and resistances for the plain item, with the client build (record
+  kind `item_fact`, protocol package 1.15.0, record protocol 1.8.0). The item page, the site's hover card and the
+  embeddable card show a number in place of its `[?]` once three installs on the newest build agree, with the
+  installs, the build and when it was last seen; a line installs disagree on stays `[?]` and says so. MCP tools
+  are unchanged. Not yet run in the Forever client.
+- Addon and desktop app: item tooltips show where an item drops. The Desktop App writes the public drop rates
+  (three installs looted the source) into the `EverlootPrices` file beside the prices, at most once a day; the
+  tooltip and `/everloot price` show up to three sources as drops of loot windows, with installs and the upload
+  date. With the file in the game, a missing price or drop source is said in one grey line. Nothing new is
+  written to SavedVariables. Design: `docs/design/specs/2026-10-21-addon-value-loop-design.md`.
+- Places for the world map. When an NPC's window opens (merchant, gossip, quest, trainer, flight map, bank,
+  auction house, stable, innkeeper) the addon records where you stand as that NPC's place, with the service the
+  window offered, once per NPC, service and zone. When you loot a herb, ore vein, chest or other object, its loot
+  row gets where you stand, how you opened it (from the spell you cast) and the object's name. Trainer rows name
+  the trainer. Event names and spell arguments not yet seen on the Forever client are read defensively: a missing
+  one records nothing. Launch-day checks: `docs/2026-10-21-addon-0.3.10-launch-checklist.md`.
+
+### Changed
+- Targeting or mousing over the same NPC at the same spot (to 1 unit on the map's 0 to 100 scale) records it
+  once, not every time. NPC window rows and object loot rows have their own 2,000-row room, apart from
+  targeting rows and creature loot, so a full targeting or corpse share pauses only itself.
+- An object's name comes only from a herb, ore or chest cast, never from another spell's target (such as a
+  player you healed). A fishing cast counts for 30 seconds, for a slow bite.
+- The raid buff list (`/everloot raid`) is read from the game files of build 1.60.1.70532.
+
+## [0.3.9] - 2026-10-21
+
+### Added
+- A button at the top-left of the minimap, the way every other addon in the game is found. It opens
+  Everloot's panel, so nothing needs a command typed any more.
+- A box at the top of that panel to ask Everloot a question. The question goes into your file, the
+  companion answers it with its sources, and `/reload` prints the answer in the chat, exactly as
+  `/ask <question>` does.
+
+## [0.3.8] - 2026-10-21
+
+### Fixed
+- The player pages record the players you see again. The module asked the client for a name and a realm
+  and skipped anyone whose realm was not empty; the beta client answers every unit with its server, so
+  every player was dropped and no page ever had anything on it. It compares the realm with ours now, and
+  only a realm that is not ours is another realm.
 
 ## [0.3.7] - 2026-10-20
 
@@ -58,6 +192,14 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   off until `/everloot census on`. The Desktop App sends census rows with its uploads when the player leaves
   the census box ticked on its setup screen, or turns it on in Settings; a setup finished before this keeps
   it off. Still never names, guilds, gear or places, and the site shows only totals.
+
+## [desktop-v0.1.6] - 2026-10-21
+
+### Added
+- The player pages can go with the uploads, on a switch in Settings: "Send the player pages with the
+  uploads". It is off by default, so nothing changes until it is turned on, and the rows stay in
+  `Everloot.lua` until then — the same rule the named data follows. The privacy policy and the data
+  policy say so, in the words the switch uses.
 
 ## [desktop-v0.1.5] - 2026-10-20
 

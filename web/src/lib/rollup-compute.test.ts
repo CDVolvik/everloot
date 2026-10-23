@@ -11,12 +11,14 @@ const fns = vi.hoisted(() => ({
   addons: vi.fn(() => ({ addons: [], reportingInstalls: 0 })),
   edges: vi.fn(() => []),
 }));
-vi.mock("../../../kb/src/drop-rollup", () => ({ itemFactsFromRecords: fns.itemFacts }));
+// No recheck scopes: the cut-off hands the same records back, so the windows are read once.
+vi.mock("../../../kb/src/drop-rollup", () => ({ itemFactsFromRecords: fns.itemFacts, recheckLootRecords: (records: unknown[]) => records }));
 vi.mock("../../../kb/src/world-pages", () => ({ worldFactsFromRecords: fns.worldFacts }));
 vi.mock("../../../kb/src/addon-rollup", () => ({ popularAddonsFromRecords: fns.addons }));
 vi.mock("../../../kb/src/edges", () => ({ observedEdges: fns.edges }));
 vi.mock("./rollups", () => ({ lootWindowsFromRecords: fns.windows, rollupDrops: fns.rollup }));
 
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { computeRollups, loadCensus, loadItemFacts, loadObservedEdges, loadPopularAddons, loadWorldFacts } from "./rollup-compute";
 
 const V1 = { uploads: 2, records: [{ kind: "loot" }, { kind: "quest" }], dataAsOf: "2026-10-10T10:00:00.000Z" };
@@ -38,7 +40,7 @@ test("the answers share one aggregation set per corpus version", async () => {
   expect(fns.worldFacts).toHaveBeenCalledTimes(1);
   expect(fns.addons).toHaveBeenCalledTimes(1);
   expect(fns.edges).toHaveBeenCalledTimes(1);
-  expect(fns.edges).toHaveBeenCalledWith(V1.records, V1.dataAsOf);
+  expect(fns.edges).toHaveBeenCalledWith(V1.records, V1.dataAsOf, RECHECK_SCOPES);
   // Addon rows dated after the corpus was current are not facts yet.
   expect(fns.addons).toHaveBeenCalledWith(V1.records, V1.dataAsOf);
   // Same corpus version: repeated answers reuse the aggregates, no recompute.
@@ -71,7 +73,8 @@ test("answer shapes are unchanged", async () => {
   const rollup = await computeRollups();
   expect(rollup.stats).toEqual({ uploads: 2, lootWindows: 2, records: 2, unreachable: false, dataAsOf: "2026-10-10T11:00:00.000Z" });
   expect(await loadItemFacts()).toEqual({ rates: [], names: [], npcs: [], unreachable: false });
-  expect(await loadWorldFacts()).toEqual({ npcs: [], quests: [], vendors: [], unreachable: false });
+  // The world facts carry the recheck scopes the readers apply (kb/curated/recheck.json holds none today).
+  expect(await loadWorldFacts()).toEqual({ npcs: [], quests: [], vendors: [], recheck: [], unreachable: false });
   expect(await loadPopularAddons()).toEqual({ addons: [], reportingInstalls: 0, unreachable: false, dataAsOf: "2026-10-10T11:00:00.000Z" });
   expect(await loadObservedEdges()).toEqual({ edges: [], unreachable: false, dataAsOf: "2026-10-10T11:00:00.000Z" });
 });

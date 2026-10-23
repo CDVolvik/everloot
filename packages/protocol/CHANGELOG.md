@@ -7,10 +7,49 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Changed
+- 1.13.0 (record protocol unchanged, 1.7.0), description text only, no shape change: `corpusPublicResponse.records`
+  now says each record's `installId` is a per-install pseudonym (`pub-` and 32 hex), never the addon's install id,
+  and absent when the server has no key to make one. The records pass `parseRecords` again, so installs can be counted.
+- The `object_page` answer carries `name`, null until 3 installs agree on one, as the NPC page does.
 - Description text only, no shape change: in `API_ROUTES`, the `limit` paging parameter states its caps (500 rows
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.17.0 (record protocol unchanged, 1.8.0): optional `itemPage.reported` holds agreed item numbers with
+  installs, build and last seen, plus contested line keys without values. Tool inputs are unchanged.
+  `item_page` and `coverage` descriptions now document item-number evidence, scoped coverage totals and
+  the separately dated whole-fact settled-list size. The public catalogue remains 29 tools.
+- 1.16.0 (record protocol unchanged, 1.8.0): the route `GET /api/coverage/settled` is in `API_ROUTES`, with its
+  response schema `settledListResponse` (`everloot.settled/1`): per upload row kind, the delta-encoded ids whose
+  facts are settled for one client build. The route already existed; it is now in the OpenAPI document, the API
+  docs and `schema/api/`.
+- 1.15.0 (record protocol 1.8.0), for the numbers an item's tooltip shows that the game files do not hold: the
+  record kind `item_fact`, public in the corpus, with `itemId`, `fact` (which line, from `ITEM_FACTS`: armor, block,
+  damage_per_second, each stat and each resistance), `value` (a whole number, but damage_per_second has one decimal)
+  and `clientBuild`, which is required here because a patch can change an item's numbers. The addon writes it from
+  the player's own tooltips. MCP tools are unchanged.
+- 1.14.0 (record protocol unchanged, 1.7.0): read-only, text-only MCP tool `coverage`, with optional
+  UiMap `zone` and coverage `type`. Returns the public coverage page's dated counts, method, install
+  counts and reported-field lists without unconfirmed values or baseline rows, names or ids.
+- 1.12.0 (record protocol 1.7.0), for rares, dungeons and treasures in a Polestar Recorder file:
+  `npc_sighting.positionKind` gains `vignette` (the NPC's own position from the game's vignette API). Three record
+  kinds, each public in the corpus: `instance_entrance` (`instanceMapId`, `name`, `instanceType` from
+  `INSTANCE_TYPES`, optional `difficulty`, and the last outdoor `mapId`, `x`, `y`), `encounter` (`encounterId`,
+  `name`, `instanceMapId`, optional `difficulty` and `size`, `success`, optional `npcIds`) and `object_sighting`
+  (`objectId`, `name`, the object's own `mapId`, `x`, `y`, optional `instanceMapId`). MCP: `item_page`, `npc_page`
+  and `object_page` gain an optional `pendingLoot` (loot windows reported but not in the rates: `windows`,
+  `reporters`), `object_page` an optional `pins`, and `world_map_near` an optional `treasures` list and an
+  optional `confirmed` count on each entrance.
+- 1.11.0 (record protocol 1.6.0), for uploads of a Polestar Recorder file: `npc_sighting.level` and
+  `npc_sighting.reaction` are no longer required, because a Recorder file does not record them, and the upload
+  envelope gains an optional `source` (`UPLOAD_SOURCES`: `polestar_recorder`), passed through as
+  `CanonicalUpload.source`. Rows from the Everloot addon still carry both fields. MCP tools are unchanged.
+- 1.10.0 (record protocol 1.5.0), for the world map's player pins: `npc_sighting.positionKind` gains `interaction`
+  (the player's position while the NPC's window was open) and an optional `role` (`NPC_ROLES`: vendor, trainer,
+  questgiver, flightmaster, banker, auctioneer, stablemaster, innkeeper, repair). `loot` gains five optional
+  fields for an object source: `mapId`, `x` and `y` (the player's position, all three or none), `gatherKind`
+  (`GATHER_KINDS`: herb, ore, chest, fishing, other) and `sourceObjectName`. `trainer_seen` gains an optional
+  `trainerNpcId`. Older addons send none of them. MCP tools are unchanged.
 - 1.9.0 (record protocol 1.4.0): the record kind `character_link`, written when a player types a link code on one
   of their characters: the code (`LINK_CODE`), name, realm, race, class, level, faction, the GUID (in transit only)
   and the completion key, with `LINK_KINDS`. Not a public corpus kind and never kept in a stored upload: the site

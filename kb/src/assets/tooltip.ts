@@ -13,6 +13,8 @@ export interface EffectFacts {
   periodMs: number;
   chainTargets: number;
   radiusYards: number | null;
+  /** SpellEffect.Variance: the value spreads over base × (1 ± variance / 2). 0 or absent: no spread. */
+  variance?: number;
 }
 
 export interface SpellFacts {
@@ -43,11 +45,16 @@ function duration(ms: number): string {
   return `${fmt(s)} sec`;
 }
 
-/** Low and high value of an effect. The long-standing rule: with dice, the roll is base+1 up to base+sides. */
-function range(e: EffectFacts): { min: number; max: number } {
-  if (e.dieSides > 1) return { min: e.basePoints + 1, max: e.basePoints + e.dieSides };
+/**
+ * Low and high value of an effect, and the one value an expression uses. The long-standing rule: with dice, the
+ * roll is base+1 up to base+sides. Newer tables keep the base and a Variance instead, which the game prints as
+ * base × (1 ± variance / 2), rounded (Minor Mana Potion: base 160, variance 0.25, "restores 140 to 180 mana").
+ */
+function range(e: EffectFacts): { min: number; max: number; one: number } {
+  if (e.variance && e.variance > 0) return { min: Math.round(e.basePoints * (1 - e.variance / 2)), max: Math.round(e.basePoints * (1 + e.variance / 2)), one: e.basePoints };
+  if (e.dieSides > 1) return { min: e.basePoints + 1, max: e.basePoints + e.dieSides, one: e.basePoints + 1 };
   const v = e.basePoints + (e.dieSides === 1 ? 1 : 0);
-  return { min: v, max: v };
+  return { min: v, max: v, one: v };
 }
 
 class Unresolvable extends Error {}
@@ -79,7 +86,7 @@ function variable(letter: string, digit: number, facts: SpellFacts, mode: Mode):
   switch (letter) {
     case "s": case "S": {
       const r = range(eff());
-      return r.min === r.max || plain ? real(r.min) : `${fmt(Math.abs(r.min))} to ${fmt(Math.abs(r.max))}`;
+      return r.min === r.max || plain ? real(r.one) : `${fmt(Math.abs(r.min))} to ${fmt(Math.abs(r.max))}`;
     }
     case "m": return real(range(eff()).min);
     case "M": return real(range(eff()).max);
@@ -91,7 +98,7 @@ function variable(letter: string, digit: number, facts: SpellFacts, mode: Mode):
     case "o": case "O": {
       const e = eff();
       if (!e.periodMs || !facts.durationMs) throw new Unresolvable();
-      return real(range(e).min * (facts.durationMs / e.periodMs));
+      return real(range(e).one * (facts.durationMs / e.periodMs));
     }
     case "a": case "A": {
       const r = eff().radiusYards;

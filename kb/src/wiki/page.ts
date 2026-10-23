@@ -41,10 +41,13 @@ const slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "lowercase letters a
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "a date as YYYY-MM-DD");
 const httpsUrl = z.url({ protocol: /^https$/ });
 
-/** What each type binds to. Unknown keys fail, so a typo cannot pass as an unbound page. */
+/**
+ * What each type binds to. Unknown keys fail, so a typo cannot pass as an unbound page. The keys in
+ * BLIZZARD_SOURCED are optional here; the page check requires them unless the page lists a Blizzard post.
+ */
 export const BINDS: Record<PageType, z.ZodType> = {
-  dungeon: z.strictObject({ entrance: slug, zone: id.optional(), lfgDungeon: id.optional() }),
-  raid: z.strictObject({ entrance: slug, zone: id.optional(), lfgDungeon: id.optional() }),
+  dungeon: z.strictObject({ entrance: slug.optional(), zone: id.optional(), lfgDungeon: id.optional() }),
+  raid: z.strictObject({ entrance: slug.optional(), zone: id.optional(), lfgDungeon: id.optional() }),
   zone: z.strictObject({ zone: id }),
   npc: z.strictObject({ npc: id }),
   faction: z.strictObject({ faction: id }),
@@ -52,9 +55,15 @@ export const BINDS: Record<PageType, z.ZodType> = {
   event: z.strictObject({ holiday: id }),
   concept: z.strictObject({ tool: z.string().regex(/^\/[a-z0-9/-]*$/, "a site path such as /tools/talents").optional() }),
   change: z.strictObject({ changes: z.array(z.string().min(1)).min(1) }),
-  race: z.strictObject({ race: id }),
+  race: z.strictObject({ race: id.optional() }),
   class: z.strictObject({ class: id }),
 };
+
+/**
+ * The binding a page may leave out when it is written from a Blizzard post about something the game files do
+ * not have yet, such as a new Forever dungeon or race. Without a Blizzard post in `sources`, it is required.
+ */
+export const BLIZZARD_SOURCED: Partial<Record<PageType, string>> = { dungeon: "entrance", raid: "entrance", race: "race" };
 
 export const FrontMatter = z.strictObject({
   /** Stable and never reused; the MCP record id is its negative. */

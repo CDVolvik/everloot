@@ -11,7 +11,30 @@ vi.mock("./release", () => ({ getRelease: () => ({ db: {} }) }));
 vi.mock("./upload-store", () => ({ uploadStore: {} }));
 vi.mock("./usage-metrics", async (importActual) => ({ ...(await importActual<typeof import("./usage-metrics")>()), recordUsage: hoisted.record }));
 
-import { createMount } from "./mcp-mount";
+import { createMount, toolLoaders } from "./mcp-mount";
+import { loadCoverage } from "./coverage-compute";
+import { RECHECK_SCOPES } from "./recheck-scopes";
+import { readSettledList } from "./settled-store";
+import { emptySettledList } from "../../../kb/src/settled-list";
+
+vi.mock("./coverage-compute", () => ({ loadCoverage: vi.fn(async () => null) }));
+vi.mock("./settled-store", () => ({ readSettledList: vi.fn() }));
+
+it("lends only the persisted settled list's count and date, never its identifiers", async () => {
+  const list = { ...emptySettledList("1.60.1.70450"), dataAsOf: "2026-11-06T00:00:00Z", quest: [123, 1], vendor: [456] };
+  vi.mocked(readSettledList).mockResolvedValueOnce(list);
+  expect(await toolLoaders().settledSummary!(list.build)).toEqual({ build: list.build, dataAsOf: list.dataAsOf, facts: 3 });
+  expect(readSettledList).toHaveBeenCalledWith(list.build);
+});
+
+it("lends MCP and HTTP tools the public coverage page's reader", async () => {
+  expect(await toolLoaders().coverage!()).toBeNull();
+  expect(loadCoverage).toHaveBeenCalledOnce();
+});
+
+it("lends the curated recheck scopes, so the page tools honour the coverage cut-off", () => {
+  expect(toolLoaders().recheck).toBe(RECHECK_SCOPES);
+});
 
 const call = (name: string) => ({ jsonrpc: "2.0", method: "tools/call", params: { name } });
 function post(body: unknown, headers: Record<string, string> = {}) {

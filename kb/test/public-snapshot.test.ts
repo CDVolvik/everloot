@@ -6,8 +6,11 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { openDb } from "../src/db.js";
 import { replaceSourceRows } from "../src/entities.js";
+import { importPfquest } from "../src/importers/pfquest.js";
 import { openPublicSnapshot } from "../src/public-snapshot.js";
+import { search } from "../src/search.js";
 import { snapshot } from "../src/snapshot.js";
+import { pfquestCheckout } from "./pfquest-fixture.js";
 
 /**
  * The public release is the artifact the MCP service serves. These tests prove it can only be
@@ -95,6 +98,51 @@ test("a genuine release opens read-only and answers sourced reads without changi
   // Read-only means read-only: serving created no journal and changed no sidecar.
   for (const sidecar of ["-wal", "-shm", "-journal"]) expect(existsSync(`${dbPath}${sidecar}`)).toBe(false);
   expect(existsSync(manifestPath)).toBe(true);
+});
+
+test("a release carries name_norm and its index, and the exact-name search reads them", async () => {
+  const { dbPath } = await genuineRelease();
+  const release = openPublicSnapshot(dbPath);
+  expect(release.db.prepare("SELECT name_norm AS norm FROM entities").all()).toEqual([{ norm: "thrall" }]);
+  expect(release.db.prepare("SELECT name FROM sqlite_master WHERE name = 'entities_name_norm'").get()).toEqual({ name: "entities_name_norm" });
+  expect(search(release.db, "thrall", 1)[0].name).toBe("Thrall");
+  release.db.close();
+});
+
+test("a release built before name_norm still opens and searches through the fallback", async () => {
+  const { dbPath } = await mutatedRelease((db) => {
+    db.exec("DROP INDEX entities_name_norm; ALTER TABLE entities DROP COLUMN name_norm; VACUUM");
+  });
+  const release = openPublicSnapshot(dbPath);
+  expect(release.db.prepare("SELECT name FROM pragma_table_info('entities') WHERE name = 'name_norm'").all()).toEqual([]);
+  expect(search(release.db, "thrall", 1)[0].name).toBe("Thrall");
+  // The lookup that runs when the pool misses: no exact row in the pool, so the fallback expression is read.
+  expect(search(release.db, "warchief", 1)[0].name).toBe("Thrall");
+  release.db.close();
+});
+
+test("a release with name_norm but no index is refused", async () => {
+  const { dbPath } = await mutatedRelease((db) => db.exec("DROP INDEX entities_name_norm; VACUUM"));
+  expect(() => openPublicSnapshot(dbPath)).toThrow(/schema|entities_name_norm/i);
+});
+
+test("a release built from a database holding the Classic baseline carries none of it and still serves", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-pub-"));
+  const live = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(live, "curated", ["lore_page"], [LORE]);
+  await importPfquest(live, pfquestCheckout(), { now: new Date("2026-10-21T00:00:00Z") });
+  expect((live.prepare("SELECT count(*) AS n FROM entities WHERE source_id = 'pfquest-classic'").get() as { n: number }).n).toBe(10);
+  const dbPath = join(dir, "release", "release.sqlite");
+  const manifest = snapshot(live, dbPath, new Date("2026-10-21T12:00:00Z"));
+  live.close();
+  expect(Object.keys(manifest.counts)).not.toContain("pfquest-classic");
+
+  const release = openPublicSnapshot(dbPath);
+  expect(release.db.prepare("SELECT source_id, name FROM entities").all()).toEqual([{ source_id: "curated", name: "Thrall" }]);
+  expect(release.db.prepare("SELECT id FROM sources WHERE id = 'pfquest-classic'").all()).toEqual([]);
+  release.db.close();
+  // VACUUM leaves no deleted baseline text in free pages of the file.
+  expect(readFileSync(dbPath).includes("Field Rat")).toBe(false);
 });
 
 test("a missing or malformed manifest is refused", async () => {

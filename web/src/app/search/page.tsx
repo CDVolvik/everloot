@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
+import GameIcon from "@/components/game/GameIcon";
 import { Container, DataTable, DataTitle, Entry, EntryList, filledColumns, LinkTabs, Pager, QUALITY_TEXT, SearchBar, qualityOf, type SparseColumn } from "@/components/ui";
 import { CC_BY_SA } from "@/lib/jsonld";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
 import { isScope, siteSearch, type Scope, type SearchGroup, type SearchResult } from "@/lib/site-search";
 import { loadShownSearchNames } from "@/lib/shown-search-names";
+import { shownItemIcons } from "@/lib/item-icons";
 
 /** A `type=` value is one of the stored types; anything else means All. */
 function typeOf(raw: string | undefined): LoreType | undefined {
@@ -48,6 +50,8 @@ export default async function SearchPage(props: { searchParams: Promise<Params> 
 
   // Matched on the names the database pages show, so a name a list prints is found here too.
   const groups = q ? await siteSearch(q, { ...(scope ? { only: scope, limit: SCOPED_LIMIT } : {}), names: await loadShownSearchNames() }) : null;
+  // The game icon beside each item hit, where its page shows one.
+  const icons = await shownItemIcons(groups?.find((g) => g.type === "item")?.results.flatMap((r) => (r.id === undefined ? [] : [r.id])) ?? []);
   const base = `/search?q=${encodeURIComponent(q)}`;
   const tabs = groups && groups.length > 0 && [
     { label: "All", href: base, current: !scope },
@@ -77,7 +81,7 @@ export default async function SearchPage(props: { searchParams: Promise<Params> 
             <Link href="/database/npcs" className={link}>NPCs</Link>.
           </p>
         ) : (
-          groups.map((group) => <ResultTable key={group.type} group={group} q={q} scoped={Boolean(scope)} />)
+          groups.map((group) => <ResultTable key={group.type} group={group} q={q} scoped={Boolean(scope)} icons={icons} />)
         )}
       </article>
     </Container>
@@ -85,12 +89,21 @@ export default async function SearchPage(props: { searchParams: Promise<Params> 
 }
 
 /** One type's results as a dense table; its heading is the first column's header. */
-function ResultTable({ group, q, scoped }: { group: SearchGroup; q: string; scoped: boolean }) {
+function ResultTable({ group, q, scoped, icons }: { group: SearchGroup; q: string; scoped: boolean; icons: Map<number, string> }) {
   const more = group.total > group.results.length;
   const all = isScope(group.type) ? `/search?q=${encodeURIComponent(q)}&in=${group.type}` : group.type === "lore" ? `/search?q=${encodeURIComponent(q)}&in=lore` : null;
   const name = (r: SearchResult) => {
     const colour = group.type === "item" && typeof r.quality === "number" && r.quality <= 5 ? QUALITY_TEXT[qualityOf(r.quality)] : "text-accent";
-    return <Link href={r.href} className={`${colour} hover:underline underline-offset-4`}>{r.label}</Link>;
+    const link = <Link href={r.href} className={`${colour} hover:underline underline-offset-4`}>{r.label}</Link>;
+    // Item hits carry the game icon as the item lists do, and an empty box where an item has none.
+    if (group.type !== "item" || icons.size === 0) return link;
+    const icon = r.id === undefined ? undefined : icons.get(r.id);
+    return (
+      <span className="flex min-w-0 items-center gap-2">
+        {icon ? <GameIcon src={icon} size={20} /> : <span aria-hidden="true" className="h-5 w-5 shrink-0 rounded-sm border border-line" />}
+        {link}
+      </span>
+    );
   };
   const columns: SparseColumn<SearchResult>[] = [
     { key: "name", header: <>{group.heading} <span className="font-normal tabular-nums">({group.total})</span></>, cell: name },

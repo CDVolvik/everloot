@@ -117,18 +117,16 @@ describe("bindings and tokens", () => {
     ]);
   });
 
-  test("an item id above the shown range fails, even when the game files have it", () => {
-    expect(problemsOf({}, withSection("History", "It drops {item:30000}."))).toEqual(["{item:30000} is above the shown item range (below 25000)"]);
-    expect(problemsOf({}, withSection("History", "It drops {item:24999} and {item:2589}."))).toEqual([]);
+  test("an item token at any id the game files have passes", () => {
+    expect(problemsOf({}, withSection("History", "It drops {item:30000} and {item:2589}."))).toEqual([]);
   });
 
   test("an item the game files do not have fails", () => {
     expect(problemsOf({}, withSection("History", "It drops {item:1234}."))).toEqual(["{item:1234} is not an item in the game files"]);
   });
 
-  test("a quest id above the shown range fails", () => {
-    expect(problemsOf({}, withSection("History", "Start with {quest:10000}."))).toEqual(["{quest:10000} is above the shown quest range (below 10000)"]);
-    expect(problemsOf({}, withSection("History", "Start with {quest:176}."))).toEqual([]);
+  test("a quest token at any id passes", () => {
+    expect(problemsOf({}, withSection("History", "Start with {quest:176} or {quest:10000}."))).toEqual([]);
   });
 
   test("a zone token or binding must be a released zone", () => {
@@ -143,11 +141,35 @@ describe("bindings and tokens", () => {
     expect(problemsOf({ binds: {} })).toEqual([expect.stringMatching(/^binds\.entrance:/), "a published page binds at least one id, so it shows at least one live data block"]);
   });
 
+  describe("an entrance or race id may be left out only when the page lists a Blizzard post", () => {
+    const post = (url: string) => ({ sources: [{ title: "A Blizzard post", url, checkedOn: "2026-10-20" }], status: "draft", reviewed: null });
+    const news = post("https://worldofwarcraft.blizzard.com/en-us/news/24301455");
+    const race = (over: Record<string, unknown>) =>
+      checkWiki([file({ type: "race", ...over }, "## Overview\n\nText.\n\n## In WoW: Forever\n\nText.\n"), westfall()], ctx).problems.map((p) => p.message);
+
+    test("with a Blizzard news or US/EU forum post, a dungeon, raid or race page passes unbound", () => {
+      expect(problemsOf({ binds: {}, ...news })).toEqual([]);
+      expect(problemsOf({ type: "raid", binds: { zone: 1436 }, ...post("https://us.forums.blizzard.com/en/wow/t/x/1") })).toEqual([]);
+      expect(race({ binds: {}, ...post("https://eu.forums.blizzard.com/en/wow/t/x/1") })).toEqual([]);
+    });
+
+    test("without one, the binding is still required", () => {
+      const required = (key: string) => [`binds.${key}: required unless the page lists a Blizzard post (worldofwarcraft.blizzard.com or the US or EU forums) in sources`];
+      expect(problemsOf({ binds: {}, status: "draft", reviewed: null })).toEqual(required("entrance"));
+      expect(problemsOf({ binds: {}, ...post("https://www.wowhead.com/news/1") })).toEqual(required("entrance"));
+      expect(problemsOf({ binds: {}, ...post("https://worldofwarcraft.blizzard.com.example.com/news/1") })).toEqual(required("entrance"));
+      expect(race({ binds: {}, status: "draft", reviewed: null })).toEqual(required("race"));
+    });
+
+    test("a binding that is given must still resolve", () => {
+      expect(problemsOf({ binds: { entrance: "stockade" }, ...news })).toEqual(['binds.entrance "stockade" is not a dungeon or raid entrance in the game files']);
+    });
+  });
+
   test("item sets and /changes entries resolve", () => {
     const set = (itemSet: number) => checkWiki([file({ type: "item-set", binds: { itemSet }, status: "draft" }, "## Overview\n\nText.\n\n## Who wears it\n\nText.\n"), westfall()], ctx).problems.map((p) => p.message);
     expect(set(1)).toEqual([]);
     expect(set(2)).toEqual(["binds.itemSet 2 is not an item set in the game files"]);
-    expect(set(1000)).toEqual(["binds.itemSet 1000 is above the shown range (below 1000)"]);
     const change = (id: string) => checkWiki([file({ type: "change", binds: { changes: [id] }, status: "draft" }, "## What changed\n\nText.\n\n## What it affects\n\nText.\n"), westfall()], ctx).problems.map((p) => p.message);
     expect(change("us:12:3")).toEqual([]);
     expect(change("us:99:1")).toEqual(['binds.changes "us:99:1" is not an entry on /changes']);

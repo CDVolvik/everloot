@@ -57,6 +57,15 @@ test("a missing file is the defaults and a damaged one is the defaults plus an e
   expect(loadSettings(path).settings).toEqual(defaultSettings());
 });
 
+test("the player pages are off until the player turns them on", () => {
+  const path = join(dir(), "settings.json");
+  expect(defaultSettings().players).toBe(false);
+  writeFileSync(path, JSON.stringify({ gameFolder: "D:\\Games\\WoW" }));
+  expect(loadSettings(path).settings.players).toBe(false);
+  writeFileSync(path, JSON.stringify({ gameFolder: "D:\\Games\\WoW", players: true }));
+  expect(loadSettings(path).settings.players).toBe(true);
+});
+
 test("the census starts on for a new setup and stays off for one finished before the switch existed", () => {
   const path = join(dir(), "settings.json");
   expect(defaultSettings().census).toBe(true);

@@ -2,7 +2,7 @@ import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { buildLoreRelease } from "@/test/lore-release";
 
 const mocks = vi.hoisted(() => ({
-  names: { items: new Map<number, string>(), npcs: new Map<number, string>(), quests: new Map<number, string>() },
+  names: { items: new Map<number, string>(), npcs: new Map<number, string>(), objects: new Map<number, string>(), quests: new Map<number, string>() },
   objects: { rates: [] as unknown[], measuredZeros: [] as unknown[], names: [] as unknown[], unreachable: false },
 }));
 vi.mock("@/lib/names", () => ({ loadNames: async () => mocks.names }));
@@ -13,7 +13,7 @@ beforeAll(async () => { release = await buildLoreRelease(); });
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
-  mocks.names = { items: new Map(), npcs: new Map(), quests: new Map() };
+  mocks.names = { items: new Map(), npcs: new Map(), objects: new Map(), quests: new Map() };
   mocks.objects = { rates: [], measuredZeros: [], names: [], unreachable: false };
 });
 
@@ -66,6 +66,9 @@ test("an id opens the item, NPC and quest with that id first, named when a name 
 test("an object is found by id, and only when it has public loot observations", async () => {
   mocks.objects.rates = [{ sourceObjectId: 55, itemId: 9, kills: 10, drops: 3, rate: 0.3, reporters: 3, public: true }];
   expect((await search("55")).find((g) => g.type === "object")!.results[0]).toMatchObject({ href: "/database/objects/55", exact: true });
+  mocks.names.objects = new Map([[55, "Copper Vein"]]);
+  expect((await search("55")).find((g) => g.type === "object")!.results[0]).toMatchObject({ label: "Copper Vein" });
+  mocks.names.objects = new Map();
   expect((await search("56")).find((g) => g.type === "object")).toBeUndefined();
   mocks.objects.unreachable = true;
   expect((await search("55")).find((g) => g.type === "object")).toBeUndefined();
@@ -89,6 +92,25 @@ test("the Warcraft Wiki copies never move above Everloot's own pages, even on an
   mocks.names.items = new Map([[19019, "Thrall's Cloak"]]);
   const types = (await search("thrall")).map((g) => g.type);
   expect(types.indexOf("item")).toBeLessThan(types.indexOf("lore"));
+});
+
+test("game entries lead: an item named like a lore page comes first, and the lore archive after every database group", async () => {
+  mocks.names.items = new Map([[19019, "Thrall"]]);
+  const types = (await search("thrall")).map((g) => g.type);
+  expect(types[0]).toBe("item");
+  expect(types.indexOf("lore")).toBeGreaterThan(types.indexOf("item"));
+  const database = types.filter((t) => ["item", "npc", "quest", "object", "zone", "achievement", "faction", "title", "chain"].includes(t));
+  for (const t of database) expect(types.indexOf(t), t).toBeLessThan(types.indexOf("lore"));
+});
+
+test("an exact game entry leads an exact tool; a game entry that only contains the words still beats the lore archive", async () => {
+  mocks.names.items = new Map([[1, "Talent Calculator"]]);
+  const exact = (await search("talent calculator")).map((g) => g.type);
+  expect(exact.indexOf("item")).toBeLessThan(exact.indexOf("tool"));
+  mocks.names.items = new Map([[2, "Elwynn Forest Map"]]);
+  const zone = (await search("elwynn forest")).map((g) => g.type);
+  // The zone is an exact game entry, the item a prefix one; both come before any lore copy.
+  expect(zone.slice(0, 2)).toEqual(["zone", "item"]);
 });
 
 test("without a lore release the other groups still answer", async () => {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { loadSightings } from "@/lib/instances";
 import { uploadStore } from "@/lib/upload-store";
 import { CONTINENTS, continentPinSet, observedFacts } from "@/lib/world-map";
 
@@ -11,8 +12,8 @@ const NO_STORE = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" };
 
 /**
  * GET /api/map/pins?continent=<0|1>[&spoilers=1] — what the map draws on a continent besides the zones: dungeon
- * and raid entrances, flight masters and flight paths from the game files, and the NPC and vendor points that 3
- * installs agree on. The map page fetches it, so none of it is inlined in the page's HTML. Held-back zones' items
+ * and raid entrances, flight masters and flight paths from the game files, the NPC and vendor points that 3
+ * installs agree on, the entrances they confirmed and the treasures they saw on the minimap. The map page fetches it, so none of it is inlined in the page's HTML. Held-back zones' items
  * come only with `spoilers=1`. Install ids never leave the site: a pin carries its reporter count only.
  */
 export async function GET(req: Request) {
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "continent is 0 (Eastern Kingdoms) or 1 (Kalimdor)." }, { status: 400, headers: NO_STORE });
   }
   const spoilers = params.get("spoilers") === "1";
-  const corpus = await uploadStore.loadCorpus();
+  const [corpus, seen] = await Promise.all([uploadStore.loadCorpus(), loadSightings()]);
   const facts = observedFacts(corpus.unreachable ? [] : corpus.records);
   const body = {
     ok: true,
@@ -32,8 +33,8 @@ export async function GET(req: Request) {
     dataAsOf: corpus.unreachable ? null : corpus.dataAsOf ?? null,
     // Unreachable storage still answers with the game-file items; the player points are missing, not zero.
     unreachable: Boolean(corpus.unreachable),
-    ...continentPinSet(continentId, facts, spoilers),
+    ...continentPinSet(continentId, facts, spoilers, undefined, seen.unreachable ? {} : seen),
   };
   // A degraded answer is not cached, so the next request tries storage again.
-  return NextResponse.json(body, { headers: corpus.unreachable ? NO_STORE : CACHE });
+  return NextResponse.json(body, { headers: corpus.unreachable || seen.unreachable ? NO_STORE : CACHE });
 }

@@ -11,6 +11,7 @@ const records: unknown[] = [];
 for (const [i, installId] of ["a", "b", "c"].entries()) {
   const base = { installId, capturedAt: "2026-10-09T00:00:00Z", sourceEvidence: "loot-api" };
   records.push({ ...base, eventId: `name-${i}`, kind: "item_seen", itemId: 1234, name: "Peacebloom", quality: "common" });
+  records.push({ ...base, eventId: `number-${i}`, kind: "item_fact", itemId: 1234, fact: "stamina", value: 5, clientBuild: "1.60.1.70450" });
   records.push({ ...base, eventId: `loot-${i}`, kind: "loot", sourceNpcId: 456, items: [{ itemId: 1234, count: 1 }] });
   records.push({ ...base, eventId: `vendor-${i}`, kind: "vendor", vendorNpcId: 99, items: [{ itemId: 1234, priceCopper: 25 }] });
 }
@@ -43,6 +44,7 @@ test("reading an entity URI gives the tool's structured answer as JSON, the same
   const viaTool = (await c.callTool({ name: "item_page", arguments: { itemId: 1234 } })).structuredContent;
   expect(viaResource).toEqual(viaTool);
   expect(z.object(MCP_TOOLS.item_page.outputSchema).parse(viaResource).page!.name).toBe("Peacebloom");
+  expect(viaResource.page.reported.shown).toEqual([{ fact: "stamina", value: 5, reporters: 3, build: "1.60.1.70450", lastSeen: "2026-10-09T00:00:00.000Z" }]);
 
   const vendor = JSON.parse(((await c.readResource({ uri: "everloot://vendor/99" })).contents[0] as { text: string }).text);
   expect(vendor.page.offers).toEqual([{ itemId: 1234, priceCopper: 25, limitedStock: null, unlimited: true, reporters: 3 }]);

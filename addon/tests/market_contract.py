@@ -90,7 +90,7 @@ root = Path(__file__).parents[1]
 toc = (root / "Everloot.toc").read_text(encoding="utf-8")
 assert "modules\\prices.lua" in toc, "prices module must be in the TOC"
 assert "EverlootPrices" in toc, "the companion's prices addon must load first"
-for file in ["core.lua", "modules/auctions.lua", "modules/prices.lua"]:
+for file in ["core.lua", "modules/auctions.lua", "modules/prices.lua", "modules/drops.lua"]:
     lua.execute((root / file).read_text(encoding="utf-8"))
 
 lua.execute("""
@@ -251,7 +251,8 @@ local frames = drain()
 assert(frames == math.ceil(#data / 20000) - 1, 'one slice per frame: ' .. frames)
 local ready = tooltipFor(7)
 assert(ready:find('Everloot market 5s 0c') and ready:find('50 up'), ready)
-assert(tooltipFor(3001) == '', 'an id that is not in the file shows nothing, and 7 does not match 70 or 17')
+local absent = tooltipFor(3001)
+assert(not absent:find('Everloot market') and absent:find('no price on Bigrealm yet'), 'an id that is not in the file has no price, and 7 does not match 70 or 17: ' .. absent)
 local thin = tooltipFor(2)
 assert(thin:find('unrecorded %(thin%)'), thin)
 
@@ -260,7 +261,8 @@ EverlootPricesDB.realms.bigrealm.sum = 5
 Everloot:ResetPrices()
 printed = {}
 tooltipFor(7); drain()
-assert(said('checksum') and tooltipFor(7) == '', 'a large file with a bad checksum is refused')
+local refused = tooltipFor(7)
+assert(said('checksum') and not refused:find('Everloot market') and refused:find('community prices failed their checksum'), 'a large file with a bad checksum is refused, and says so: ' .. refused)
 GetRealmName = function() return 'Forever' end
 Everloot:ResetPrices()
 """)

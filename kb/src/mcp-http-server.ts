@@ -3,6 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import type { DB } from "./db.js";
 import { createKnowledgeServer, type ChangesLoader, type CompletionLoader, type CorpusLoader, type EcosystemLoader, type ExtraTool, type MarketLoader } from "./mcp-server.js";
 import type { CensusLoader } from "./population.js";
+import type { RecheckScope } from "./coverage.js";
 
 export interface PublicMcpConfig {
   db: DB;
@@ -15,6 +16,8 @@ export interface PublicMcpConfig {
   allowedOrigins: string[];
   /** The web route's in-process reader; the standalone server reads the public corpus URL instead. */
   corpus?: CorpusLoader;
+  /** The site's curated recheck scopes, so page tools count only reports after a scope's date. */
+  recheck?: readonly RecheckScope[];
   /** The web route's market rollup reader; without it market_value says it is not connected. */
   market?: MarketLoader;
   /** The web route's completion rollup reader, owned progress already limited to granted installs. */
@@ -33,10 +36,10 @@ export interface PublicMcpConfig {
 }
 
 export function createPublicMcpServer(
-  config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader },
+  config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader; recheck?: readonly RecheckScope[] },
   extraTools: readonly ExtraTool[] = [],
 ) {
-  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, completion: config.completion, changes: config.changes, ecosystem: config.ecosystem, census: config.census }, extraTools);
+  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, completion: config.completion, changes: config.changes, ecosystem: config.ecosystem, census: config.census, recheck: config.recheck }, extraTools);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, enableJsonResponse: true,
   });

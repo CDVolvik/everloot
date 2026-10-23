@@ -15,6 +15,7 @@ import { Badge, Container, DataTable, EvidenceLine, Facts, InShort, OpenData, QU
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName, subclassLabel as labelOf } from "@/lib/items";
+import { tipLines, withReported } from "@/lib/item-names";
 import type { Crumb } from "@/lib/jsonld";
 import { loadNames, nameOf } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
@@ -24,7 +25,11 @@ import { CategoryPage, categoryMetadata } from "../category-page";
 import { itemIndexable } from "@/lib/indexable";
 import { entityTitle, itemDescription } from "@/lib/entity-meta";
 import { MarketBox, loadMarketBox } from "@/app/tools/auctions/MarketBox";
-import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
+import { pendingLine } from "../../../../../../kb/src/pending-loot";
+import { itemDropSources } from "../../../../../../kb/src/loot-tables";
+import { loadLootTables, loadReportedItemFacts } from "@/lib/rollup-compute";
+import { EmptyTab, EntityHeader, EntityIcon, EntityTop, known, LINK, Unreachable } from "../../entity";
+import { ItemSourcesPanel } from "../../loot-tables";
 import { itemSummary } from "@/lib/evidence";
 
 const PROFESSIONS = { href: "/tools/professions", label: "Professions" };
@@ -92,7 +97,9 @@ export default async function ItemPage(props: Props) {
   // files say makes or uses it. An id nobody reported or named and nothing links to reads nothing.
   const spellLinked = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell");
   const assets = tipped || spellLinked ? await loadSiteAssets() : null;
-  const tip = tipped ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  const filesTip = tipped ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  // The numbers 3 installs' tooltips agree on fill the files' placeholders, each with its installs, build and date.
+  const tip = filesTip && withReported(filesTip, await loadReportedItemFacts(itemId));
   const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
   const quality = category?.quality && category.quality.id <= 5 ? qualityOf(category.quality.id) : undefined;
@@ -144,15 +151,9 @@ export default async function ItemPage(props: Props) {
     };
   };
 
-  const dropColumns: Column<(typeof page.drops)[number]>[] = [
-    { key: "source", header: "Source", cell: (d) => (d.sourceNpcId !== undefined
-      ? <EntityLink kind="npc" id={d.sourceNpcId} name={names.npcs.get(d.sourceNpcId)} />
-      : <EntityLink kind="object" id={d.sourceObjectId!} />) },
-    { key: "windows", header: "Loot windows", numeric: true, cell: (d) => d.kills },
-    { key: "drops", header: "Drops", numeric: true, cell: (d) => d.drops },
-    { key: "rate", header: FREQUENCY, numeric: true, cell: (d) => percent(d.rate) },
-    { key: "installs", header: "Install IDs", numeric: true, cell: (d) => d.reporters },
-  ];
+  // Each source's windows, installs and dates; its rows are the public rates in page.drops.
+  const loot = await loadLootTables();
+  const sources = itemDropSources(loot.tables, itemId);
   const pinColumns: Column<(typeof page.pins)[number]>[] = [
     { key: "npc", header: "NPC", cell: (p) => <EntityLink kind="npc" id={p.npcId} name={p.name ?? names.npcs.get(p.npcId)} /> },
     { key: "map", header: "Map", numeric: true, cell: (p) => p.mapId },
@@ -166,8 +167,18 @@ export default async function ItemPage(props: Props) {
     {
       id: "dropped-by", label: "Dropped by", count: facts.unreachable ? undefined : page.drops.length,
       panel: facts.unreachable ? <Unreachable />
-        : page.drops.length ? <DataTable dense caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
-        : <EmptyTab message="Nobody has looted this in Forever yet." />,
+        : <>
+          <ItemSourcesPanel
+            sources={sources}
+            title={title}
+            dataAsOf={loot.dataAsOf}
+            source={(d) => (d.sourceNpcId !== undefined
+              ? <EntityLink kind="npc" id={d.sourceNpcId} name={names.npcs.get(d.sourceNpcId)} />
+              : <EntityLink kind="object" id={d.sourceObjectId!} />)}
+          />
+          {/* Reported windows the rates leave out: a count, never a rate. */}
+          {page.pendingLoot && <p className="py-2 text-meta text-fg-2">{pendingLine(page.pendingLoot, true)}</p>}
+        </>,
     },
     relationTab("sold-by", "Sold by", "sold_by", "Vendor", "No vendor seen selling this yet."),
     relationTab("created-by", "Created by", "created_by", "Recipe", "No recipe makes this.", PROFESSIONS),
@@ -195,7 +206,7 @@ export default async function ItemPage(props: Props) {
   ];
 
   const tooltipLines = tip
-    ? [...tip.lines, ...(tip.partial ? ["[?] marks a value the game files do not give us yet."] : [])]
+    ? tipLines(tip)
     : [category?.subclass?.name ?? category?.class?.label, category?.slot?.name].filter((l): l is string => Boolean(l));
   // The quality colour only where the name is shown from players or the wiki: an id nobody reported stays plain.
   const shownQuality = name ? quality : undefined;

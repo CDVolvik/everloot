@@ -24,6 +24,8 @@ export function BannerArt({ art, eager = false, position, sizes = "100vw" }: { a
       aria-hidden="true"
       data-page-banner
       loading={eager ? "eager" : "lazy"}
+      // An eager banner is the top of its page and its largest paint, so it is fetched first.
+      fetchPriority={eager ? "high" : undefined}
       decoding="async"
       className="absolute inset-0 h-full w-full object-cover object-center"
       style={position ? { objectPosition: position } : undefined}

@@ -1,6 +1,11 @@
 User-agent: *
 Allow: /
 
+# Subclass and filter permutations are noindex and crawled heavily.
+Disallow: /database/items/*/*
+Disallow: /database/items?*
+Disallow: /database/items/*?*
+
 # No ads run on the lore archive (Warcraft Wiki text); the AdSense crawler has no reason to read it.
 User-agent: Mediapartners-Google
 Disallow: /lore

@@ -6,7 +6,7 @@ import { loadWorldFacts } from "@/lib/rollup-compute";
 import { pageMetadata } from "@/lib/seo";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { WORLD_MAP } from "@/lib/world-map";
-import { publicZones, zoneContents, zoneHref, type ZoneContents, type ZoneSummary } from "@/lib/zones";
+import { hasConfirmed, publicZones, zoneContents, zoneHref, type ZoneContents, type ZoneSummary } from "@/lib/zones";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export default async function ZonesPage() {
   const facts = await loadWorldFacts();
   const contents = zoneContents(facts.unreachable ? { npcs: [], quests: [], vendors: [] } : facts);
   const zones = publicZones();
+  const noneConfirmed = !zones.some((z) => hasConfirmed(contents.get(z.mapId)));
   const continents = WORLD_MAP.continents.map((c) => ({
     ...c,
     rows: zones.filter((z) => z.continentId === c.id).map((z): Row => ({ ...z, contents: contents.get(z.mapId) ?? null })).sort((a, b) => a.name.localeCompare(b.name)),
@@ -47,6 +48,14 @@ export default async function ZonesPage() {
       <article>
         <DataTitle title="Zones" meta={`${zones.length} zones`} trail={trailFor("/database/zones") ?? undefined} />
         {facts.unreachable && <p className="mb-3 text-meta text-warning">{STORAGE_UNREACHABLE}</p>}
+        {!facts.unreachable && (
+          <p className="mb-3 max-w-reading text-meta text-fg-2">
+            {noneConfirmed
+              ? "Players have not confirmed anything in any zone yet, so there are no counts to show. "
+              : "A dash means nobody has confirmed anything of that kind in the zone yet. It does not mean there is none. "}
+            A fact appears when 3 installs agree on it.
+          </p>
+        )}
         <div className="space-y-6">
           {continents.map((c) => (
             <section key={c.id} aria-labelledby={`continent-${c.id}`}>

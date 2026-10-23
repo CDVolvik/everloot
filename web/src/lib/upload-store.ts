@@ -231,30 +231,61 @@ export function createUploadStore(opts: {
       }
     }
     const key = `uploads/${now().toISOString().slice(0, 10)}/${uploadId}.json`;
+    let put: Response;
     try {
-      const put = await r2Fetch(key, { method: "PUT", body, headers: { "content-type": "application/json" } });
-      if (!put.ok) return false;
-      const index = await doFetch(rest("uploads"), {
-        method: "POST",
-        headers: restHeaders({ prefer: "return=minimal" }),
-        body: JSON.stringify({
-          id: uploadId,
-          install_id: installId,
-          record_count: rawRecordsOf(payload).length,
-          bytes: body.length,
-          object_key: key,
-        }),
-      });
-      if (!index.ok) {
-        console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status})`);
+      put = await r2Fetch(key, { method: "PUT", body, headers: { "content-type": "application/json" } });
+    } catch (err) {
+      // A rejection means the network, not an answer; name the half that failed like the status log below.
+      console.error(`upload ${uploadId}: R2 put failed`, err);
+      return false;
+    }
+    try {
+      if (!put.ok) {
+        // Both halves answer the same 503, so each names itself in the log.
+        const detail = await put.text().catch(() => "");
+        console.error(`upload ${uploadId}: R2 put failed (${put.status}): ${detail.slice(0, 500)}`);
         return false;
       }
+      const row = JSON.stringify({
+        id: uploadId,
+        install_id: installId,
+        record_count: rawRecordsOf(payload).length,
+        bytes: body.length,
+        object_key: key,
+      });
+      if (!(await insertIndex(uploadId, row))) return false;
       cached = null; completionCached = null; censusCached = null;
       return true;
     } catch (err) {
       console.error(`upload ${uploadId}: store failed`, err);
       return false;
     }
+  }
+
+  /**
+   * The index row for an object already in R2. Readers find objects only through this table, so an object without
+   * its row is never read. A failure that can pass (the network, a 5xx) is tried once more, and a 409 on that second
+   * try means the first one landed. A refused row is not retried: it would be refused again.
+   */
+  async function insertIndex(uploadId: string, row: string): Promise<boolean> {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      let index: Response;
+      try {
+        index = await doFetch(rest("uploads"), { method: "POST", headers: restHeaders({ prefer: "return=minimal" }), body: row });
+      } catch (err) {
+        if (attempt === 1) continue;
+        console.error(`upload ${uploadId}: R2 object stored but index insert failed`, err);
+        return false;
+      }
+      if (index.ok || (attempt === 2 && index.status === 409)) return true;
+      if (attempt === 1 && index.status >= 500) continue;
+      // The status alone does not say what went wrong: PostgREST puts the reason (a column, a constraint, a
+      // type) in the body. Without it in the log, the 400 behind a 503 cannot be read.
+      const detail = await index.text().catch(() => "");
+      console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status}): ${detail.slice(0, 500)}`);
+      return false;
+    }
+    return false;
   }
 
   function grantsOf(payload: unknown): string[] {
@@ -376,12 +407,16 @@ export function createUploadStore(opts: {
    * Fold full scans from uploads not yet seen into the market rollup (cron). `rebuild` starts
    * from empty. A missed object writes nothing, so the next run reads it again.
    */
-  async function writeMarket(opts: { rebuild?: boolean } = {}): Promise<{ added: number; scans: number }> {
+  async function writeMarket(opts: { rebuild?: boolean; idle?: boolean } = {}): Promise<{ added: number; scans: number; skipped?: boolean }> {
     if (!cloud) throw new Error("the market rollup needs the cloud store");
     const current = await readMarketSnapshot();
     if (current && (!current.etag || current.etag.startsWith("W/"))) throw new Error("market rollup has no strong ETag: cannot safely update it");
     if (current && !current.snapshot && !opts.rebuild) throw new Error("market rollup is invalid: rebuild it with ?rebuild=1");
     const prev = opts.rebuild ? null : current?.snapshot ?? null;
+    if (opts.idle && !opts.rebuild && prev && validTime(prev.generatedAt) &&
+        new Date(prev.generatedAt).toISOString().slice(0, 10) === now().toISOString().slice(0, 10)) {
+      return { added: 0, scans: 0, skipped: true };
+    }
     const seen = new Set(prev?.seenUploadIds ?? []);
     const rows = await listIndex(new Date(now().getTime() - MARKET_READ_DAYS * 86_400_000).toISOString());
     const fresh = rows.filter((r) => !seen.has(r.id));
@@ -661,6 +696,44 @@ export function createUploadStore(opts: {
     };
   }
 
+  /** One bounded index probe before any corpus replay. A successful run records its corpus generation. */
+  async function snapshotWork(): Promise<{ idle: boolean; retryRollups: boolean; dataAsOf: string | null; settledWeek: string | null }> {
+    if (!cloud) throw new Error("snapshots need the cloud store");
+    const snapshot = await readSnapshot();
+    const filter = snapshot?.lastReceivedAt ? `&received_at=gt.${encodeURIComponent(snapshot.lastReceivedAt)}` : "";
+    const res = await doFetch(rest(`uploads?select=id&limit=1${filter}`), { headers: restHeaders() });
+    if (!res.ok) throw new Error(`upload index probe failed (${res.status})`);
+    const rows = await res.json() as unknown[];
+    const idle = snapshot !== null && rows.length === 0;
+    let retryRollups = false;
+    let settledWeek: string | null = null;
+    try {
+      const run = await r2Fetch("cron/last-run.json", { method: "GET" });
+      if (run.status === 404) {
+        if (idle) retryRollups = true;
+      } else if (run.ok) {
+        const previous = await run.json() as { dataAsOf?: string; completionPending?: boolean; settledWeek?: string };
+        if (typeof previous.settledWeek === "string") settledWeek = previous.settledWeek;
+        if (idle) retryRollups = previous.dataAsOf !== snapshot.generatedAt || previous.completionPending === true;
+      } else if (idle) {
+        throw new Error(`cron heartbeat read failed (${run.status})`);
+      }
+    } catch (err) {
+      // A broken heartbeat must not block pending uploads; only the idle run, which reads it to decide the fold,
+      // treats it as fatal (as it did before the settled week was stored there).
+      if (idle) throw err;
+    }
+    return { idle, retryRollups, dataAsOf: snapshot?.generatedAt ?? null, settledWeek };
+  }
+
+  async function writeCronRun(completionPending: boolean, dataAsOf: string | null, settledWeek: string | null): Promise<void> {
+    const res = await r2Fetch("cron/last-run.json", {
+      method: "PUT", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ generatedAt: now().toISOString(), dataAsOf, completionPending, settledWeek }),
+    });
+    if (!res.ok) throw new Error(`cron heartbeat write failed (${res.status})`);
+  }
+
   function stateOf(snapshot: Snapshot): CorpusState {
     const state = snapshot.corpusState;
     if (!state) {
@@ -699,7 +772,7 @@ export function createUploadStore(opts: {
    * Extend the snapshot with uploads newer than its last one (cron). `rebuild` starts from empty,
    * which is how a deleted upload leaves the snapshot.
    */
-  async function writeSnapshot(opts: { rebuild?: boolean } = {}): Promise<{ uploads: number; added: number }> {
+  async function writeSnapshot(opts: { rebuild?: boolean } = {}): Promise<{ uploads: number; added: number; dataAsOf: string }> {
     if (!cloud) throw new Error("snapshots need the cloud store");
     const current = await readSnapshot();
     if (current && !current.etag) throw new Error("snapshot has no ETag: cannot safely update it");
@@ -736,7 +809,7 @@ export function createUploadStore(opts: {
     });
     if (!put.ok) throw new Error(`snapshot write failed (${put.status})`);
     cached = null; completionCached = null; censusCached = null;
-    return { uploads: snapshot.uploads, added: fresh.length };
+    return { uploads: snapshot.uploads, added: fresh.length, dataAsOf: snapshot.generatedAt };
   }
 
   async function loadCorpus(): Promise<Corpus> {
@@ -797,18 +870,19 @@ export function createUploadStore(opts: {
     if (unavailable) return { status: "unavailable", ...unknown };
     if (!cloud) return { status: "local", ...unknown };
     try {
-      // Metadata only: never expose raw snapshot contents, keys or credentials.
-      const res = await r2Fetch(SNAPSHOT_KEY, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
+      // Cron freshness is independent of the last real corpus change.
+      const res = await r2Fetch("cron/last-run.json", { method: "GET", signal: AbortSignal.timeout(10_000) });
       if (res.status === 404) return { status: "missing", ...unknown };
       if (!res.ok) return { status: "unavailable", ...unknown };
-      const modified = Date.parse(res.headers.get("last-modified") ?? "");
+      const heartbeat = await res.json() as { generatedAt?: string };
+      const modified = Date.parse(heartbeat.generatedAt ?? "");
       const age = now().getTime() - modified;
       if (!Number.isFinite(age) || age < -30_000) return { status: "unavailable", ...unknown };
       return { status: age > 30 * 60_000 ? "stale" : "fresh", updatedAt: new Date(modified).toISOString(), ageSeconds: Math.max(0, Math.floor(age / 1000)) };
     } catch { return { status: "unavailable", ...unknown }; }
   }
 
-  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth, writeMarket, loadMarket, writeCompletion, loadCompletion, loadCensus, installCensus };
+  return { putUpload, loadCorpus, putWaitlist, snapshotWork, writeCronRun, writeSnapshot, snapshotHealth, writeMarket, loadMarket, writeCompletion, loadCompletion, loadCensus, installCensus };
 }
 
 /** The store the routes and pages use. */

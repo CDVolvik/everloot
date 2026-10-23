@@ -7,10 +7,14 @@ import { recordUsage } from "@/lib/usage-metrics";
 import { censusDateProblem, characterSecret, isCensusRow, storedCensusRow } from "@/lib/census-intake";
 import { MARKET_LIMITS, realmKey } from "../../../../../kb/src/market";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
-import { isPlayerRow, playerDateProblem, playerPagesOn, playerUpsert, PLAYERS_PER_UPLOAD, type PlayerUpsert } from "@/lib/player-pages";
+import { isPlayerRow, playerDateProblem, playerPagesOn, playerStoreProblem, playerUpsert, PLAYERS_PER_UPLOAD, type PlayerUpsert } from "@/lib/player-pages";
 import { playerStore } from "@/lib/player-store";
 import { isLinkRow } from "@/lib/character-links";
 import { censusDailyCap } from "../../../../../kb/src/census-rows";
+import { isRecorderInstall } from "../../../../../kb/src/recorder-installs";
+import { RECORDER_KINDS, RECORDER_SOURCE, recorderCharacter } from "@/lib/polestar-recorder";
+import { settledForIntake, settledTally, settledTallyOn } from "@/lib/settled-store";
+import { matchSettled } from "../../../../../kb/src/settled-list";
 
 /**
  * POST /api/intake — step 1: parse + store the accepted records, return a receipt.
@@ -18,6 +22,7 @@ import { censusDailyCap } from "../../../../../kb/src/census-rows";
  * JSON file in dev. Rollups and corroboration are step 2.
  * Only schema-parsed records are stored, so what the store holds is what the receipt describes.
  * Production request and install admission share atomic Supabase counters.
+ * With EVERLOOT_SETTLED_TALLY=1, a row that repeats a settled fact in every field is counted, not stored (below).
  */
 export const dynamic = "force-dynamic";
 
@@ -62,6 +67,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
   }
   const upload: CanonicalUpload = parsed.upload;
+  // Rows converted from a Polestar Recorder file come with a character id the browser hashed; the server gives them
+  // their install id, so a player cannot pick several. See lib/polestar-recorder.ts.
+  const recorder = upload.source === RECORDER_SOURCE;
+  let recorderInstall: string | undefined;
+  if (recorder) {
+    const character = recorderCharacter(upload.records);
+    if (!character) {
+      return NextResponse.json({ ok: false, error: "A Polestar Recorder upload carries one character's rows under one polestar- id.", ...receipt }, { status: 422 });
+    }
+    recorderInstall = intakeQuota.recorderInstall(req, character);
+    if (!recorderInstall) return NextResponse.json({ ok: false, error: "Upload admission unavailable. Keep your file and retry." }, { status: 503 });
+  }
   const options = payload as { sharing?: Record<string, unknown>; grantTokens?: unknown };
   const tokens = options.grantTokens ?? [];
   if (!Array.isArray(tokens) || tokens.length > UPLOAD_LIMITS.grantTokensMax || tokens.some((t) => typeof t !== "string" || !/^[a-f0-9]{64}$/.test(t))) {
@@ -90,8 +107,22 @@ export async function POST(req: Request) {
   const playerInstalls = new Set<string>();
   const grantHashes = new Set<string>();
   const scanRealms = new Set<string>();
+  // Past settling (docs/design/specs/2026-10-21-coverage-plateau-design.md, section 4): a row whose every field matches
+  // its settled fact adds its install to that fact's tally and is not stored; a row that differs in any field is stored
+  // in full, the signal a fact changed. The list is the upload's build's; a file without a build is read against the
+  // site's. A build the cron has not looked at has no list, so nothing is tallied. Off unless the switch is on.
+  const tallyBuild = settledTallyOn() ? upload.clientBuild ?? (await import("@/lib/coverage-compute")).COVERAGE_BUILD : null;
+  const settled = tallyBuild ? await settledForIntake(tallyBuild) : null;
+  const tallied: { row: StoredRecord; fact: string }[] = [];
   for (let i = 0; i < upload.records.length; i++) {
     const row = upload.records[i];
+    const recorderProblem = recorder ? (RECORDER_KINDS.includes(row.kind) ? null : "A Polestar Recorder upload carries NPC positions, quests, loot, instance entrances, encounters and object sightings only.")
+      : isRecorderInstall(row.installId) ? "Install ids starting with ps- are given by the server to Polestar Recorder uploads." : null;
+    if (recorderProblem) {
+      receipt.rejected.push({ index: receipt.accepted[i].index, reason: recorderProblem });
+      continue;
+    }
+    if (recorderInstall) row.installId = recorderInstall;
     if (row.kind === "auction_snapshot") {
       // One file cannot name dozens of realms: the market keeps a handful per upload.
       const key = realmKey(row.realm);
@@ -121,7 +152,15 @@ export async function POST(req: Request) {
         receipt.rejected.push({ index: receipt.accepted[i].index, reason: problem });
         continue;
       }
-      players.push(playerUpsert(row, now)); playerInstalls.add(row.installId); accepted.push(receipt.accepted[i]);
+      const upsert = playerUpsert(row, now);
+      // The table's own checks are the last line. A row the table would refuse is dropped here, with the reason
+      // in the receipt, so it cannot fail the whole upload: the rows reach the site, not the table.
+      const storeProblem = playerStoreProblem(upsert);
+      if (storeProblem) {
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: storeProblem });
+        continue;
+      }
+      players.push(upsert); playerInstalls.add(row.installId); accepted.push(receipt.accepted[i]);
       continue;
     }
     if (isCensusRow(row)) {
@@ -161,13 +200,18 @@ export async function POST(req: Request) {
       authorized.push(kept); accepted.push(receipt.accepted[i]);
       continue;
     }
+    const fact = settled && !category ? matchSettled(settled.values, row) : null;
+    if (fact) {
+      tallied.push({ row, fact }); accepted.push(receipt.accepted[i]);
+      continue;
+    }
     matching.forEach((g) => grantHashes.add(g.tokenHash));
     authorized.push(row); accepted.push(receipt.accepted[i]);
   }
   const stored: StoredUpload = { ...upload, records: authorized }; receipt.accepted = accepted;
-  if (!authorized.length && !players.length) return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
+  if (!authorized.length && !players.length && !tallied.length) return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
   // Attribution comes from the accepted records, never from the first raw row.
-  const installs = new Set([...stored.records.map((r) => r.installId), ...playerInstalls]);
+  const installs = new Set([...stored.records.map((r) => r.installId), ...tallied.map((t) => t.row.installId), ...playerInstalls]);
   if (installs.size !== 1) {
     return NextResponse.json(
       { ok: false, error: "every record in one upload must come from the same install", ...receipt },
@@ -175,9 +219,25 @@ export async function POST(req: Request) {
     );
   }
   const installId = [...installs][0];
+  // The index keeps the install id as Postgres text, which cannot hold a NUL or half of a UTF-16 pair. The protocol
+  // allows any 8 to 64 characters, so without this the index insert refuses the row after the object is written,
+  // and the upload answers 503 on every retry.
+  if (installId.includes("\u0000") || !installId.isWellFormed()) {
+    return NextResponse.json({ ok: false, error: "This install id holds a character the store cannot keep.", ...receipt }, { status: 422 });
+  }
   const installDenied = await admission(() => intakeQuota.install(installId));
   if (installDenied) return installDenied;
   const uploadId = randomUUID();
+  if (tallied.length) {
+    try {
+      await settledTally.add(settled!.build, installId, tallied.map((t) => t.fact));
+    } catch (err) {
+      // Not counted is not lost: the rows are stored in full instead, as they were before the tally.
+      console.error(`upload ${uploadId}: settled tally failed`, err);
+      authorized.push(...tallied.map((t) => t.row));
+      tallied.length = 0;
+    }
+  }
   if (players.length) {
     try {
       await playerStore().upsert(players);
@@ -185,12 +245,13 @@ export async function POST(req: Request) {
       console.error(`upload ${uploadId}: player write failed`, err);
       return NextResponse.json({ ok: false, persisted: false, uploadId, error: "storage could not be confirmed — keep the file and retry in a moment", ...receipt }, { status: 503 });
     }
-    // Nothing else to keep: the rows were the whole upload, and the table is where they live.
-    if (!authorized.length) return NextResponse.json({ ok: true, uploadId, persisted: true, ...receipt });
   }
+  // Nothing else to keep: player rows live in their table, and tallied rows are counted.
+  if (!authorized.length) return NextResponse.json({ ok: true, uploadId, persisted: true, ...(tallied.length ? { settled: tallied.length } : {}), ...receipt });
   // The market and the completion lists count installs behind one address once; only a keyed hash of the
-  // address is kept, in the private upload object, and it is never published.
-  if (stored.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
+  // address is kept, in the private upload object, and it is never published. Recorder uploads keep it too, so
+  // their voters can be checked again from the stored uploads.
+  if (recorder || stored.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
     const reporter = intakeQuota.reporter(req);
     if (reporter) stored.reporter = reporter;
   }
@@ -213,5 +274,5 @@ export async function POST(req: Request) {
       { status: 503 },
     );
   }
-  return NextResponse.json({ ok: true, uploadId, persisted: true, ...receipt });
+  return NextResponse.json({ ok: true, uploadId, persisted: true, ...(tallied.length ? { settled: tallied.length } : {}), ...receipt });
 }

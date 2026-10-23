@@ -1,20 +1,20 @@
 {
   "schema": 1,
-  "refreshedAt": "2026-10-20T21:43:56.019Z",
+  "refreshedAt": "2026-10-22T21:45:08.234Z",
   "projects": {
     "everloot": {
       "status": "ok",
-      "fetchedAt": "2026-10-20T21:43:56.019Z",
+      "fetchedAt": "2026-10-22T21:45:08.234Z",
       "stars": 0,
       "archived": false,
       "license": "AGPL-3.0",
-      "lastCommit": "2026-10-20T21:31:40Z",
+      "lastCommit": "2026-10-22T18:16:05Z",
       "release": {
-        "tag": "addon-v0.3.6",
-        "date": "2026-10-20T21:32:27Z",
-        "url": "https://github.com/Everloot/everloot/releases/tag/addon-v0.3.6"
+        "tag": "desktop-v0.1.6",
+        "date": "2026-10-21T12:40:11Z",
+        "url": "https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.6"
       },
-      "commits4w": 1115,
+      "commits4w": 1412,
       "contributors": 2,
       "openIssues": 10,
       "closedIssues": 1,
@@ -26,39 +26,39 @@
     },
     "polestar": {
       "status": "ok",
-      "fetchedAt": "2026-10-20T21:44:03.033Z",
-      "stars": 136,
+      "fetchedAt": "2026-10-22T21:45:15.462Z",
+      "stars": 146,
       "archived": false,
       "license": null,
-      "lastCommit": "2026-10-20T14:13:16Z",
+      "lastCommit": "2026-10-22T21:37:47Z",
       "release": {
         "tag": "v0.2.6",
         "date": "2026-10-19T17:20:38Z",
         "url": "https://github.com/fitzforge/polestar/releases/tag/v0.2.6"
       },
-      "commits4w": 1726,
-      "contributors": 25,
-      "openIssues": 40,
-      "closedIssues": 196,
-      "medianFirstResponseHours": null,
-      "responseSample": 0,
+      "commits4w": 1875,
+      "contributors": 29,
+      "openIssues": 46,
+      "closedIssues": 220,
+      "medianFirstResponseHours": 0.6,
+      "responseSample": 7,
       "interfaces": [
         16001
       ]
     },
     "olympus": {
       "status": "ok",
-      "fetchedAt": "2026-10-20T21:44:11.330Z",
+      "fetchedAt": "2026-10-22T21:45:26.172Z",
       "stars": 20,
       "archived": false,
       "license": "MIT",
-      "lastCommit": "2026-10-16T20:19:21Z",
+      "lastCommit": "2026-10-21T02:52:57Z",
       "release": {
-        "tag": "v1.2.5.1",
-        "date": "2026-10-16T20:20:19Z",
-        "url": "https://github.com/dnl-gentile/olympus-addon/releases/tag/v1.2.5.1"
+        "tag": "v1.3.2",
+        "date": "2026-10-21T02:53:34Z",
+        "url": "https://github.com/dnl-gentile/olympus-addon/releases/tag/v1.3.2"
       },
-      "commits4w": 651,
+      "commits4w": 783,
       "contributors": 3,
       "openIssues": 6,
       "closedIssues": 13,
@@ -72,13 +72,13 @@
     },
     "forever-ref": {
       "status": "ok",
-      "fetchedAt": "2026-10-20T21:44:21.316Z",
+      "fetchedAt": "2026-10-22T21:45:36.083Z",
       "stars": 0,
       "archived": false,
       "license": null,
       "lastCommit": "2026-10-17T10:45:32Z",
       "release": null,
-      "commits4w": 66,
+      "commits4w": 46,
       "contributors": 2,
       "openIssues": 0,
       "closedIssues": 1,
@@ -104,6 +104,14 @@
       {
         "at": "2026-10-20T21:43:56.019Z",
         "stars": 0
+      },
+      {
+        "at": "2026-10-21T21:49:50.727Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-22T21:45:08.234Z",
+        "stars": 0
       }
     ],
     "polestar": [
@@ -122,6 +130,14 @@
       {
         "at": "2026-10-20T21:43:56.019Z",
         "stars": 136
+      },
+      {
+        "at": "2026-10-21T21:49:50.727Z",
+        "stars": 139
+      },
+      {
+        "at": "2026-10-22T21:45:08.234Z",
+        "stars": 146
       }
     ],
     "olympus": [
@@ -140,6 +156,14 @@
       {
         "at": "2026-10-20T21:43:56.019Z",
         "stars": 20
+      },
+      {
+        "at": "2026-10-21T21:49:50.727Z",
+        "stars": 20
+      },
+      {
+        "at": "2026-10-22T21:45:08.234Z",
+        "stars": 20
       }
     ],
     "forever-ref": [
@@ -157,6 +181,14 @@
       },
       {
         "at": "2026-10-20T21:43:56.019Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-21T21:49:50.727Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-22T21:45:08.234Z",
         "stars": 0
       }
     ]

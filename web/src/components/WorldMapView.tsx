@@ -9,6 +9,7 @@ import {
   parseDeepLink, parseZoneLink, pinHref, readPinSet, searchMap, spotBox, viewSearch, visibleItems, wayCommand, zoneSearch, zoneSpot,
   type Box, type Candidate, type CategoryId, type CategoryState, type MapArtLayer, type MapItems, type MapPinSet, type MapUrlState, type SearchHit,
 } from "@/lib/map-view";
+import { confirmedLine } from "@/lib/report-labels";
 import MapList, { HELD_LABEL } from "./map/MapList";
 import type { FitRequest, MapMarker, MapViewChange } from "./map/LeafletMap";
 import "./map/world-map.css";
@@ -40,7 +41,8 @@ function Swatch({ category }: { category: CategoryId }) {
       {category === "path" && <path d="M1 11L13 3" strokeWidth="1.5" strokeDasharray="3 2" className="stroke-fg-2" />}
       {category === "npc" && <circle cx="7" cy="7" r="3.5" className="fill-fg-2" />}
       {category === "vendor" && <path d="M7 1.5L12.5 7L7 12.5L1.5 7Z" className="fill-fg" />}
-      {["trainer", "quest", "service", "herb", "ore", "chest"].includes(category) && <circle cx="7" cy="7" r="4" fill="none" strokeWidth="1.2" className="stroke-muted" />}
+      {category === "chest" && <rect x="3" y="3" width="8" height="8" rx="1" fill="none" strokeWidth="2" className="stroke-fg" />}
+      {["trainer", "quest", "service", "herb", "ore"].includes(category) && <circle cx="7" cy="7" r="4" fill="none" strokeWidth="1.2" className="stroke-muted" />}
     </svg>
   );
 }
@@ -63,15 +65,21 @@ const SHEET_LABEL: Record<Sheet, string> = { categories: "Categories", search: "
 /** What a pin on the map is, for its card. */
 interface Subject {
   id: string;
-  kind: "entrance" | "flight" | "npc" | "vendor";
+  kind: "entrance" | "flight" | "npc" | "vendor" | "treasure";
   title: string;
   detail: string;
   x: number;
   y: number;
   /** The NPC, for a player-observed point: its page. */
   npcId?: number;
+  /** The object, for a treasure: its page. */
+  objectId?: number;
   reporters?: number;
   heldBack?: boolean;
+  /** For an entrance: the instances it leads to, whether the files place it, and what players confirmed. */
+  instanceMapIds?: number[];
+  files?: boolean;
+  confirmed?: { installs: number; lastSeen: string | null } | null;
 }
 
 export interface WorldMapViewProps {
@@ -95,6 +103,8 @@ export interface WorldMapViewProps {
   candidates: Candidate[];
   /** Each public zone's database page, by zone id, for the card's Open zone page. */
   zonePages: Record<number, string>;
+  /** Each instance's page, by instance id, for an entrance card's Open instance page. */
+  instancePages?: Record<number, string>;
   /** The sidebar's state from the address: categories shown, the search, the tab. */
   url: MapUrlState;
   spoilers: boolean;
@@ -190,13 +200,21 @@ export default function WorldMapView(props: WorldMapViewProps) {
 
   const subjects = useMemo(() => {
     const out = new Map<string, Subject>();
-    for (const e of shown.entrances) out.set(`e${e.id}`, { id: `e${e.id}`, kind: "entrance", title: e.names.join(", "), detail: e.raid ? "Raid entrance" : "Dungeon entrance", x: e.x, y: e.y });
+    for (const e of shown.entrances) {
+      out.set(`e${e.id}`, {
+        id: `e${e.id}`, kind: "entrance", title: e.names.join(", "), detail: e.raid ? "Raid entrance" : "Dungeon entrance", x: e.x, y: e.y,
+        instanceMapIds: e.instanceMapIds, files: e.files ?? true, confirmed: e.confirmed ? { installs: e.confirmed, lastSeen: e.lastSeen ?? null } : null,
+      });
+    }
     for (const f of shown.flightMasters) out.set(f.id, { id: f.id, kind: "flight", title: f.name, detail: "Flight master", x: f.x, y: f.y, heldBack: f.heldBack });
     for (const p of shown.pins) {
       out.set(p.id, {
         id: p.id, kind: p.kind, title: p.name ?? `NPC ${p.npcId}`, detail: p.kind === "vendor" ? "Vendor players saw" : "NPC players saw",
         x: p.x, y: p.y, npcId: p.npcId, reporters: p.reporters, heldBack: p.heldBack,
       });
+    }
+    for (const t of shown.treasures) {
+      out.set(t.id, { id: t.id, kind: "treasure", title: t.name ?? `Object ${t.objectId}`, detail: "Treasure players saw on the minimap", x: t.x, y: t.y, objectId: t.objectId, confirmed: { installs: t.reporters, lastSeen: t.lastSeen ?? null } });
     }
     return out;
   }, [shown]);
@@ -345,7 +363,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
   // The card's own link: the continent's page with the item selected; a held-back item's link keeps spoilers on.
   const permalink = selected ? pinHref(props.continentId, selected.id, spoilers && Boolean(selected.heldBack)) : null;
   const page = selected
-    ? openPageLink({ kind: selected.kind, npcId: selected.npcId, x: selected.x, y: selected.y }, zones, props.zonePages)
+    ? openPageLink({ kind: selected.kind, npcId: selected.npcId, objectId: selected.objectId, instanceMapIds: selected.instanceMapIds, x: selected.x, y: selected.y }, zones, props.zonePages, props.instancePages)
     : spot ? openPageLink({ kind: "spot", x: spot.x, y: spot.y }, zones, props.zonePages) : null;
   const copy = async (text: string, failed: string) => {
     try {
@@ -440,7 +458,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
           )}
 
           <form role="search" onSubmit={(e) => { e.preventDefault(); if (hits[0]) goHit(hits[0]); }}>
-            <label htmlFor="map-search" className="sr-only">Search the map for a zone, entrance, flight master or NPC</label>
+            <label htmlFor="map-search" className="sr-only">Search the map for a zone, entrance, flight master, NPC or treasure</label>
             <input
               id="map-search" ref={searchInput} type="search" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" placeholder="Search the map"
               aria-describedby="map-search-count"
@@ -563,7 +581,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
             onKeyDown={(e) => { if (e.key === "Escape") closeCard(); }}
             className="absolute inset-x-2 bottom-2 z-[1100] max-h-[50%] overflow-y-auto rounded-card focus:outline-none focus-visible:outline-2 focus-visible:outline-accent md:bottom-3 md:left-3 md:right-auto md:w-96"
           >
-            <Card padding="none" className="space-y-2 bg-panel p-4" unconfirmed={selected?.kind === "entrance" || selected?.kind === "flight"}>
+            <Card padding="none" className="space-y-2 bg-panel p-4" unconfirmed={(selected?.kind === "entrance" && !selected.confirmed) || selected?.kind === "flight"}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p id="map-card-title" className="text-base font-semibold text-fg [overflow-wrap:anywhere]">{selected ? selected.title : here?.zone.name}</p>
@@ -573,7 +591,8 @@ export default function WorldMapView(props: WorldMapViewProps) {
               </div>
               <p className="font-mono text-sm text-fg-2">{cardSpot ? `${cardSpot.zone.name} ${cardSpot.x}, ${cardSpot.y}` : "Outside every zone"}</p>
               <div className="flex flex-wrap items-center gap-2">
-                {selected && (selected.kind === "entrance" || selected.kind === "flight") && <Badge tone="files" />}
+                {selected && ((selected.kind === "entrance" && selected.files) || selected.kind === "flight") && <Badge tone="files" />}
+                {selected?.confirmed ? <Badge tone="confirmed">{confirmedLine(selected.confirmed.installs, selected.confirmed.lastSeen)}</Badge> : null}
                 {selected?.reporters ? <Badge tone="confirmed">Seen by {selected.reporters} installs</Badge> : null}
               </div>
               <div className="flex flex-wrap gap-2">

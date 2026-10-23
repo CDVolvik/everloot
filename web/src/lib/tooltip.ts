@@ -4,8 +4,8 @@ import { objectPage } from "../../../kb/src/object-page";
 import { npcPage, questPage } from "../../../kb/src/world-pages";
 import { attribution } from "./data-guard";
 import { loadItemTips, loadSiteAssets } from "./game-assets";
-import { loadWorldFacts, loadItemFacts } from "./rollup-compute";
-import { PLACEHOLDER } from "./item-names";
+import { loadWorldFacts, loadItemFacts, loadReportedItemFacts } from "./rollup-compute";
+import { PLACEHOLDER, tipLines, withReported } from "./item-names";
 import { loadObjectFacts } from "./objects";
 import { CREDIT } from "./talents/assets";
 
@@ -20,6 +20,8 @@ export type TooltipResult = { status: 200; body: TooltipResponse } | { status: 4
 
 const PAGE: Record<TooltipType, string> = { item: "items", npc: "npcs", quest: "quests", object: "objects" };
 const NO_NAME = "No agreed name yet. A name needs 3 installs reporting the same one.";
+/** A quest card's line when players agree on no title; the site's own card swaps it for the wiki title. */
+export const NO_QUEST_TITLE = "No agreed title yet. A title needs 3 installs reporting the same one.";
 const UNREACHABLE = "Storage is unavailable. The card is unrecorded, not empty.";
 const NOT_FOUND = "Nothing to show: no such page, or players have not reported it yet.";
 
@@ -33,6 +35,39 @@ export function tooltipId(value: string): number | null {
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * What an item card says, without the game files, about the stat amounts, who may use it, its set and its Equip and
+ * Use effects. With the files, those lines come from them (item-names.ts). Each value here is a fact only once 3
+ * installs agree on it, as everywhere else; null is no such fact. No upload record carries these yet, so today
+ * every one is null.
+ */
+export interface ItemCardFacts {
+  /** "Classes: Warrior", "Requires Tailoring (150)": the restriction lines, as the game prints them. */
+  restrictions: string[] | null;
+  setName: string | null;
+  /** "Equip: …" and "Use: …" lines, as the game prints them. */
+  effects: string[] | null;
+}
+
+export const NO_ITEM_FACTS: ItemCardFacts = { restrictions: null, setName: null, effects: null };
+
+/**
+ * The card's lines for `ItemCardFacts`. A value nobody agreed on reads `[?]`, never a blank or a missing line, so a
+ * reader can tell "not known" from "none". `hasStats` is true when the files' own lines already name the stats (as
+ * `+[?] Stamina`); without them the amounts get one line of their own.
+ */
+export function itemFactLines(facts: ItemCardFacts, hasStats: boolean): string[] {
+  return [
+    ...(hasStats ? [] : [`Stats: ${PLACEHOLDER}`]),
+    ...(facts.restrictions?.length ? facts.restrictions : [`Restrictions: ${PLACEHOLDER}`]),
+    `Set: ${facts.setName ?? PLACEHOLDER}`,
+    ...(facts.effects?.length ? facts.effects : [`Equip and Use: ${PLACEHOLDER}`]),
+  ];
+}
+
+/** The card's last line when the game files cannot be read: why every line above is a placeholder. */
+const NO_FILES = `${PLACEHOLDER} The game files the card reads are not available right now.`;
 
 export async function loadTooltip(type: TooltipType, id: number): Promise<TooltipResult> {
   const url = `${SITE}/database/${PAGE[type]}/${id}`;
@@ -55,13 +90,15 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     // The game's icon and tooltip text are Blizzard's; docs/DATA_POLICY.md ("Third extension") lets one item's
     // into a card, under the same rules as its page.
     const assets = await loadSiteAssets();
-    const tip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
-    const lines = [...(tip?.lines ?? [])];
-    if (tip?.partial) lines.push(`${PLACEHOLDER} marks a value the game files do not give us yet.`);
+    const filesTip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
+    // The numbers 3 installs' tooltips agree on, as on the item page.
+    const tip = filesTip && withReported(filesTip, await loadReportedItemFacts(id));
+    // The files' lines and the reasons for their placeholders; without the files, every line is a placeholder.
+    const lines = tip ? tipLines(tip) : [...itemFactLines(NO_ITEM_FACTS, false), NO_FILES];
     if (!page.name && !tip) lines.push(NO_NAME);
     if (page.drops.length) lines.push(`Dropped by ${plural(page.drops.length, "source", "sources")} players looted (3 or more installs).`);
     return card({
-      title: page.name ?? tip?.name ?? `Item ${id}`, lines, color: tip?.color, icon: tip?.icon, partial: tip?.partial,
+      title: page.name ?? tip?.name ?? `Item ${id}`, lines, color: tip?.color, icon: tip?.icon, partial: tip ? tip.partial : true,
       gameData: tip && assets ? { label: assets.label, build: assets.version, credit: CREDIT } : null,
     });
   }
@@ -72,7 +109,7 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     const page = objectPage(id, facts);
     if (!(page.drops.length || page.zero)) return notFound;
     return card({
-      title: `Object ${id}`,
+      title: page.name ?? `Object ${id}`,
       lines: page.zero
         ? [`No items in ${plural(page.zero.kills, "loot window", "loot windows")} players opened.`]
         : [`${plural(page.drops.length, "item", "items")} players looted from it (3 or more installs).`],
@@ -99,7 +136,7 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
   return card({
     title: page.title ?? `Quest ${id}`,
     lines: [
-      ...(page.title ? [] : ["No agreed title yet. A title needs 3 installs reporting the same one."]),
+      ...(page.title ? [] : [NO_QUEST_TITLE]),
       ...(page.level === null ? [] : [`Level ${page.level}`]),
       ...(page.giverNpcId === null ? [] : [`Starts with ${npc(page.giverNpcId)}`]),
       ...(page.turnInNpcId === null ? [] : [`Ends with ${npc(page.turnInNpcId)}`]),

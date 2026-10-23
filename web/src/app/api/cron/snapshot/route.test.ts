@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
-const store = vi.hoisted(() => ({ writeSnapshot: vi.fn(), writeMarket: vi.fn(), writeCompletion: vi.fn(), prune: vi.fn() }));
-vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket, writeCompletion: store.writeCompletion },
+const store = vi.hoisted(() => ({ snapshotWork: vi.fn(), writeCronRun: vi.fn(), writeSnapshot: vi.fn(), writeMarket: vi.fn(), writeCompletion: vi.fn(), prune: vi.fn() }));
+vi.mock("@/lib/upload-store", () => ({ uploadStore: { snapshotWork: store.snapshotWork, writeCronRun: store.writeCronRun, writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket, writeCompletion: store.writeCompletion },
   sharingStore: { loadState: async () => ({ grants: [], suppressions: [] }) },
 }));
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { prune: store.prune } }));
@@ -8,15 +8,23 @@ const keys = vi.hoisted(() => ({ pruneKeys: vi.fn() }));
 vi.mock("@/lib/api-keys", () => ({ pruneKeys: keys.pruneKeys }));
 const players = vi.hoisted(() => ({ prune: vi.fn() }));
 vi.mock("@/lib/player-store", () => ({ playerStore: () => ({ prune: players.prune }) }));
+const coverage = vi.hoisted(() => ({ writeCoverage: vi.fn() }));
+vi.mock("@/lib/coverage-store", () => ({ writeCoverage: coverage.writeCoverage }));
+const settled = vi.hoisted(() => ({ writeSettled: vi.fn(), week: vi.fn(() => "2026-W43") }));
+vi.mock("@/lib/settled-store", () => ({ writeSettled: settled.writeSettled, currentSettledWeek: settled.week }));
 import { GET } from "./route";
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
+  store.snapshotWork.mockReset().mockResolvedValue({ idle: false, retryRollups: false });
+  store.writeCronRun.mockReset().mockResolvedValue(undefined);
   store.writeSnapshot.mockReset().mockResolvedValue({ uploads: 0 });
   store.writeMarket.mockReset().mockResolvedValue({ added: 0, scans: 0 });
   store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0, rebuilding: false });
   store.prune.mockReset().mockResolvedValue(undefined);
   keys.pruneKeys.mockReset().mockResolvedValue(undefined);
   players.prune.mockReset().mockResolvedValue(undefined);
+  coverage.writeCoverage.mockReset().mockResolvedValue({ written: false });
+  settled.writeSettled.mockReset().mockResolvedValue({ written: false });
 });
 const req = (auth = "Bearer synthetic-cron-key", query = "") =>
   new Request(`https://everloot.app/api/cron/snapshot${query}`, { headers: { authorization: auth } });
@@ -29,6 +37,56 @@ test("unauthorized cron cannot prune counters or rebuild", async () => {
 test("authorized cron prunes stale counters after snapshot success", async () => {
   expect((await GET(req())).status).toBe(200);
   expect(store.prune).toHaveBeenCalledOnce();
+});
+
+test("an idle run skips corpus and completion, day-gates market, and heartbeats", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01", settledWeek: "2026-W43" });
+  expect((await GET(req())).status).toBe(200);
+  expect(store.writeSnapshot).not.toHaveBeenCalled();
+  expect(store.writeCompletion).not.toHaveBeenCalled();
+  expect(store.writeMarket).toHaveBeenCalledWith({ idle: true });
+  expect(store.writeCronRun).toHaveBeenCalledWith(false, "2026-10-01", "2026-W43");
+  expect(store.prune).toHaveBeenCalledOnce();
+});
+
+test("the coverage score is written after a snapshot that changed, dated by the snapshot, and never on an idle run", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01", settledWeek: "2026-W43" });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, coverage: { written: false } });
+  expect(coverage.writeCoverage).not.toHaveBeenCalled();
+  store.snapshotWork.mockResolvedValue({ idle: false, retryRollups: false, dataAsOf: "2026-10-01", settledWeek: null });
+  store.writeSnapshot.mockResolvedValue({ uploads: 9, added: 2, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  coverage.writeCoverage.mockResolvedValue({ written: true });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, coverage: { written: true } });
+  expect(coverage.writeCoverage).toHaveBeenCalledWith({ added: 2, rebuild: false, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  expect(store.writeCronRun).toHaveBeenLastCalledWith(false, "2026-10-02T00:00:00.000Z", null);
+});
+
+test("a coverage failure is logged and the run, its heartbeat included, still succeeds", async () => {
+  store.writeSnapshot.mockResolvedValue({ uploads: 9, added: 1, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  coverage.writeCoverage.mockRejectedValue(new Error("r2 down"));
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const res = await GET(req());
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ ok: true, coverage: null });
+  expect(store.writeCronRun).toHaveBeenCalledOnce();
+});
+
+test("idle does not strand rollups left behind by failure or a bounded completion batch", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: true, dataAsOf: "2026-10-01", settledWeek: "2026-W43" });
+  store.writeCompletion.mockResolvedValue({ added: 1, remaining: 2, trimmed: 0, rebuilding: false });
+  expect((await GET(req())).status).toBe(200);
+  expect(store.writeSnapshot).not.toHaveBeenCalled();
+  expect(store.writeMarket).toHaveBeenCalledWith({ rebuild: false });
+  expect(store.writeCompletion).toHaveBeenCalledOnce();
+  expect(store.writeCronRun).toHaveBeenCalledWith(true, "2026-10-01", "2026-W43");
+});
+
+test("an explicit rebuild bypasses idle and a failed run never advances the heartbeat", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false });
+  store.writeMarket.mockRejectedValue(new Error("down"));
+  expect((await GET(req(undefined, "?rebuild=1"))).status).toBe(500);
+  expect(store.writeSnapshot).toHaveBeenCalledWith({ rebuild: true });
+  expect(store.writeCronRun).not.toHaveBeenCalled();
 });
 test("quota cleanup failure is reported so stale storage cannot silently grow", async () => {
   store.prune.mockRejectedValue(new Error("quota database down"));
@@ -83,4 +141,38 @@ test("player rows are pruned only with the player pages on, and a failure does n
   expect((await GET(req())).status).toBe(200);
   expect(players.prune).toHaveBeenCalledOnce();
   vi.unstubAllEnvs();
+});
+
+test("the settled list is written beside the score after a changed snapshot, never on an idle run, and a failure does not fail the run", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01", settledWeek: "2026-W43" });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, settled: { written: false } });
+  expect(settled.writeSettled).not.toHaveBeenCalled();
+  store.snapshotWork.mockResolvedValue({ idle: false, retryRollups: false, dataAsOf: "2026-10-01", settledWeek: null });
+  store.writeSnapshot.mockResolvedValue({ uploads: 9, added: 2, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  settled.writeSettled.mockResolvedValue({ written: true, facts: 3, week: "2026-W43" });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, settled: { written: true, facts: 3 } });
+  expect(settled.writeSettled).toHaveBeenCalledWith({ added: 2, rebuild: false, dataAsOf: "2026-10-02T00:00:00.000Z", force: false, week: "2026-W43" });
+  expect(store.writeCronRun).toHaveBeenLastCalledWith(false, "2026-10-02T00:00:00.000Z", "2026-W43");
+  settled.writeSettled.mockRejectedValue(new Error("r2 down"));
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const res = await GET(req());
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ ok: true, settled: null });
+});
+
+test("an idle run rewrites the settled list so the weekly spot check rotates without new uploads", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01", settledWeek: "2026-W42" });
+  settled.writeSettled.mockResolvedValue({ written: true, facts: 3, week: "2026-W43" });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, settled: { written: true, facts: 3 } });
+  expect(store.writeSnapshot).not.toHaveBeenCalled();
+  expect(settled.writeSettled).toHaveBeenCalledWith({ added: 0, rebuild: false, dataAsOf: "2026-10-01", force: true, week: "2026-W43" });
+  expect(store.writeCronRun).toHaveBeenCalledWith(false, "2026-10-01", "2026-W43");
+});
+
+test("a failed weekly settled refresh keeps the old week so the next run retries it", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01", settledWeek: "2026-W42" });
+  settled.writeSettled.mockRejectedValue(new Error("r2 down"));
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  expect((await GET(req())).status).toBe(200);
+  expect(store.writeCronRun).toHaveBeenCalledWith(false, "2026-10-01", "2026-W42");
 });

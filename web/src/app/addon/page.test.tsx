@@ -106,3 +106,32 @@ test("the addon and the Desktop App each carry a SoftwareApplication with the ve
   const offline = await render(() => Promise.reject(new Error("offline")));
   expect(blocks(offline).filter((b) => b["@type"] === "SoftwareApplication").map((a) => a.name)).toEqual(["Everloot addon"]);
 });
+
+test("the page says why to run the addon: what it records, what the site gives back and what it never collects", async () => {
+  const html = await render(() => Promise.resolve(Response.json(releases)));
+  const text = visible(html);
+  for (const heading of ["Why run the addon", "What it records", "What the site gives back", "What it never collects or publishes"]) {
+    expect(text).toContain(heading);
+  }
+  for (const href of ["/database", "/map", "/database/zones", "/docs/api", "/docs/mcp", "/methodology", "#privacy"]) {
+    expect(html).toContain(`href="${href}"`);
+  }
+  // The census is described the way the data policy does: never a name, and on in a new install.
+  expect(text).toContain("never a name");
+  expect(text).toContain("on in a new install");
+  expect(text).toContain("Your install id, and the address an upload came from, are never published");
+  expect(text).toContain("never plays your character");
+});
+
+test("the page promises no fact before three installs agree and does not present a drop rate as certain", async () => {
+  const text = visible(await render(() => Promise.resolve(Response.json(releases))));
+  expect(text).toContain("A fact is shown when three installs agree on it");
+  expect(text).toContain("the page says nothing is confirmed");
+  expect(text).toContain("It is not a promise that the item will drop for you");
+  expect(text).not.toMatch(/guarantee|always drops|100%/i);
+});
+
+test("the page names no internal path and no AI", async () => {
+  const text = visible(await render(() => Promise.resolve(Response.json(releases))));
+  expect(text).not.toMatch(/R21|Users[\/]|\.t3|\bAI\b|Claude|ChatGPT|GPT|Codex/);
+});

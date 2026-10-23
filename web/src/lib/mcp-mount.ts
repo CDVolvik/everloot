@@ -1,12 +1,16 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
 import type { ToolOptions } from "../../../kb/src/mcp-server";
 import { loadTimeline } from "./changes";
+import { loadCoverage } from "./coverage-compute";
 import { loadCompletion } from "./completion-store";
 import { attributionHeaders } from "./data-guard";
 import { loadEcosystem } from "./ecosystem";
 import { accountMcpTools } from "./my-builds-tool";
 import { getRelease } from "./release";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { loadCensus } from "./rollup-compute";
+import { readSettledList } from "./settled-store";
+import { settledKeys } from "../../../kb/src/settled-list";
 import { uploadStore } from "./upload-store";
 import { mcpToolMetrics, recordUsage } from "./usage-metrics";
 
@@ -26,8 +30,16 @@ export function unavailable(error: string, status = 503): Response {
 /** The site's readers the tools answer from, the same for the MCP mounts and GET /api/tools/{tool}. */
 export function toolLoaders(): ToolOptions {
   return {
-    // The same timeline the /changes page shows, read from the files bundled with the site.
-    changes: () => loadTimeline(),
+    // The curated scopes: page tools count only reports after a scope's date, as the coverage score does.
+    recheck: RECHECK_SCOPES,
+    coverage: () => loadCoverage(),
+    settledSummary: async (build) => {
+      const list = await readSettledList(build);
+      return { build: list.build, dataAsOf: list.dataAsOf, facts: settledKeys(list).size };
+    },
+    // The same timeline the /changes page shows, read from the files bundled with the site. The regional
+    // copies stay on the site: the protocol's change entry has no field for them.
+    changes: () => loadTimeline().map(({ copies: _copies, ...e }) => e),
     // The registry and GitHub snapshot bundled with the site, joined with the same install counts as /addons/popular.
     ecosystem: () => loadEcosystem(),
     // Same deployment as the store: read the public records in process, no HTTP self-fetch or byte ceiling.

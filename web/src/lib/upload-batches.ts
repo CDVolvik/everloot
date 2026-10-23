@@ -1,4 +1,5 @@
-import { CLIENT_BUILD, parseRecords, PROTOCOL_VERSION, sharingCategory, UPLOAD_LIMITS, type SharingCategory } from "@everloot/protocol";
+import { CLIENT_BUILD, parseRecords, PROTOCOL_VERSION, sharingCategory, UPLOAD_LIMITS, UPLOAD_SOURCES, type SharingCategory } from "@everloot/protocol";
+import { recorderSession } from "./polestar-recorder";
 
 export type SharingChoices = Partial<Record<SharingCategory, boolean>>;
 export interface BatchReceipt { ok: boolean; persisted?: boolean; uploadId?: string; accepted?: { index: number; kind: string }[]; rejected?: { index: number; reason: string }[]; error?: string }
@@ -9,6 +10,8 @@ export interface UploadSession {
   addons: string[];
   /** Distinct characters in the census rows this upload sends: players seen, and your own. */
   census: { seen: number; self: number };
+  /** Event ids of the rows `skip` left out: facts already settled, so the upload does not repeat them. */
+  skipped: string[];
 }
 // census_self and census_seen are being added to @everloot/protocol by the census intake change, so the
 // kinds are plain strings here. Until the protocol has them, parseRecords rejects these rows as invalid.
@@ -30,8 +33,13 @@ export function censusSummary(census: UploadSession["census"]): string | null {
   if (!census.seen && !census.self) return null;
   return `${census.seen.toLocaleString("en-US")} ${census.seen === 1 ? "character" : "characters"} seen, ${census.self.toLocaleString("en-US")} of your own`;
 }
-export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes: number = UPLOAD_LIMITS.batchBytes): UploadSession {
-  const envelope = payload as { addonVersion?: unknown; clientBuild?: unknown; records?: unknown };
+/**
+ * Builds the upload's batches. `skip(record)`, when given, leaves out rows whose fact is already settled
+ * (kb/src/settled-list.ts `settledSkip`); their event ids are returned in `skipped`, so a caller can mark them handled.
+ */
+export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes: number = UPLOAD_LIMITS.batchBytes,
+  skip?: (record: Readonly<Record<string, unknown>>) => boolean): UploadSession {
+  const envelope = payload as { addonVersion?: unknown; clientBuild?: unknown; source?: unknown; records?: unknown };
   if (!envelope || typeof envelope.addonVersion !== "string" || envelope.addonVersion.length > UPLOAD_LIMITS.addonVersionMax || !Array.isArray(envelope.records)) throw new Error("Choose an Everloot file with a version and records array.");
   if (envelope.records.length > UPLOAD_LIMITS.recordsPerFile) throw new Error(`This file is too large. Keep the original and split it into files of at most ${UPLOAD_LIMITS.recordsPerFile.toLocaleString("en-US")} records.`);
   if (grantTokens.length > UPLOAD_LIMITS.grantTokensMax || grantTokens.some((token) => !/^[a-f0-9]{64}$/.test(token))) throw new Error("Verification grants must be 64 lowercase hexadecimal characters, one per line (at most four).");
@@ -41,35 +49,42 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
   const addons = new Map<string, string>();
   const census: { kind: string; guid?: unknown }[] = [];
   const rows: string[] = [];
+  const groups: string[] = [];
+  const skipped: string[] = [];
   for (const record of parsed.records) {
     if (!record.eventId) { held.legacy++; continue; }
     const category = sharingCategory(record);
     if (category && !sharing[category]) { held.named++; continue; }
     if (category && !grantTokens.length) throw new Error("A verified grant is required for the named categories you selected.");
+    if (!category && skip?.(record as unknown as Record<string, unknown>)) { skipped.push(record.eventId); continue; }
     if ("claimToken" in record) delete record.claimToken;
     if (record.kind === "addon_seen") addons.set(record.name, `${record.title} (${record.name})`);
     if (record.kind.startsWith("census_")) census.push(record as { kind: string; guid?: unknown });
     counts[record.kind] = (counts[record.kind] ?? 0) + 1;
-    rows.push(JSON.stringify(record));
+    rows.push(JSON.stringify(record)); groups.push(`${record.installId}|${recorderSession(record.eventId) ?? ""}`);
   }
   // The build is optional metadata: an unreadable one is left out rather than failing every batch.
   const clientBuild = CLIENT_BUILD.safeParse(envelope.clientBuild).success ? envelope.clientBuild : undefined;
-  const prefix = JSON.stringify({ addonVersion: envelope.addonVersion, clientBuild, protocol: PROTOCOL_VERSION, sharing, grantTokens }).slice(0, -1) + ',"records":[';
+  // A converted file says where its rows came from; the server then gives them their install id.
+  const source = UPLOAD_SOURCES.find((s) => s === envelope.source);
+  const prefix = JSON.stringify({ addonVersion: envelope.addonVersion, clientBuild, protocol: PROTOCOL_VERSION, ...(source ? { source } : {}), sharing, grantTokens }).slice(0, -1) + ',"records":[';
   const suffix = "]}";
   const bytes = (value: string) => new TextEncoder().encode(value).length;
   const overhead = bytes(prefix + suffix);
   const batches: string[] = [];
   let chunk: string[] = [], size = overhead;
-  for (const row of rows) {
+  // Intake takes one install per batch, so a file holding several starts a new batch at each change. A Polestar
+  // Recorder file also starts one at each session: each session is its own upload.
+  for (const [i, row] of rows.entries()) {
     const length = bytes(row);
     if (length + overhead > maxBytes) throw new Error("One record is too large to upload. Keep your file and contact Everloot.");
-    if (chunk.length === UPLOAD_LIMITS.recordsPerBatch || size + length + (chunk.length ? 1 : 0) > maxBytes) {
+    if (chunk.length === UPLOAD_LIMITS.recordsPerBatch || size + length + (chunk.length ? 1 : 0) > maxBytes || (chunk.length > 0 && groups[i] !== groups[i - 1])) {
       batches.push(prefix + chunk.join(",") + suffix); chunk = []; size = overhead;
     }
     size += length + (chunk.length ? 1 : 0); chunk.push(row);
   }
   if (chunk.length) batches.push(prefix + chunk.join(",") + suffix);
-  return { batches, next: 0, receipts: [], counts, held, addons: [...addons.values()].sort(), census: censusCharacters(census) };
+  return { batches, next: 0, receipts: [], counts, held, addons: [...addons.values()].sort(), census: censusCharacters(census), skipped };
 }
 /** Advance only after a confirmed durable receipt; retries send the identical batch. */
 export async function sendBatches(session: UploadSession, send: typeof fetch = fetch, onProgress: () => void = () => {}, url = "/api/intake") {

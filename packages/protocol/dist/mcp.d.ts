@@ -163,6 +163,11 @@ export declare const mapPin: z.ZodObject<{
     y: z.ZodNumber;
     reporters: z.ZodNumber;
 }, z.core.$strip>;
+/** Loot windows players reported that the public rates do not count yet. A count, never a rate. */
+export declare const pendingLoot: z.ZodObject<{
+    windows: z.ZodNumber;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
 export declare const itemPage: z.ZodObject<{
     itemId: z.ZodNumber;
     name: z.ZodNullable<z.ZodString>;
@@ -183,6 +188,78 @@ export declare const itemPage: z.ZodObject<{
         y: z.ZodNumber;
         reporters: z.ZodNumber;
     }, z.core.$strip>>;
+    pendingLoot: z.ZodOptional<z.ZodObject<{
+        windows: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    reported: z.ZodOptional<z.ZodObject<{
+        shown: z.ZodArray<z.ZodObject<{
+            fact: z.ZodEnum<{
+                agility: "agility";
+                arcane_resistance: "arcane_resistance";
+                armor: "armor";
+                attack_power: "attack_power";
+                block: "block";
+                block_rating: "block_rating";
+                crit_rating: "crit_rating";
+                damage_per_second: "damage_per_second";
+                defense_rating: "defense_rating";
+                dodge_rating: "dodge_rating";
+                expertise_rating: "expertise_rating";
+                fire_resistance: "fire_resistance";
+                frost_resistance: "frost_resistance";
+                haste_rating: "haste_rating";
+                health: "health";
+                hit_rating: "hit_rating";
+                holy_resistance: "holy_resistance";
+                intellect: "intellect";
+                mana: "mana";
+                mana_regeneration: "mana_regeneration";
+                nature_resistance: "nature_resistance";
+                parry_rating: "parry_rating";
+                resilience_rating: "resilience_rating";
+                shadow_resistance: "shadow_resistance";
+                spell_power: "spell_power";
+                spirit: "spirit";
+                stamina: "stamina";
+                strength: "strength";
+            }>;
+            value: z.ZodNumber;
+            reporters: z.ZodNumber;
+            build: z.ZodString;
+            lastSeen: z.ZodNullable<z.ZodString>;
+        }, z.core.$strip>>;
+        contested: z.ZodArray<z.ZodEnum<{
+            agility: "agility";
+            arcane_resistance: "arcane_resistance";
+            armor: "armor";
+            attack_power: "attack_power";
+            block: "block";
+            block_rating: "block_rating";
+            crit_rating: "crit_rating";
+            damage_per_second: "damage_per_second";
+            defense_rating: "defense_rating";
+            dodge_rating: "dodge_rating";
+            expertise_rating: "expertise_rating";
+            fire_resistance: "fire_resistance";
+            frost_resistance: "frost_resistance";
+            haste_rating: "haste_rating";
+            health: "health";
+            hit_rating: "hit_rating";
+            holy_resistance: "holy_resistance";
+            intellect: "intellect";
+            mana: "mana";
+            mana_regeneration: "mana_regeneration";
+            nature_resistance: "nature_resistance";
+            parry_rating: "parry_rating";
+            resilience_rating: "resilience_rating";
+            shadow_resistance: "shadow_resistance";
+            spell_power: "spell_power";
+            spirit: "spirit";
+            stamina: "stamina";
+            strength: "strength";
+        }>>;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const npcPage: z.ZodObject<{
     npcId: z.ZodNumber;
@@ -191,6 +268,10 @@ export declare const npcPage: z.ZodObject<{
         mapId: z.ZodNumber;
         x: z.ZodNumber;
         y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    pendingLoot: z.ZodOptional<z.ZodObject<{
+        windows: z.ZodNumber;
         reporters: z.ZodNumber;
     }, z.core.$strip>>;
 }, z.core.$strip>;
@@ -221,6 +302,7 @@ export declare const vendorPage: z.ZodObject<{
 }, z.core.$strip>;
 export declare const objectPage: z.ZodObject<{
     objectId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
     drops: z.ZodArray<z.ZodObject<{
         itemId: z.ZodNumber;
         itemName: z.ZodNullable<z.ZodString>;
@@ -234,6 +316,16 @@ export declare const objectPage: z.ZodObject<{
         reporters: z.ZodNumber;
     }, z.core.$strip>>;
     queued: z.ZodBoolean;
+    pendingLoot: z.ZodOptional<z.ZodObject<{
+        windows: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    pins: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 export declare const auctionHistory: z.ZodObject<{
     realm: z.ZodString;
@@ -632,6 +724,7 @@ export declare const mapNear: z.ZodObject<{
         raid: z.ZodBoolean;
         zone: z.ZodNullable<z.ZodString>;
         yards: z.ZodNumber;
+        confirmed: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>>>;
     npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
         npcId: z.ZodNumber;
@@ -645,6 +738,16 @@ export declare const mapNear: z.ZodObject<{
     }, z.core.$strip>>>;
     vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
         npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        zoneName: z.ZodString;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        yards: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
+    treasures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        objectId: z.ZodNumber;
         name: z.ZodNullable<z.ZodString>;
         mapId: z.ZodNumber;
         zoneName: z.ZodString;
@@ -1230,7 +1333,7 @@ export declare const MCP_TOOLS: {
     };
     readonly item_page: {
         readonly title: "Item page for a drop";
-        readonly description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+        readonly description: "One Forever item: agreed name, observed loot-window drop frequency, agreed map pins, and player-reported armor, block, damage per second, stats and resistances. Each item number needs one value with 3 agreeing installs in the newest build with 3 reporting installs, and no competing value with 3; contested values are withheld. Each number states its agreeing installs, build and last seen, with the corpus date and method. Missing numbers are [?] with a reason. No baseline rows or player names. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly itemId: z.ZodNumber;
         };
@@ -1259,6 +1362,78 @@ export declare const MCP_TOOLS: {
                     y: z.ZodNumber;
                     reporters: z.ZodNumber;
                 }, z.core.$strip>>;
+                pendingLoot: z.ZodOptional<z.ZodObject<{
+                    windows: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                reported: z.ZodOptional<z.ZodObject<{
+                    shown: z.ZodArray<z.ZodObject<{
+                        fact: z.ZodEnum<{
+                            agility: "agility";
+                            arcane_resistance: "arcane_resistance";
+                            armor: "armor";
+                            attack_power: "attack_power";
+                            block: "block";
+                            block_rating: "block_rating";
+                            crit_rating: "crit_rating";
+                            damage_per_second: "damage_per_second";
+                            defense_rating: "defense_rating";
+                            dodge_rating: "dodge_rating";
+                            expertise_rating: "expertise_rating";
+                            fire_resistance: "fire_resistance";
+                            frost_resistance: "frost_resistance";
+                            haste_rating: "haste_rating";
+                            health: "health";
+                            hit_rating: "hit_rating";
+                            holy_resistance: "holy_resistance";
+                            intellect: "intellect";
+                            mana: "mana";
+                            mana_regeneration: "mana_regeneration";
+                            nature_resistance: "nature_resistance";
+                            parry_rating: "parry_rating";
+                            resilience_rating: "resilience_rating";
+                            shadow_resistance: "shadow_resistance";
+                            spell_power: "spell_power";
+                            spirit: "spirit";
+                            stamina: "stamina";
+                            strength: "strength";
+                        }>;
+                        value: z.ZodNumber;
+                        reporters: z.ZodNumber;
+                        build: z.ZodString;
+                        lastSeen: z.ZodNullable<z.ZodString>;
+                    }, z.core.$strip>>;
+                    contested: z.ZodArray<z.ZodEnum<{
+                        agility: "agility";
+                        arcane_resistance: "arcane_resistance";
+                        armor: "armor";
+                        attack_power: "attack_power";
+                        block: "block";
+                        block_rating: "block_rating";
+                        crit_rating: "crit_rating";
+                        damage_per_second: "damage_per_second";
+                        defense_rating: "defense_rating";
+                        dodge_rating: "dodge_rating";
+                        expertise_rating: "expertise_rating";
+                        fire_resistance: "fire_resistance";
+                        frost_resistance: "frost_resistance";
+                        haste_rating: "haste_rating";
+                        health: "health";
+                        hit_rating: "hit_rating";
+                        holy_resistance: "holy_resistance";
+                        intellect: "intellect";
+                        mana: "mana";
+                        mana_regeneration: "mana_regeneration";
+                        nature_resistance: "nature_resistance";
+                        parry_rating: "parry_rating";
+                        resilience_rating: "resilience_rating";
+                        shadow_resistance: "shadow_resistance";
+                        spell_power: "spell_power";
+                        spirit: "spirit";
+                        stamina: "stamina";
+                        strength: "strength";
+                    }>>;
+                }, z.core.$strip>>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -1268,7 +1443,7 @@ export declare const MCP_TOOLS: {
     };
     readonly npc_page: {
         readonly title: "NPC page";
-        readonly description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+        readonly description: "One Forever NPC: agreed name and map pins, and loot windows reported but not yet in the rates. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly npcId: z.ZodNumber;
         };
@@ -1286,6 +1461,10 @@ export declare const MCP_TOOLS: {
                     y: z.ZodNumber;
                     reporters: z.ZodNumber;
                 }, z.core.$strip>>;
+                pendingLoot: z.ZodOptional<z.ZodObject<{
+                    windows: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -1295,7 +1474,7 @@ export declare const MCP_TOOLS: {
     };
     readonly object_page: {
         readonly title: "Game object page";
-        readonly description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.";
+        readonly description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. The name is shown when 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.";
         readonly inputSchema: {
             readonly objectId: z.ZodNumber;
         };
@@ -1306,6 +1485,7 @@ export declare const MCP_TOOLS: {
             readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 objectId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
                 drops: z.ZodArray<z.ZodObject<{
                     itemId: z.ZodNumber;
                     itemName: z.ZodNullable<z.ZodString>;
@@ -1319,6 +1499,16 @@ export declare const MCP_TOOLS: {
                     reporters: z.ZodNumber;
                 }, z.core.$strip>>;
                 queued: z.ZodBoolean;
+                pendingLoot: z.ZodOptional<z.ZodObject<{
+                    windows: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                pins: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    mapId: z.ZodNumber;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -1380,7 +1570,7 @@ export declare const MCP_TOOLS: {
     };
     readonly world_map_near: {
         readonly title: "What is near a place on the map";
-        readonly description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`;
+        readonly description: `Entrances, NPCs, vendors and treasures near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files; one is confirmed once 3 installs zoned in from it. NPCs, vendors and treasures are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Reads Everloot's current authorized public corpus when connected.`;
         readonly inputSchema: {
             readonly zone: z.ZodOptional<z.ZodString>;
             readonly x: z.ZodOptional<z.ZodNumber>;
@@ -1405,6 +1595,7 @@ export declare const MCP_TOOLS: {
                     raid: z.ZodBoolean;
                     zone: z.ZodNullable<z.ZodString>;
                     yards: z.ZodNumber;
+                    confirmed: z.ZodOptional<z.ZodNumber>;
                 }, z.core.$strip>>>;
                 npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
                     npcId: z.ZodNumber;
@@ -1418,6 +1609,16 @@ export declare const MCP_TOOLS: {
                 }, z.core.$strip>>>;
                 vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
                     npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    zoneName: z.ZodString;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    yards: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
+                treasures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    objectId: z.ZodNumber;
                     name: z.ZodNullable<z.ZodString>;
                     mapId: z.ZodNumber;
                     zoneName: z.ZodString;
@@ -2028,6 +2229,28 @@ export declare const MCP_TOOLS: {
             readonly openWorldHint: false;
         };
     };
+    readonly coverage: {
+        readonly title: "Database coverage by zone, type and field";
+        readonly description: "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field, plus scoped totals and the current build's whole-fact settled-list size, separately dated and measured. Coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). Confirmed includes settled. Reported fields needing one or two more installs are counted without their values. A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.";
+        readonly inputSchema: {
+            readonly zone: z.ZodOptional<z.ZodNumber>;
+            readonly type: z.ZodOptional<z.ZodEnum<{
+                bosses: "bosses";
+                drops: "drops";
+                entrances: "entrances";
+                npcs: "npcs";
+                pins: "pins";
+                quests: "quests";
+                rares: "rares";
+                treasures: "treasures";
+                vendors: "vendors";
+            }>>;
+        };
+        readonly annotations: {
+            readonly readOnlyHint: true;
+            readonly openWorldHint: false;
+        };
+    };
     readonly population: {
         readonly title: "Who plays what: population by race, class, faction and level";
         readonly description: "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 addresses, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.";
@@ -2333,7 +2556,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Get one knowledge record by id";
     description: "Fetch the full record behind a search hit id, for page rendering.";
@@ -2374,7 +2597,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Get records by exact name";
     description: "Exact full-name match (case-insensitive) for disambiguation.";
@@ -2426,7 +2649,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Search (ChatGPT connector contract)";
     description: "The same search as search_knowledge, in the shape ChatGPT connectors and deep research call by name: up to 10 results, each with an id for fetch, a title and a URL to cite. The text block is the same JSON as a string.";
@@ -2444,7 +2667,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Fetch one document (ChatGPT connector contract)";
     description: "One knowledge record by the id a search result gave, whole: title, the full text in the source's words, the URL to cite, and metadata with the source, licence and date. The text block is the same JSON as a string.";
@@ -2485,7 +2708,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Evidence for a question, each piece with its source";
     description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence rather than prose. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.";
@@ -2520,7 +2743,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Profession leveling path";
     description: "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree: on a reported recipe, or on the recipe colours that make it orange (a guaranteed skill-up), starting at the trainer's required rank. Gold exists only after 3 price uploads agree. No copied guide. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -2567,7 +2790,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Recipe skill ranges";
     description: "Where a Forever profession's recipes turn yellow, green and grey, inferred from the colours players' trade-skill windows showed. A recipe appears only after 3 installs agree, as ranges, never guessed exact numbers. Agreed reagents come with an estimated cost per craft when every reagent has an agreed price. Reads Everloot's current public corpus.";
@@ -2612,10 +2835,10 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Item page for a drop";
-    description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+    description: "One Forever item: agreed name, observed loot-window drop frequency, agreed map pins, and player-reported armor, block, damage per second, stats and resistances. Each item number needs one value with 3 agreeing installs in the newest build with 3 reporting installs, and no competing value with 3; contested values are withheld. Each number states its agreeing installs, build and last seen, with the corpus date and method. Missing numbers are [?] with a reason. No baseline rows or player names. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly itemId: z.ZodNumber;
     };
@@ -2644,16 +2867,88 @@ export declare const MCP_TOOL_LIST: ({
                 y: z.ZodNumber;
                 reporters: z.ZodNumber;
             }, z.core.$strip>>;
+            pendingLoot: z.ZodOptional<z.ZodObject<{
+                windows: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            reported: z.ZodOptional<z.ZodObject<{
+                shown: z.ZodArray<z.ZodObject<{
+                    fact: z.ZodEnum<{
+                        agility: "agility";
+                        arcane_resistance: "arcane_resistance";
+                        armor: "armor";
+                        attack_power: "attack_power";
+                        block: "block";
+                        block_rating: "block_rating";
+                        crit_rating: "crit_rating";
+                        damage_per_second: "damage_per_second";
+                        defense_rating: "defense_rating";
+                        dodge_rating: "dodge_rating";
+                        expertise_rating: "expertise_rating";
+                        fire_resistance: "fire_resistance";
+                        frost_resistance: "frost_resistance";
+                        haste_rating: "haste_rating";
+                        health: "health";
+                        hit_rating: "hit_rating";
+                        holy_resistance: "holy_resistance";
+                        intellect: "intellect";
+                        mana: "mana";
+                        mana_regeneration: "mana_regeneration";
+                        nature_resistance: "nature_resistance";
+                        parry_rating: "parry_rating";
+                        resilience_rating: "resilience_rating";
+                        shadow_resistance: "shadow_resistance";
+                        spell_power: "spell_power";
+                        spirit: "spirit";
+                        stamina: "stamina";
+                        strength: "strength";
+                    }>;
+                    value: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                    build: z.ZodString;
+                    lastSeen: z.ZodNullable<z.ZodString>;
+                }, z.core.$strip>>;
+                contested: z.ZodArray<z.ZodEnum<{
+                    agility: "agility";
+                    arcane_resistance: "arcane_resistance";
+                    armor: "armor";
+                    attack_power: "attack_power";
+                    block: "block";
+                    block_rating: "block_rating";
+                    crit_rating: "crit_rating";
+                    damage_per_second: "damage_per_second";
+                    defense_rating: "defense_rating";
+                    dodge_rating: "dodge_rating";
+                    expertise_rating: "expertise_rating";
+                    fire_resistance: "fire_resistance";
+                    frost_resistance: "frost_resistance";
+                    haste_rating: "haste_rating";
+                    health: "health";
+                    hit_rating: "hit_rating";
+                    holy_resistance: "holy_resistance";
+                    intellect: "intellect";
+                    mana: "mana";
+                    mana_regeneration: "mana_regeneration";
+                    nature_resistance: "nature_resistance";
+                    parry_rating: "parry_rating";
+                    resilience_rating: "resilience_rating";
+                    shadow_resistance: "shadow_resistance";
+                    spell_power: "spell_power";
+                    spirit: "spirit";
+                    stamina: "stamina";
+                    strength: "strength";
+                }>>;
+            }, z.core.$strip>>;
         }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "NPC page";
-    description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+    description: "One Forever NPC: agreed name and map pins, and loot windows reported but not yet in the rates. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly npcId: z.ZodNumber;
     };
@@ -2671,16 +2966,20 @@ export declare const MCP_TOOL_LIST: ({
                 y: z.ZodNumber;
                 reporters: z.ZodNumber;
             }, z.core.$strip>>;
+            pendingLoot: z.ZodOptional<z.ZodObject<{
+                windows: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
         }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Game object page";
-    description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.";
+    description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. The name is shown when 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.";
     inputSchema: {
         readonly objectId: z.ZodNumber;
     };
@@ -2691,6 +2990,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             objectId: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
             drops: z.ZodArray<z.ZodObject<{
                 itemId: z.ZodNumber;
                 itemName: z.ZodNullable<z.ZodString>;
@@ -2704,13 +3004,23 @@ export declare const MCP_TOOL_LIST: ({
                 reporters: z.ZodNumber;
             }, z.core.$strip>>;
             queued: z.ZodBoolean;
+            pendingLoot: z.ZodOptional<z.ZodObject<{
+                windows: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            pins: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                mapId: z.ZodNumber;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
         }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Quest page";
     description: "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -2735,7 +3045,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Vendor page";
     description: "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -2762,10 +3072,10 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "What is near a place on the map";
-    description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`;
+    description: `Entrances, NPCs, vendors and treasures near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files; one is confirmed once 3 installs zoned in from it. NPCs, vendors and treasures are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Reads Everloot's current authorized public corpus when connected.`;
     inputSchema: {
         readonly zone: z.ZodOptional<z.ZodString>;
         readonly x: z.ZodOptional<z.ZodNumber>;
@@ -2790,6 +3100,7 @@ export declare const MCP_TOOL_LIST: ({
                 raid: z.ZodBoolean;
                 zone: z.ZodNullable<z.ZodString>;
                 yards: z.ZodNumber;
+                confirmed: z.ZodOptional<z.ZodNumber>;
             }, z.core.$strip>>>;
             npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
                 npcId: z.ZodNumber;
@@ -2811,13 +3122,23 @@ export declare const MCP_TOOL_LIST: ({
                 yards: z.ZodNumber;
                 reporters: z.ZodNumber;
             }, z.core.$strip>>>;
+            treasures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                objectId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                zoneName: z.ZodString;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                yards: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
         }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "How an item, NPC, spell or quest connects to others";
     description: `Every typed relation of one entity, both directions: dropped by, sold by, reward from, located in (player-observed, listed where 3 installs agree, with the install count and last seen), and created by, reagent for, part of set, same icon (found in game files, unconfirmed, with the build they came from). Ids are the game's own. Reads Everloot's current authorized public corpus and the committed client layer.`;
@@ -2922,7 +3243,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Item categories: class, subclass, slot and quality";
     description: `Item categories from the game files (found in game files, unconfirmed, with the build): class and subclass with the client's English names and slugs, slot and quality. With no arguments, the whole tree with item counts. With item, that item's category path. With class (a slug such as weapon or armor), and optionally subclass, slot and quality slugs, the items in it. Ids only: item names come from player uploads (item_page).`;
@@ -3015,7 +3336,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Talent trees for one class";
     description: "The WoW: Forever talent trees of one class from the game files (found in game files, unconfirmed, with the build): every node with its talents, ranks, grid position, prerequisites and row gate, plus the levels talent points arrive at. Node ids are the ids a share code names. Narrow to one tree by name. The calculator is at /tools/talents/<class>.";
@@ -3099,7 +3420,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Read a talent share code";
     description: "Decodes an Everloot talent share code (EL1-<class>-<spec>-<build>-<payload>, or a calculator link carrying one after #plan=) against the class's trees: the talents and ranks it holds, points per tree, the lowest level that can hold it, and every problem in plain words: a code made on another build, nodes the tree does not have, ranks cut back, points the rules would not place. Nothing is dropped silently. Game-file data, found in game files, unconfirmed.";
@@ -3148,7 +3469,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Owned versus missing in a collection";
     description: "Missing items in one collection for one install. A list row is public after 3 installs agree on the collection, the source, and the item. Owned is what that install uploaded. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -3177,7 +3498,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Achievement, reputation, title and quest progress";
     description: "What one install's characters have finished, and what is closest to done: achievements with the largest share of criteria or progress met, reputations nearest the next standing, titles known, and quests finished in a chain. A list entry is public after 3 players (installs uploading from different addresses) report it identically. Progress is shown only when that install uploaded it with the collection sharing choice and a verified grant; without it the answer says so. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -3264,7 +3585,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Guild board its officers published";
     description: "One guild's roster, bosses killed, loot awarded, raid attendance and average item level, as that guild's own officers chose to publish them. Only uploads from officers holding a verified grant for the guild count, and a figure is public after 2 of them agree. Names are in-game character names, never accounts or real-world identities. A character's owner can opt out, and an opted-out character is left out of the roster, loot and attendance. A guild whose officers have not published gets an empty board; the tool does not look up other players or guilds. The average names how many roster members were measured; there is no combined score. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -3309,7 +3630,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Auction history for one item";
     description: "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -3336,7 +3657,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Forever market value for one item";
     description: "Market value, minimum buyout, historical value and units listed for one item on one WoW: Forever realm, from full auction scans players started and uploaded. A day is public after 3 reporters (distinct upload addresses) scanned the item; values are medians, thin days and outlier days are left out of the market value. Market value weights the last 14 public days, historical is the median of 60. Missing or unavailable data is reported explicitly.";
@@ -3377,7 +3698,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Gold ledger for one character";
     description: "Peak gold and the money events that character's own upload recorded. Loot, quests, vendors, and auction sales stay on the money line. Gameplay stays on its own line. A missing line is unrecorded. The difference is not called bought and is not a ban. Installs are not merged. No scan of a player who did not upload. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -3412,7 +3733,29 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+} | {
+    title: "Database coverage by zone, type and field";
+    description: "How much of WoW: Forever's database is settled or confirmed, and which reported fields need more agreeing installs. The same counts and reported lists as https://everloot.app/database/coverage, as text, per zone, per type and per field, plus scoped totals and the current build's whole-fact settled-list size, separately dated and measured. Coverage = settled / expected, with confirmed / expected beside it; the denominator is max(expected, observed). Confirmed includes settled. Reported fields needing one or two more installs are counted without their values. A player-reported fact needs three agreeing installs to be public. Only public report identifiers and game-file facts are listed, never unconfirmed values, baseline rows, names or ids, or player names. Every answer states its scope, measurement method, data date and install counts; unknown values are [?]. Zone and type are optional; omitted filters cover all released zones and all types.";
+    inputSchema: {
+        readonly zone: z.ZodOptional<z.ZodNumber>;
+        readonly type: z.ZodOptional<z.ZodEnum<{
+            bosses: "bosses";
+            drops: "drops";
+            entrances: "entrances";
+            npcs: "npcs";
+            pins: "pins";
+            quests: "quests";
+            rares: "rares";
+            treasures: "treasures";
+            vendors: "vendors";
+        }>>;
+    };
+    annotations: {
+        readonly readOnlyHint: true;
+        readonly openWorldHint: false;
+    };
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Who plays what: population by race, class, faction and level";
     description: "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 addresses, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.";
@@ -3492,7 +3835,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Recent official changes for WoW: Forever";
     description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's; full posts are available at their source URLs. A build's time is when Everloot first saw it, not Blizzard's release time.";
@@ -3548,7 +3891,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "WoW: Forever addons and open-source projects";
     description: "Forever addons and tools from the community registry, with a board ranking: most installed, rising, most active, freshest release or best maintained. Each project shows its GitHub repository, stars, latest release, last commit, whether its .toc declares a Forever interface number, and installs from Everloot uploads (counted from 3 installs; a missing count means not counted, not zero). Projects are ranked, never people. GitHub facts carry the time they were refreshed.";
@@ -3616,7 +3959,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Everloot implementation tracker";
     description: "The Everloot feature catalogue: what is live, what is next, what is waiting, and which reference sites are page shapes only.";
@@ -3652,13 +3995,13 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "coverage" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 })[];
 /**
  * What every tool returns: one text content block. Answers built on player data end with the
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
- * their sources inside the text instead. Every tool also declares an outputSchema and returns
- * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
+ * their sources inside the text instead. Tools with an outputSchema also return structuredContent
+ * of that shape (STRUCTURED_TOOLS lists them; coverage is text only).
  * When one everloot.app page shows the answer, its structured `url` holds it and the text carries a
  * `More: <url>` line, last before the data age and credit lines.
  */

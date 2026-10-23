@@ -7,7 +7,7 @@ import {
   coverage, emptyLedger, infoboxItemIds, mergeLedger, normName, parseLedger, runItemNames, shownNames, tierOf,
   WIKI_PAGE_PREFIX, type Ledger,
 } from "../src/item-names.js";
-import { looksInternal, mayShowName, SHOWN_MAX_ITEM_ID } from "../src/item-name-rule.js";
+import { mayShowName } from "../src/item-name-rule.js";
 
 const B1 = "1.60.1.70450", B2 = "1.60.1.70999";
 const page = (title: string) => `${WIKI_PAGE_PREFIX}${title}`;
@@ -41,44 +41,30 @@ test("each item gets one tier: match, mismatch, files, wiki or none", () => {
   expect(c.mismatches).toEqual([{ id: 2, files: "Okra", wiki: ["Ripe Okra"] }]);
 });
 
-test("the shown file holds only the match tier, with the game file name, its quality and the wiki page title", () => {
+test("the shown file names every item a source names: the game file name first, the wiki page where the wiki agrees", () => {
   const l = ledgerOf([[1, "Linen Cloth"], [2, "Okra"], [3, "Fel Ash Sample"]], [[1, "Linen Cloth"], [2, "Ripe Okra"], [4, "Thunderfury"]]);
   const shown = shownNames(l, B1, [1, 2, 3, 4, 5], wiki);
-  expect(shown).toMatchObject({ schema: "everloot.item-names/1", build: { version: B1 }, count: 1, wiki });
-  expect(shown.names).toEqual({ 1: { n: "Linen Cloth", q: 2, w: "Linen_Cloth" } });
-  // Only the build's own items: an id the build does not list is left out even when it matches.
-  expect(shownNames(l, B1, [2, 3], wiki).count).toBe(0);
+  expect(shown).toMatchObject({ schema: "everloot.item-names/1", build: { version: B1 }, count: 4, wiki });
+  expect(shown.names).toEqual({
+    1: { n: "Linen Cloth", q: 2, w: "Linen_Cloth" },
+    // The two disagree: this build's own name shows, with no wiki page.
+    2: { n: "Okra", q: 2 },
+    3: { n: "Fel Ash Sample", q: 2 },
+    // Only the wiki names it: its name and page, and no quality.
+    4: { n: "Thunderfury", w: "Thunderfury" },
+  });
+  // Only the build's own items: an id the build does not list is left out.
+  expect(shownNames(l, B1, [5], wiki).count).toBe(0);
 });
 
-test("a match is shown only below the id cap and without a placeholder name; the ledger keeps the rest", () => {
-  const names: [number, string][] = [
-    [1, "Linen Cloth"], [SHOWN_MAX_ITEM_ID - 1, "Last Classic Item"], [SHOWN_MAX_ITEM_ID, "Book of Deathstones: Mask of Death"], [191666, "Skeletal Steed"],
-    [2, "Deprecated Calico Shoulderpads"], [3, "DEP Old Sword"], [4, "[PH] Naxxramas Sword"], [5, "PH Leggings"], [6, "Test Mace"], [7, "QA Ring"],
-    [8, "Monster - Sword, Scimitar Basic"], [9, "OLD Gloves"], [10, "Unused Staff"], [11, "zzOLD Cloak"], [12, "Robe (old)"],
-  ];
+test("every id and every name shows: no id cap and no placeholder filter", () => {
+  const names: [number, string][] = [[1, "Linen Cloth"], [25_000, "Book of Deathstones: Mask of Death"], [191666, "Skeletal Steed"], [2, "Deprecated Calico Shoulderpads"], [4, "[PH] Naxxramas Sword"]];
   const l = ledgerOf(names, names);
-  const shown = shownNames(l, B1, names.map(([id]) => id), wiki);
-  expect(Object.keys(shown.names).map(Number)).toEqual([1, SHOWN_MAX_ITEM_ID - 1]);
-  const c = coverage(l, B1, names.map(([id]) => id));
-  expect(c.counts.match).toBe(names.length);
-  expect(c.held).toEqual({ highId: 2, internalName: 11 });
-  expect(c.shownCount).toBe(2);
-  for (const [id, name] of names) expect(l.items[String(id)]!.files[0]!.name).toBe(name);
-});
-
-test("placeholder names are told apart from real ones that merely start alike", () => {
-  for (const n of ["Deprecated Maiden's Anguish", "deprecated thing", "DEP Item", "[PH] Sword", "PH Shield", "Test Item", "QA Gloves", "Monster - Mace", "OLD Belt", "Item UNUSED", "zzOLD Robe", "zzold robe", "Cloak (Old)"]) {
-    expect(looksInternal(n), n).toBe(true);
-  }
-  for (const n of [
-    "Depleted Crystal Heart", "Testament of Hope", "Phial of Scrying", "Golden Pearl", "Monstrous Spider Fang", "Bold Old Hat",
-    "Old Greatsword", "Old Blanchy's Feed Pouch", "Old Wagonwheel",
-  ]) {
-    expect(looksInternal(n), n).toBe(false);
-  }
-  expect(mayShowName(24_999, "Linen Cloth")).toBe(true);
-  expect(mayShowName(25_000, "Linen Cloth")).toBe(false);
+  expect(Object.keys(shownNames(l, B1, names.map(([id]) => id), wiki).names).map(Number)).toEqual([1, 2, 4, 25_000, 191666]);
+  expect(coverage(l, B1, names.map(([id]) => id)).shownCount).toBe(names.length);
+  expect(mayShowName(25_000, "Linen Cloth")).toBe(true);
   expect(mayShowName(0, "Linen Cloth")).toBe(false);
+  expect(mayShowName(1, "  ")).toBe(false);
 });
 
 test("the ledger only grows: a new build adds beside the old one, a repeat adds nothing, nothing is removed", () => {
@@ -145,9 +131,9 @@ test("a run adds both sources to the ledger and writes the shown names beside th
   expect(run.counts).toEqual({ match: 1, mismatch: 1, files: 1, wiki: 0, none: 1 });
   expect(run.shownPath).toBe(join(dir, "assets", "wow_classic_beta-70450-84bea423-names", "item-names.json"));
   const shown = JSON.parse(readFileSync(run.shownPath, "utf8"));
-  expect(shown.names).toEqual({ 2589: { n: "Linen Cloth", q: 1, w: "Linen_Cloth" } });
+  expect(shown.names).toEqual({ 732: { n: "Okra", q: 1 }, 2589: { n: "Linen Cloth", q: 1, w: "Linen_Cloth" }, 270000: { n: "Fel Ash Sample", q: 1 } });
   const ledger = parseLedger(JSON.parse(readFileSync(ledgerPath, "utf8")));
-  // The ledger keeps what is not shown: the mismatch, the files-only name and a wiki name for an id this build lacks.
+  // The ledger keeps every reading: the wiki's other name, and a wiki name for an id this build lacks.
   expect(ledger.items["732"]!.wiki.map((w) => w.name)).toEqual(["Ripe Okra"]);
   expect(ledger.items["270000"]!.files[0]!.name).toBe("Fel Ash Sample");
   expect(ledger.items["19019"]!.wiki[0]!.name).toBe("Thunderfury, Blessed Blade of the Windseeker");

@@ -9,7 +9,7 @@ import DocPage from "@/components/docs/DocPage";
 import { toolFromSlug, toolHref } from "@/lib/docs/nav";
 import { toolSamples } from "@/lib/docs/examples";
 import { toolDocs } from "@/lib/protocol-docs";
-import { pageMetadata } from "@/lib/seo";
+import { DESCRIPTION_MAX, DESCRIPTION_MIN, pageMetadata } from "@/lib/seo";
 
 /** One page per MCP tool, generated from the protocol's tool definitions (MCP_TOOLS). */
 
@@ -23,6 +23,31 @@ const INSTALL_ID = (
 
 /** Tools whose rule is not the usual 3-install one get their own note instead of the generic one. */
 const TOOL_NOTES: Partial<Record<McpToolName, ReactNode>> = {
+  item_page: (
+    <>
+      Player-reported armor, block, damage per second, stats and resistances are in <C>page.reported</C>.
+      Each line uses the newest build with 3 reporting installs and each install&apos;s latest vote.
+      A unique value needs 3 agreeing installs; competing winners or split votes disclose no value.
+      Shown numbers carry agreeing install counts, build and last seen, alongside the corpus date and method.
+      The text prints <C>[?]</C> with a reason for missing or contested numbers; structured unknown times are null.
+      Missing lines are unknown, never zero. The input is still only <C>itemId</C>.
+    </>
+  ),
+  coverage: (
+    <>
+      Reads the same score as <Link href="/database/coverage" className={docLink}>Database coverage</Link>.
+      Omit zone and type for all released zones and types, or pass a UiMap zone id and a type to narrow the answer.
+      Counts are entity-field facts: settled / expected, with confirmed / expected beside it, using the larger of
+      expected and observed as the denominator. Each answer includes the method, corpus date, build and install counts.
+      The reported-fields list identifies fields needing votes without disclosing their unconfirmed values.
+      Scoped totals count settled, confirmed (including settled), still reported and recheck fields.
+      The whole-fact settled-list size is separate: it covers the entire current build before filters, at upload-fact
+      grain, with its own snapshot date. That list stores no install count, so its installs read <C>[?]</C>.
+      An undated or unavailable list is unknown. A dated empty list is measured zero.
+      Type-filtered counts of fields needing one or two installs read <C>[?]</C> when the page&apos;s cap prevents a full count.
+      Baseline data contributes counts only. Unknown values read <C>[?]</C>. The answer is text only.
+    </>
+  ),
   guild_board: (
     <>
       Built on officers&apos; uploads, not the 3-install rule: a figure is public when uploads from 2 of the guild&apos;s
@@ -61,7 +86,29 @@ export async function generateMetadata({ params }: { params: Promise<{ tool: str
   const name = toolFromSlug((await params).tool);
   const doc = name && toolDocs().find((d) => d.name === name);
   if (!doc) return {};
-  return pageMetadata({ title: `${doc.name}: ${doc.title} · MCP tool`, description: doc.description.split(/(?<=\.)\s/)[0] ?? doc.title, path: toolHref(doc.name) });
+  return pageMetadata({ title: `${doc.name}: ${doc.title} · MCP tool`, description: toolDescription(doc.description), path: toolHref(doc.name) });
+}
+
+/**
+ * The tool's description, and when that is under DESCRIPTION_MIN, what the page documents. The first addition that
+ * fits DESCRIPTION_MAX wins, so a longer description keeps less of it.
+ */
+function toolDescription(text: string): string {
+  const base = metaDescription(text);
+  if (base.length >= DESCRIPTION_MIN) return base;
+  const choices = [`${base} An Everloot MCP tool: its parameters, its answer and the same call over HTTP.`, `${base} An Everloot MCP tool.`];
+  return choices.find((t) => t.length <= DESCRIPTION_MAX) ?? base;
+}
+
+/** The tool's description in whole sentences while they fit DESCRIPTION_MAX; a first sentence too long on its own is cut at a word. */
+function metaDescription(text: string): string {
+  let out = "";
+  for (const sentence of text.split(/(?<=\.)\s/)) {
+    const next = out ? `${out} ${sentence}` : sentence;
+    if (next.length > DESCRIPTION_MAX) break;
+    out = next;
+  }
+  return out || `${text.slice(0, DESCRIPTION_MAX - 1).replace(/\s+\S*$/, "")}…`;
 }
 
 export default async function ToolPage({ params }: { params: Promise<{ tool: string }> }) {

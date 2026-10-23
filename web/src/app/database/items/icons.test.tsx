@@ -12,14 +12,17 @@ vi.mock("@/lib/game-assets", async (importOriginal) => ({
   loadItemNames: async () => state.matched,
   loadItemTips: async (_assets: unknown, ids: readonly number[]) => {
     state.tipCalls.push([...ids]);
-    return new Map(ids.map((id) => [id, { name: `Game name ${id}`, color: "#fff", quality: "Common", icon: `https://assets.example.test/b/icons/i${id}.webp`, lines: [], partial: false, label: "found in game files, unconfirmed · build 1.60.1.70450", level: 0, required: 0, binding: 0, ...state.levels.get(id) }]));
+    return new Map(ids.map((id) => [id, { name: `Game name ${id}`, color: "#fff", quality: "Common", icon: `https://assets.example.test/b/icons/i${id}.webp`, lines: [], partial: false, why: [], label: "found in game files, unconfirmed · build 1.60.1.70450", level: 0, required: 0, binding: 0, ...state.levels.get(id) }]));
   },
 }));
 vi.mock("@/lib/rollup-compute", () => ({
   loadItemFacts: async () => ({ rates: [], names: state.names, npcs: [], unreachable: false }),
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
+  loadInstanceFacts: async () => ({ entrances: [], encounters: [], sightings: [], unreachable: false, dataAsOf: null }),
   loadCraftedItems: async () => ({ items: new Set<number>(), unreachable: false }),
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
+  loadLootTables: async () => ({ tables: { sources: new Map(), leftOut: 0 }, unreachable: false, dataAsOf: null }),
+  loadReportedItemFacts: async () => ({ shown: [], contested: [], unreachable: false }),
 }));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable", uploadStore: { loadCompletion: async () => ({ state: null, dataAsOf: null, unreachable: true }) } }));
 vi.mock("next/link", () => ({ default: ({ href, children, style, title }: { href: string; children: ReactNode; style?: object; title?: string }) => <a href={href} title={title} style={style}>{children}</a> }));
@@ -84,7 +87,7 @@ const matchedNames = (ids: number[]) => ({
 const clothIds = () => CLIENT_TAXONOMY.items.filter((r) => r[1] === 4 && r[2] === 1).map((r) => r[0]);
 const cloth = () => SubclassPage({ params: Promise.resolve({ id: "armor", subclass: "cloth" }), searchParams: Promise.resolve({}) });
 
-test("a category row shows a name the game files and the wiki agree on, in its quality colour, its source as the name's tooltip, no printed label", async () => {
+test("a category row shows a name the game files and the wiki agree on, in its quality colour, its source in the hover card and in words for a screen reader, no printed label", async () => {
   state.assets = assets;
   const ids = clothIds();
   state.matched = matchedNames([ids[0]]);
@@ -92,13 +95,15 @@ test("a category row shows a name the game files and the wiki agree on, in its q
   const page = await html(cloth());
   expect(page).toContain(`Wiki name ${ids[0]}`);
   expect(page).toContain("color:#a335ee");
-  expect(page).toContain(`title="${NAME_TITLE.wiki}"`);
+  // The source is in the link's hover card (/database/card), not a plain title that would double it.
+  expect(page).not.toContain(`title="${NAME_TITLE.wiki}"`);
   // The screen reader words follow the link: its anchor text is the name alone.
   expect(page).toContain(`>Wiki name ${ids[0]}</a><span class="sr-only"> (name from the warcraft wiki)</span>`);
   expect(page).not.toMatch(/<a [^>]*>[^<]*<span class="sr-only">/);
-  // Players' names keep first place and say so in their tooltip; every other row stays "Item N" with none.
+  // Players' names keep first place and say so; every other row stays "Item N" with none.
   expect(page).toContain(`Agreed ${ids[1]}`);
-  expect(page).toContain(`title="${NAME_TITLE.players}"`);
+  expect(page).not.toContain(`title="${NAME_TITLE.players}"`);
+  expect(page).toContain(`>Agreed ${ids[1]}</a><span class="sr-only"> (name confirmed by players)</span>`);
   expect(page).toContain(`>Item ${ids[2]}<`);
   // No source line, no wiki link and no credit line on the list (density spec, 2026-10-20).
   expect(page).not.toContain(NAME_SOURCE.wiki);
@@ -106,6 +111,16 @@ test("a category row shows a name the game files and the wiki agree on, in its q
   expect(page).not.toContain("warcraft.wiki.gg/wiki/");
   // Tooltip facts are asked for the matched item and the reported one only.
   expect(state.tipCalls).toEqual([[ids[0], ids[1]]]);
+});
+
+test("a name from the game files alone shows with the unconfirmed marker", async () => {
+  state.assets = assets;
+  const ids = clothIds();
+  state.matched = { ...matchedNames([]), names: new Map([[ids[0], { name: `File name ${ids[0]}`, color: "#a335ee", wikiPage: null, source: "files" }]]) };
+  const page = await html(cloth());
+  expect(page).toContain(`File name ${ids[0]}`);
+  expect(page).toContain('data-badge="files"');
+  expect(page).not.toContain(`>File name ${ids[0]}</a><span class="sr-only">`);
 });
 
 test("without the names file a category shows Item N and no wiki credit", async () => {

@@ -13,9 +13,11 @@ test("every tool gets a parameter table in declaration order, with required flag
   expect(docs.find((d) => d.name === "item_page")!.playerData).toBe(true);
   expect(search.structured).toBe(true);
   expect(docs.find((d) => d.name === "item_page")!.structured).toBe(true);
-  expect(docs.every((d) => d.structured)).toBe(true);
-  // The answer table: every tool has fields, and upload answers start with the envelope.
-  for (const d of docs) expect(d.output.length, d.name).toBeGreaterThan(0);
+  expect(docs.filter((d) => !d.structured).map((d) => d.name)).toEqual(["coverage"]);
+  // The answer table: structured tools have fields; coverage returns text only.
+  for (const d of docs.filter((d) => d.structured)) expect(d.output.length, d.name).toBeGreaterThan(0);
+  expect(toolOutput("coverage")).toEqual([]);
+  expect(toolParams("coverage").map((p) => [p.name, p.required])).toEqual([["zone", false], ["type", false]]);
   const item = toolOutput("item_page");
   expect(item.map((f) => f.name)).toEqual(["connected", "dataAsOf", "reason", "url", "page"]);
   expect(item[0]).toMatchObject({ type: "boolean", required: true });

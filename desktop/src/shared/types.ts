@@ -1,5 +1,5 @@
 /** Shapes shared by the Node side and the page. No Node or Electron imports here. */
-import type { ProviderChoice, ProviderInUse, ProviderKind } from "./providers";
+import type { ModelChoice, ProviderChoice, ProviderInUse, ProviderKind } from "./providers";
 
 export type Job = "upload" | "prices" | "ask";
 export const JOBS: Job[] = ["upload", "prices", "ask"];
@@ -12,6 +12,8 @@ export interface Settings {
   prices: boolean;
   /** Census counts go with the uploads: race, class, level and faction of players seen, never names. */
   census: boolean;
+  /** Player pages go with the uploads: the name, realm, race, class, level and guild of the players seen. Off by default. */
+  players: boolean;
   ask: { enabled: boolean; mcpUrl: string; tokenFile: string | null };
   /** Realms to keep prices for beyond the ones in the player's own scans (TSM-style realm picks). */
   market: { realms: string[] };
@@ -140,6 +142,8 @@ export interface ChatMessage {
   model: string | null;
   sources: string[];
   steps: ChatStep[];
+  /** The player pressed Stop while it was written: the text is what had arrived. */
+  stopped?: boolean;
 }
 export interface ChatInfo {
   messages: ChatMessage[];
@@ -298,12 +302,16 @@ export interface EverlootApi {
   chatInfo(): Promise<ChatInfo>;
   chatSend(text: string): Promise<ChatInfo>;
   chatClear(): Promise<ChatInfo>;
+  /** Stops the answer being written; the pending chatSend resolves with what had arrived. */
+  chatStop(): Promise<void>;
   /** Saves a provider pick (its key, if any, to a file in the data folder) and points config.json at it; the key never comes back to the page. */
   chatSetProvider(choice: ProviderChoice): Promise<ChatInfo>;
   /** Removes a saved provider and its key; without a kind, the one in use. */
   chatRemoveProvider(kind?: ProviderKind): Promise<ChatInfo>;
   /** Switches Chat and /ask to a model of a provider already saved. */
   chatUseModel(kind: ProviderKind, model: string): Promise<ChatInfo>;
+  /** The models a provider serves now, read from the provider with the saved key; null when it cannot be read. */
+  chatModels(kind: ProviderKind): Promise<ModelChoice[] | null>;
   onState(listener: (state: AppState) => void): () => void;
   /** The main side asks the page to open a screen: a tray entry or a notification was clicked. */
   onNavigate(listener: (page: string) => void): () => void;

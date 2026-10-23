@@ -77,6 +77,57 @@ const vendorRow = () => ({
 
 const payload = { addonVersion: "0.1.0", records: [lootRow(), npcRow()] };
 
+test.each(["2026-10-04T00:01:00Z", "2026-10-03T23:59:00Z"])("idle market folds only across a UTC day (%s)", async generatedAt => {
+  const { fn, calls } = fakeFetch([
+    [`${R2}snapshots/market.json`, "GET", () => Response.json({ version: 3, generatedAt, state: { version: 3, realms: {} }, seenUploadIds: [] })],
+    ["https://sb.example/rest/v1/uploads", "GET", () => Response.json([])],
+    [`${R2}snapshots/market.json`, "PUT", () => new Response(null)],
+  ]);
+  const result = await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).writeMarket({ idle: true });
+  const sameDay = generatedAt.startsWith("2026-10-04");
+  expect(result.skipped === true).toBe(sameDay);
+  expect(calls.some(c => new URL(c.url).origin === "https://sb.example")).toBe(!sameDay);
+  expect(calls.some(c => c.method === "PUT")).toBe(!sameDay);
+});
+
+test("idle probe is one strict watermark query with limit one and no corpus rewrite", async () => {
+  const { fn, calls } = fakeFetch([
+    [`${R2}snapshots/corpus.json`, "GET", () => Response.json({ records: [], generatedAt: "2026-09-27", lastReceivedAt: capturedAt })],
+    ["https://sb.example/rest/v1/uploads", "GET", () => Response.json([])],
+    [`${R2}cron/last-run.json`, "GET", () => Response.json({ dataAsOf: "2026-09-27", completionPending: false, settledWeek: "2026-W39" })],
+  ]);
+  const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
+  expect(await store.snapshotWork()).toEqual({ idle: true, retryRollups: false, dataAsOf: "2026-09-27", settledWeek: "2026-W39" });
+  const index = calls.filter(c => new URL(c.url).origin === "https://sb.example");
+  expect(index).toHaveLength(1);
+  expect(new URL(index[0].url).searchParams.get("limit")).toBe("1");
+  expect(new URL(index[0].url).searchParams.get("received_at")).toBe(`gt.${capturedAt}`);
+  expect(calls.every(c => c.method === "GET")).toBe(true);
+});
+
+test.each([
+  ["a rejected fetch", () => { throw new Error("network down"); }],
+  ["malformed JSON", () => new Response("{not json", { status: 200 })],
+])("a non-idle heartbeat failure (%s) does not block pending uploads", async (_name, heartbeat) => {
+  const { fn } = fakeFetch([
+    [`${R2}snapshots/corpus.json`, "GET", () => Response.json({ records: [], generatedAt: "2026-09-27", lastReceivedAt: capturedAt })],
+    ["https://sb.example/rest/v1/uploads", "GET", () => Response.json([{ id: "u-2" }])],
+    [`${R2}cron/last-run.json`, "GET", heartbeat],
+  ]);
+  expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).snapshotWork()).toEqual({
+    idle: false, retryRollups: false, dataAsOf: "2026-09-27", settledWeek: null,
+  });
+});
+
+test.each(["2026-09-26", "2026-09-27"])("idle probe retries an unfinished fold (%s)", async dataAsOf => {
+  const { fn } = fakeFetch([
+    [`${R2}snapshots/corpus.json`, "GET", () => Response.json({ records: [], generatedAt: "2026-09-27" })],
+    ["https://sb.example/rest/v1/uploads", "GET", () => Response.json([])],
+    [`${R2}cron/last-run.json`, "GET", () => Response.json({ dataAsOf, completionPending: true })],
+  ]);
+  expect((await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).snapshotWork()).retryRollups).toBe(true);
+});
+
 describe("upload store, cloud mode", () => {
   test("a stored upload is a signed R2 object plus one index row", async () => {
     const { fn, calls } = fakeFetch([
@@ -108,6 +159,14 @@ describe("upload store, cloud mode", () => {
     expect(calls).toHaveLength(1);
   });
 
+  test("an R2 put whose fetch rejects names the R2 half, not the store", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fn } = fakeFetch([[R2, "PUT", () => { throw new TypeError("fetch failed"); }]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(false);
+    expect(log).toHaveBeenLastCalledWith("upload u-1: R2 put failed", expect.any(TypeError));
+    log.mockRestore();
+  });
+
   test("an index failure is not persisted, because the reader only sees indexed uploads", async () => {
     const { fn } = fakeFetch([
       [R2, "PUT", () => new Response(null, { status: 200 })],
@@ -115,6 +174,61 @@ describe("upload store, cloud mode", () => {
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
     expect(await store.putUpload("u-1", "install-1", payload)).toBe(false);
+  });
+
+  test("each half of a failed store names itself in the log, with the body that says why", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r2Down = fakeFetch([[R2, "PUT", () => new Response("<Code>AccessDenied</Code>", { status: 403 })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: r2Down.fn, now }).putUpload("u-1", "install-1", payload)).toBe(false);
+    expect(log).toHaveBeenLastCalledWith("upload u-1: R2 put failed (403): <Code>AccessDenied</Code>");
+    // A row the table refuses is refused again, so it is tried once.
+    const refused = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => Response.json({ code: "22P05", message: "unsupported Unicode escape sequence" }, { status: 400 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: refused.fn, now }).putUpload("u-2", "install-1", payload)).toBe(false);
+    expect(refused.calls.filter((c) => c.method === "POST")).toHaveLength(1);
+    expect(log).toHaveBeenLastCalledWith(expect.stringMatching(/^upload u-2: R2 object stored but index insert failed \(400\): .*22P05/));
+    log.mockRestore();
+  });
+
+  test.each([
+    ["a 5xx", () => new Response("upstream", { status: 503 })],
+    ["a dropped connection", () => { throw new TypeError("fetch failed"); }],
+  ])("an index insert that fails with %s is tried once more", async (_, first) => {
+    let posts = 0;
+    const { fn, calls } = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => (++posts === 1 ? first() : new Response(null, { status: 201 }))],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(true);
+    const inserts = calls.filter((c) => c.method === "POST");
+    expect(inserts).toHaveLength(2);
+    expect(inserts[1].body).toBe(inserts[0].body);
+  });
+
+  test("a 409 on the second try is the first try's row, so the upload is stored", async () => {
+    let posts = 0;
+    const { fn } = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => {
+        if (++posts === 1) throw new TypeError("fetch failed");
+        return Response.json({ code: "23505" }, { status: 409 });
+      }],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(true);
+  });
+
+  test("an index insert that fails twice is not persisted", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { fn, calls } = fakeFetch([
+      [R2, "PUT", () => new Response(null, { status: 200 })],
+      ["https://sb.example/rest/v1/uploads", "POST", () => new Response("upstream", { status: 503 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).putUpload("u-1", "install-1", payload)).toBe(false);
+    expect(calls.filter((c) => c.method === "POST")).toHaveLength(2);
+    expect(log).toHaveBeenCalledWith("upload u-1: R2 object stored but index insert failed (503): upstream");
+    log.mockRestore();
   });
 
   test("the corpus reads indexed objects, skips a corrupt one, and caches", async () => {
@@ -157,7 +271,7 @@ describe("corpus snapshot", () => {
       [SNAP, "PUT", () => new Response(null, { status: 200 })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
-    expect(await store.writeSnapshot()).toEqual({ uploads: 2, added: 2 });
+    expect(await store.writeSnapshot()).toMatchObject({ uploads: 2, added: 2 });
     const put = calls.find((c) => c.method === "PUT")!;
     expect(JSON.parse(put.body)).toMatchObject({
       generatedAt: "2026-10-04T12:00:00.000Z",
@@ -184,7 +298,7 @@ describe("corpus snapshot", () => {
       [SNAP, "PUT", () => new Response(null, { status: 200 })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
-    expect(await store.writeSnapshot()).toEqual({ uploads: 3, added: 1 });
+    expect(await store.writeSnapshot()).toMatchObject({ uploads: 3, added: 1 });
     expect(calls.some((c) => c.url.endsWith("uploads/b.json"))).toBe(false);
     expect(calls.find((c) => c.method === "GET" && c.url.startsWith(INDEX))!.url).toContain("received_at=gte.2026-10-04T08%3A00%3A00%2B00%3A00");
     const put = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
@@ -298,7 +412,7 @@ describe("corpus normalization", () => {
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
 
-    expect(await store.writeSnapshot()).toEqual({ uploads: 2, added: 1 });
+    expect(await store.writeSnapshot()).toMatchObject({ uploads: 2, added: 1 });
     const put = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
     expect(put.records).toEqual([lootRow(), vendorRow()]);
   });

@@ -8,6 +8,9 @@ Everloot is built from what players see, so you can help without touching any co
   once three installs have reported it, so your upload can be the one that confirms it. Install the addon from
   [everloot.app/upload](https://everloot.app/upload), play, log out, upload your
   `SavedVariables/Everloot.lua`. You preview everything before it is sent.
+- **Upload your Polestar Recorder file.** If you record with the
+  [Polestar Recorder](https://github.com/fitzforge/polestar), upload `SavedVariables/Polestar_Recorder.lua`
+  on the same page: its NPC positions, quests, dungeon entrances, bosses and treasures count toward the same three-install rule, and its loot windows are counted until they can join the drop rates.
 - **Report wrong data.** A drop that never drops, a vendor price that is off, a recipe colour that
   does not match your window: open an issue with the **Wrong data** form. Say what the page shows,
   what you saw in the game, and where (zone and coordinates if you have them).

@@ -6,7 +6,7 @@ import nextConfig from "../next.config.js";
 
 test("the internal browse route redirects to its public address, and the rewrite serves that address", async () => {
   expect(await nextConfig.redirects!()).toContainEqual({ source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true });
-  expect(await nextConfig.rewrites!()).toEqual([{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }]);
+  expect(await nextConfig.rewrites!()).toContainEqual({ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" });
 });
 
 test("the old gold-per-hour page answers 301 with the addon page's section about it", async () => {
@@ -14,7 +14,7 @@ test("the old gold-per-hour page answers 301 with the addon page's section about
   expect(redirects).toContainEqual({ source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 });
   expect(redirects).toContainEqual({ source: "/connect", destination: "/docs", permanent: true });
   expect(redirects).toContainEqual({ source: "/lore/forever-launch-date", destination: "/wow-forever", permanent: true });
-  expect(redirects).toHaveLength(5);
+  expect(redirects).toHaveLength(6);
 });
 
 test("www.everloot.app answers 301 with the same path on the apex, and only that host does", async () => {
@@ -41,6 +41,19 @@ test("the tools' HTTP route is traced with the release files, as the MCP mounts 
   expect(keyFor("/api/tools/[tool]/route")).toBe("/api/tools");
   expect(includes[keyFor("/api/tools/[tool]/route")!]).toEqual(includes["/mcp/public"]);
   expect(keyFor("/api/items/route")).toBeUndefined();
+});
+
+test("every route that reads the wiki pages carries them in its bundle", () => {
+  const includes = nextConfig.outputFileTracingIncludes!;
+  const keyFor = (route: string) => Object.keys(includes).find((key) => picomatch(key, { dot: true, contains: true })(route));
+  // The wiki pages are read from kb/wiki at request time, so a route that lists or shows them needs the
+  // folder in its own bundle. Without it the route answers 500 in production while the tests pass.
+  for (const route of ["/wiki/route", "/wiki/[slug]/route", "/sitemap.xml/route"]) {
+    const key = keyFor(route);
+    expect(key, route).toBeDefined();
+    expect(includes[key!], route).toContain("../kb/wiki/*.md");
+    expect(includes[key!], route).toContain("../kb/wiki/categories.yaml");
+  }
 });
 
 test("the build cache checks the protocol package's files, and trusts every other package's version", () => {

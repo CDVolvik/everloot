@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn(), loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: true }), loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: true }) }));
+const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn(), loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: true }), loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: true }), loadInstanceFacts: async () => ({ entrances: [], encounters: [], sightings: [], unreachable: true, dataAsOf: null }) }));
 vi.mock("@/lib/rollup-compute", () => rollup);
 vi.mock("../../../lib/rollup-compute", () => rollup);
 vi.mock("next/link", () => ({
@@ -53,9 +53,10 @@ test("when install counts cannot be read, the installed board says so instead of
 
 test("Forever-ready is shown with its caveat, and the page offers the submission issue", async () => {
   const page = await html();
+  const { forever } = await loadEcosystem();
   expect(page).toContain("Forever-ready");
   expect(page).toContain("Interface 16001");
-  expect(page).toContain("1.60.1.70450");
+  expect(page).toContain(forever!.version);
   expect(page).toContain("not confirmed in the live client");
   expect(page).toContain("issues/new?template=ecosystem-project.yml");
 });

@@ -30,7 +30,7 @@ export declare const pageSchema: z.ZodObject<{
     next: z.ZodNullable<z.ZodString>;
 }, z.core.$strip>;
 export type Page = z.infer<typeof pageSchema>;
-/** GET /api/corpus/public: public records without install ids, optionally only some kinds. */
+/** GET /api/corpus/public: public records with per-install pseudonyms in place of install ids, optionally only some kinds. */
 export declare const corpusPublicResponse: z.ZodObject<{
     offset: z.ZodNumber;
     limit: z.ZodNumber;
@@ -397,15 +397,28 @@ export declare const intakeRequest: z.ZodObject<{
         mapId: z.ZodNumber;
         x: z.ZodNumber;
         y: z.ZodNumber;
-        level: z.ZodNumber;
-        reaction: z.ZodEnum<{
+        level: z.ZodOptional<z.ZodNumber>;
+        reaction: z.ZodOptional<z.ZodEnum<{
             friendly: "friendly";
             hostile: "hostile";
             neutral: "neutral";
-        }>;
+        }>>;
         positionKind: z.ZodOptional<z.ZodEnum<{
+            interaction: "interaction";
             npc: "npc";
             player: "player";
+            vignette: "vignette";
+        }>>;
+        role: z.ZodOptional<z.ZodEnum<{
+            auctioneer: "auctioneer";
+            banker: "banker";
+            flightmaster: "flightmaster";
+            innkeeper: "innkeeper";
+            questgiver: "questgiver";
+            repair: "repair";
+            stablemaster: "stablemaster";
+            trainer: "trainer";
+            vendor: "vendor";
         }>>;
         creatureType: z.ZodOptional<z.ZodEnum<{
             Beast: "Beast";
@@ -441,6 +454,17 @@ export declare const intakeRequest: z.ZodObject<{
             itemId: z.ZodNumber;
             count: z.ZodNumber;
         }, z.core.$strip>>;
+        mapId: z.ZodOptional<z.ZodNumber>;
+        x: z.ZodOptional<z.ZodNumber>;
+        y: z.ZodOptional<z.ZodNumber>;
+        gatherKind: z.ZodOptional<z.ZodEnum<{
+            chest: "chest";
+            fishing: "fishing";
+            herb: "herb";
+            ore: "ore";
+            other: "other";
+        }>>;
+        sourceObjectName: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
         eventId: z.ZodOptional<z.ZodString>;
@@ -493,6 +517,82 @@ export declare const intakeRequest: z.ZodObject<{
             uncommon: "uncommon";
         }>;
         itemLevel: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>, z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"instance_entrance">;
+        instanceMapId: z.ZodNumber;
+        name: z.ZodString;
+        instanceType: z.ZodEnum<{
+            party: "party";
+            raid: "raid";
+        }>;
+        difficulty: z.ZodOptional<z.ZodNumber>;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+    }, z.core.$strip>, z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"encounter">;
+        encounterId: z.ZodNumber;
+        name: z.ZodString;
+        instanceMapId: z.ZodNumber;
+        difficulty: z.ZodOptional<z.ZodNumber>;
+        size: z.ZodOptional<z.ZodNumber>;
+        success: z.ZodBoolean;
+        npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>, z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"object_sighting">;
+        objectId: z.ZodNumber;
+        name: z.ZodString;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        instanceMapId: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>, z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"item_fact">;
+        itemId: z.ZodNumber;
+        fact: z.ZodEnum<{
+            agility: "agility";
+            arcane_resistance: "arcane_resistance";
+            armor: "armor";
+            attack_power: "attack_power";
+            block: "block";
+            block_rating: "block_rating";
+            crit_rating: "crit_rating";
+            damage_per_second: "damage_per_second";
+            defense_rating: "defense_rating";
+            dodge_rating: "dodge_rating";
+            expertise_rating: "expertise_rating";
+            fire_resistance: "fire_resistance";
+            frost_resistance: "frost_resistance";
+            haste_rating: "haste_rating";
+            health: "health";
+            hit_rating: "hit_rating";
+            holy_resistance: "holy_resistance";
+            intellect: "intellect";
+            mana: "mana";
+            mana_regeneration: "mana_regeneration";
+            nature_resistance: "nature_resistance";
+            parry_rating: "parry_rating";
+            resilience_rating: "resilience_rating";
+            shadow_resistance: "shadow_resistance";
+            spell_power: "spell_power";
+            spirit: "spirit";
+            stamina: "stamina";
+            strength: "strength";
+        }>;
+        value: z.ZodNumber;
+        clientBuild: z.ZodString;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
         eventId: z.ZodOptional<z.ZodString>;
@@ -737,6 +837,7 @@ export declare const intakeRequest: z.ZodObject<{
         recipe: z.ZodString;
         requiredRank: z.ZodNumber;
         costCopper: z.ZodOptional<z.ZodNumber>;
+        trainerNpcId: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
         eventId: z.ZodOptional<z.ZodString>;
@@ -979,6 +1080,39 @@ export declare const bulkIndex: z.ZodObject<{
     }, z.core.$strip>>;
 }, z.core.$strip>;
 export type BulkIndex = z.infer<typeof bulkIndex>;
+/**
+ * GET /api/coverage/settled: the facts that are settled for one client build (five installs agree, no other report
+ * for 14 days), at the grain of an upload row, so an uploader can leave out the rows that would only repeat them.
+ * Ids only, never values; everything in it is a fact the site already shows.
+ */
+export declare const settledListResponse: z.ZodObject<{
+    schema: z.ZodLiteral<"everloot.settled/1">;
+    build: z.ZodString;
+    dataAsOf: z.ZodNullable<z.ZodString>;
+    npc_sighting: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    quest: z.ZodArray<z.ZodNumber>;
+    vendor: z.ZodArray<z.ZodNumber>;
+    loot: z.ZodObject<{
+        npc: z.ZodArray<z.ZodNumber>;
+        obj: z.ZodArray<z.ZodNumber>;
+    }, z.core.$strip>;
+    instance_entrance: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    encounter: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    object_sighting: z.ZodObject<{
+        ids: z.ZodArray<z.ZodNumber>;
+        maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+export type SettledListResponse = z.infer<typeof settledListResponse>;
 export declare const API_SCHEMAS: {
     readonly attribution: z.ZodObject<{
         licence: z.ZodString;
@@ -1295,6 +1429,33 @@ export declare const API_SCHEMAS: {
             }, z.core.$loose>>;
         }, z.core.$strip>>;
     }, z.core.$strip>;
+    readonly settledListResponse: z.ZodObject<{
+        schema: z.ZodLiteral<"everloot.settled/1">;
+        build: z.ZodString;
+        dataAsOf: z.ZodNullable<z.ZodString>;
+        npc_sighting: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
+        quest: z.ZodArray<z.ZodNumber>;
+        vendor: z.ZodArray<z.ZodNumber>;
+        loot: z.ZodObject<{
+            npc: z.ZodArray<z.ZodNumber>;
+            obj: z.ZodArray<z.ZodNumber>;
+        }, z.core.$strip>;
+        instance_entrance: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
+        encounter: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
+        object_sighting: z.ZodObject<{
+            ids: z.ZodArray<z.ZodNumber>;
+            maps: z.ZodArray<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
     readonly intakeRequest: z.ZodObject<{
         addonVersion: z.ZodString;
         clientBuild: z.ZodOptional<z.ZodString>;
@@ -1309,15 +1470,28 @@ export declare const API_SCHEMAS: {
             mapId: z.ZodNumber;
             x: z.ZodNumber;
             y: z.ZodNumber;
-            level: z.ZodNumber;
-            reaction: z.ZodEnum<{
+            level: z.ZodOptional<z.ZodNumber>;
+            reaction: z.ZodOptional<z.ZodEnum<{
                 friendly: "friendly";
                 hostile: "hostile";
                 neutral: "neutral";
-            }>;
+            }>>;
             positionKind: z.ZodOptional<z.ZodEnum<{
+                interaction: "interaction";
                 npc: "npc";
                 player: "player";
+                vignette: "vignette";
+            }>>;
+            role: z.ZodOptional<z.ZodEnum<{
+                auctioneer: "auctioneer";
+                banker: "banker";
+                flightmaster: "flightmaster";
+                innkeeper: "innkeeper";
+                questgiver: "questgiver";
+                repair: "repair";
+                stablemaster: "stablemaster";
+                trainer: "trainer";
+                vendor: "vendor";
             }>>;
             creatureType: z.ZodOptional<z.ZodEnum<{
                 Beast: "Beast";
@@ -1353,6 +1527,17 @@ export declare const API_SCHEMAS: {
                 itemId: z.ZodNumber;
                 count: z.ZodNumber;
             }, z.core.$strip>>;
+            mapId: z.ZodOptional<z.ZodNumber>;
+            x: z.ZodOptional<z.ZodNumber>;
+            y: z.ZodOptional<z.ZodNumber>;
+            gatherKind: z.ZodOptional<z.ZodEnum<{
+                chest: "chest";
+                fishing: "fishing";
+                herb: "herb";
+                ore: "ore";
+                other: "other";
+            }>>;
+            sourceObjectName: z.ZodOptional<z.ZodString>;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;
             eventId: z.ZodOptional<z.ZodString>;
@@ -1405,6 +1590,82 @@ export declare const API_SCHEMAS: {
                 uncommon: "uncommon";
             }>;
             itemLevel: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>, z.ZodObject<{
+            installId: z.ZodString;
+            eventId: z.ZodOptional<z.ZodString>;
+            capturedAt: z.ZodString;
+            kind: z.ZodLiteral<"instance_entrance">;
+            instanceMapId: z.ZodNumber;
+            name: z.ZodString;
+            instanceType: z.ZodEnum<{
+                party: "party";
+                raid: "raid";
+            }>;
+            difficulty: z.ZodOptional<z.ZodNumber>;
+            mapId: z.ZodNumber;
+            x: z.ZodNumber;
+            y: z.ZodNumber;
+        }, z.core.$strip>, z.ZodObject<{
+            installId: z.ZodString;
+            eventId: z.ZodOptional<z.ZodString>;
+            capturedAt: z.ZodString;
+            kind: z.ZodLiteral<"encounter">;
+            encounterId: z.ZodNumber;
+            name: z.ZodString;
+            instanceMapId: z.ZodNumber;
+            difficulty: z.ZodOptional<z.ZodNumber>;
+            size: z.ZodOptional<z.ZodNumber>;
+            success: z.ZodBoolean;
+            npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+        }, z.core.$strip>, z.ZodObject<{
+            installId: z.ZodString;
+            eventId: z.ZodOptional<z.ZodString>;
+            capturedAt: z.ZodString;
+            kind: z.ZodLiteral<"object_sighting">;
+            objectId: z.ZodNumber;
+            name: z.ZodString;
+            mapId: z.ZodNumber;
+            x: z.ZodNumber;
+            y: z.ZodNumber;
+            instanceMapId: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>, z.ZodObject<{
+            installId: z.ZodString;
+            eventId: z.ZodOptional<z.ZodString>;
+            capturedAt: z.ZodString;
+            kind: z.ZodLiteral<"item_fact">;
+            itemId: z.ZodNumber;
+            fact: z.ZodEnum<{
+                agility: "agility";
+                arcane_resistance: "arcane_resistance";
+                armor: "armor";
+                attack_power: "attack_power";
+                block: "block";
+                block_rating: "block_rating";
+                crit_rating: "crit_rating";
+                damage_per_second: "damage_per_second";
+                defense_rating: "defense_rating";
+                dodge_rating: "dodge_rating";
+                expertise_rating: "expertise_rating";
+                fire_resistance: "fire_resistance";
+                frost_resistance: "frost_resistance";
+                haste_rating: "haste_rating";
+                health: "health";
+                hit_rating: "hit_rating";
+                holy_resistance: "holy_resistance";
+                intellect: "intellect";
+                mana: "mana";
+                mana_regeneration: "mana_regeneration";
+                nature_resistance: "nature_resistance";
+                parry_rating: "parry_rating";
+                resilience_rating: "resilience_rating";
+                shadow_resistance: "shadow_resistance";
+                spell_power: "spell_power";
+                spirit: "spirit";
+                stamina: "stamina";
+                strength: "strength";
+            }>;
+            value: z.ZodNumber;
+            clientBuild: z.ZodString;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;
             eventId: z.ZodOptional<z.ZodString>;
@@ -1649,6 +1910,7 @@ export declare const API_SCHEMAS: {
             recipe: z.ZodString;
             requiredRank: z.ZodNumber;
             costCopper: z.ZodOptional<z.ZodNumber>;
+            trainerNpcId: z.ZodOptional<z.ZodNumber>;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;
             eventId: z.ZodOptional<z.ZodString>;

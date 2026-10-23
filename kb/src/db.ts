@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { allTerms } from "./search.js";
 import { syncSources } from "./sources.js";
 
 export type DB = Database.Database;
@@ -55,8 +56,43 @@ export function openDb(path: string): DB {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
+  addNameNorm(db);
   syncSources(db);
   return db;
+}
+
+/**
+ * `entities.name_norm` holds allTerms(name), so the exact-name search is an index lookup. It is
+ * added with ALTER TABLE rather than in SCHEMA so a new and an upgraded database end up with the
+ * same table definition; releases built before it lack the column and search falls back.
+ */
+function addNameNorm(db: DB): void {
+  const cols = db.pragma("table_info(entities)") as { name: string }[];
+  if (!cols.some((c) => c.name === "name_norm")) db.exec("ALTER TABLE entities ADD COLUMN name_norm TEXT");
+  db.exec("CREATE INDEX IF NOT EXISTS entities_name_norm ON entities(name_norm, kind)");
+  fillNameNorm(db, false);
+}
+
+/**
+ * Sets name_norm where it is missing, or with `checkAll` also where it no longer matches the name.
+ * Returns the rows changed.
+ */
+export function fillNameNorm(db: DB, checkAll: boolean): number {
+  const rows = db
+    .prepare(`SELECT id, name, name_norm AS norm FROM entities${checkAll ? "" : " WHERE name_norm IS NULL"}`)
+    .all() as { id: number; name: string; norm: string | null }[];
+  const set = db.prepare("UPDATE entities SET name_norm = ? WHERE id = ?");
+  let n = 0;
+  db.transaction(() => {
+    for (const r of rows) {
+      const norm = allTerms(r.name);
+      if (norm !== r.norm) {
+        set.run(norm, r.id);
+        n++;
+      }
+    }
+  })();
+  return n;
 }
 
 const CORE_TABLES = ["sources", "entities", "entities_fts"];

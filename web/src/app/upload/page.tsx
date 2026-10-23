@@ -22,7 +22,7 @@ export default function UploadPage() {
     <Container width="reading">
       <PageHeader
         title="Upload addon data"
-        lede="Collected by the Everloot addon while you play. You preview exactly what goes out before anything is sent."
+        lede="Collected by the Everloot addon or the Polestar Recorder while you play. You preview exactly what goes out before anything is sent."
         trail={trailFor("/upload")!}
       />
       <div className="space-y-6">
@@ -44,6 +44,25 @@ export default function UploadPage() {
               <p>The addon download is not available right now.</p>
             )}
             <p className="text-sm">Log out before selecting Everloot.lua from your account’s SavedVariables folder below. Keep a backup. Named records need your explicit sharing choice and verified authority.</p>
+          </div>
+        </Card>
+        <Card as="section" aria-labelledby="recorder">
+          <SectionHeading id="recorder" note="You do not need Everloot's addon for this.">Already recording with Polestar?</SectionHeading>
+          <div className="space-y-3 text-fg-2">
+            <p>
+              If you play with the <a className={link} href="https://github.com/fitzforge/polestar" rel="noopener">Polestar Recorder</a>{" "}
+              addon, drop its <code className="font-mono">Polestar_Recorder.lua</code> below, from the same SavedVariables folder.
+              You do not need an account, and you do not need to install anything else.
+            </p>
+            <p className="text-sm">
+              Your browser reads the file and shows you what it found before anything is sent: NPC positions, quests, loot,
+              dungeon entrances, bosses and treasures. Character names, realms, session names and notes stay on your computer.
+            </p>
+            <p className="text-sm">
+              What you send is a report, not a fact. A fact from a Recorder file is shown only when three different characters,
+              uploading from three different addresses, report it, so your own alts or a second upload from your connection do
+              not count again. Until then the page says it is not confirmed.
+            </p>
           </div>
         </Card>
         <UploadClient playerPages={playerPagesOn()} />

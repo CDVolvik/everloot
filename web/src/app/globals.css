@@ -214,6 +214,16 @@ details[open] > .pop {
   }
 }
 
+/* The hover card on a database link (HoverCards, ItemTip) fades in over 150 ms and leaves at once. */
+@keyframes card-in {
+  from {
+    opacity: 0;
+  }
+}
+[data-hover-card] {
+  animation: card-in var(--dur-fade) var(--ease-out);
+}
+
 /* The bar at the top of the window while a filter, sort, page or tab link loads (NavPending). It shows only
    after MOTION.duration.pendingDelay and fades in; while the page loads it grows from 10 % towards 90 %, slowing
    as it goes. When the page arrives it completes and fades out. If it gives up, it goes at once. */

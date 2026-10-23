@@ -99,6 +99,10 @@ sending the same file again changes nothing on the server.
 - One batched call per upload: `upsert_players(rows)` writes up to 1,000 rows in one statement.
 - One row per character, primary key `(ruleset, realm_key, name_key)`. A repeat of rows already stored writes
   nothing (the update has a `where` for "something changed").
+- The realm key is the realm as one key however it was spelled: lower case, the curly apostrophe as a straight
+  one, any run of spaces and hyphens as one space — the same rule the character links use, and for the same
+  reason: a spelling cannot dodge a hide. The key is not the realm as the game spells it, so the hide of a
+  character reaches it however the realm was typed. The realm the page shows is the game's own spelling.
 - Name search is `name_key like 'abc%'` on an index built with `text_pattern_ops`. At least 2 letters, at most 25
   results, no paging, so a search cannot list the table.
 - Search results are cached for 5 minutes by prefix. A character page is cached for an hour. An opt-out clears

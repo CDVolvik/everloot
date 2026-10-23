@@ -54,3 +54,18 @@ test("two installs are not enough; storage down reads unavailable, never zero", 
   expect(down).not.toContain("data-empty-state");
   await expect(html(ObjectPage(props("chest")))).rejects.toThrow("NEXT_NOT_FOUND");
 });
+
+test("an object name 3 installs agree on replaces the id on its page, title and the list; two installs leave it as Object N", async () => {
+  const named = (installId: string, objectName: string) => ({ ...loot(installId, 1731, [2770]), sourceObjectName: objectName });
+  store.loadCorpus.mockResolvedValue(corpus([named("install-a", "Copper Vein"), named("install-b", "Copper Vein"), named("install-c", "copper vein")]));
+  const page = await html(ObjectPage(props("1731")));
+  expect(page).toContain("Copper Vein");
+  expect(page).not.toContain("Object 1731");
+  expect((await generateMetadata(props("1731"))).title).toContain("Copper Vein");
+  const list = await html(ObjectsPage({}));
+  expect(list).toContain("Copper Vein</a>");
+  expect(list).not.toContain("Object 1731");
+  store.loadCorpus.mockResolvedValue(corpus([named("install-a", "Copper Vein"), named("install-b", "Copper Vein"), loot("install-c", 1731, [2770])]));
+  expect(await html(ObjectPage(props("1731")))).toContain("Object 1731");
+  expect(await html(ObjectsPage({}))).toContain("Object 1731</a>");
+});

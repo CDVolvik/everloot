@@ -51,11 +51,13 @@
       "maximum": 100
     },
     "level": {
+      "description": "The NPC's level. Absent when the source did not record it, as in a converted Polestar Recorder file.",
       "type": "integer",
       "minimum": 1,
       "maximum": 100
     },
     "reaction": {
+      "description": "How the NPC stood toward the player. Absent when the source did not record it, as in a converted Polestar Recorder file.",
       "type": "string",
       "enum": [
         "friendly",
@@ -64,11 +66,28 @@
       ]
     },
     "positionKind": {
-      "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins.",
+      "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC. `vignette` is the NPC's own position, as the game's vignette API gave it for a rare on the minimap.",
       "type": "string",
       "enum": [
         "player",
-        "npc"
+        "npc",
+        "interaction",
+        "vignette"
+      ]
+    },
+    "role": {
+      "description": "With `interaction`: the window that opened (`NPC_ROLES`). Absent for a gossip window that names no service and from older addons.",
+      "type": "string",
+      "enum": [
+        "vendor",
+        "trainer",
+        "questgiver",
+        "flightmaster",
+        "banker",
+        "auctioneer",
+        "stablemaster",
+        "innkeeper",
+        "repair"
       ]
     },
     "creatureType": {
@@ -110,9 +129,7 @@
     "name",
     "mapId",
     "x",
-    "y",
-    "level",
-    "reaction"
+    "y"
   ],
   "description": "Everloot upload record: npc_sighting."
 }

@@ -14,10 +14,41 @@ sent only from the website's upload page, after the preview names each addon. Yo
 when to upload. On the website you preview everything before it is sent. The Desktop App sends
 anonymous open-world events, and census rows if you allowed the census on its setup screen; the
 command-line uploader sends only the anonymous events. Neither sends named data (guild, gear, gold,
-collection), player rows or the installed addon list: those stay on your machine.
+collection) or the installed addon list: those stay on your machine. Player rows are a third case:
+the Desktop App sends them only if you turn on "Send the player pages with the uploads" in its
+settings, and until you do, they stay on your machine like the named data.
+
+**What a Polestar Recorder file holds.** A player who records with the
+[Polestar Recorder](https://github.com/fitzforge/polestar) addon (by fitzforge, GPL-3.0) can upload its
+`Polestar_Recorder.lua` from the website's upload page. Everloot reads the file's format with its own
+parser and uses none of Polestar's code. The file is converted in the browser, one session at a time,
+into Everloot's own kinds: where the player stood while an NPC's window was open (a quest giver,
+a quest turn-in, a gossip window offering quests, a vendor, a trainer, a flight master), stored as
+`positionKind: "interaction"` like the addon's; NPCs the player killed or saw as a rare on its nameplate,
+target or mouseover, where the player stood (`positionKind: "player"`, never a pin); rares the minimap
+showed, at the rare's own position from the game's vignette API (`positionKind: "vignette"`); the
+dungeons and raids the player zoned into, with the instance's name and type and the last position outside
+it (`instance_entrance`); the boss encounters that ended inside, with their result and the bosses' ids
+(`encounter`); treasures the minimap showed, at the object's own position (`object_sighting`); the quests
+the player accepted with their title, level, giver, turn-in, reward items and the character's faction; and
+loot windows with items. Rares and kills keep the level and rank the game showed. The file holds no NPC
+level at a window and no reaction, so those fields are left out, never guessed. It does not say whether
+the game's loot API named a window's source either, so its loot windows stay out of the public drop rates:
+they are counted instead, and the NPC, object and item pages say how many were reported and are not yet in
+the rates. Everything else in the file stays on your computer: character
+names and realms, session names, notes typed with `/psrec mark`, Polestar's guide step titles, quest
+objective text, routes, flight paths, talents and the rest. A character becomes a hash in the browser, keyed
+with a random key that stays in that browser, so the name cannot be worked back from it; the server replaces that hash with an install id of its own, keyed with a secret: one half from the
+character, one from the address the upload came from. Recorder install ids that share either half count as
+one reporter, so a Recorder fact needs three characters uploading from three addresses, and one player's
+alts or connections never confirm each other. The upload keeps a keyed hash of the address, as auction
+scans do, and it is never published. Corroborated, these are Everloot's own data under CC BY-SA 4.0, like
+any player upload.
 
 Uploaded observations are public as individual, anonymous records, with no character names and
-without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
+without the addon's install id. Each record carries a per-install pseudonym instead (`pub-` and 32 hex
+characters, a keyed hash of the install id that cannot be turned back into it), so anyone can count
+installs and check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
 ranges, appear only once at least three installs have reported them. Addon lists are the
 exception to public records: they are never published row by row, only as counts for addons that
 at least three installs report. Guild data is published only through an officer's
@@ -30,9 +61,11 @@ players module is on in the game, the addon records one row per character: its n
 class, level and guild, and the day it was last seen. It never records where a player was, their
 gear, talents, professions, gold, achievements, earlier levels or guilds, which install reported
 the row, the character's id, or a time of day. The table holds one row per character, matched
-case-insensitively, and a newer sighting replaces the older one. Each row is published only when
-three installs report the same character the same way. A row is deleted 90 days after the character
-was last seen, and a hidden character is deleted at once and never recorded again. The pages are
+case-insensitively, and a newer sighting replaces the older one. A row is not corroborated: one upload
+makes a page, and the page says the data is unchecked. Whether a page should wait for more than one
+reporter is a question the lawyer review is answering (the player-pages design, section 13, question 7),
+because counting the reporters would mean keeping who reported a row. A row is deleted 90 days after the
+character was last seen, and a hidden character is deleted at once and never recorded again. The pages are
 unverified information reported by other players, and Everloot makes no statement that a character
 belongs to anyone.
 
@@ -46,6 +79,41 @@ person. Each is published only when three installs report the same value. A ques
 Alliance or Horde when three installs on that faction report it and none on the other; it is shown as
 Both when three installs on each faction report it; otherwise it stays blank, and it is never guessed from a
 title, a giver or a zone. Nothing is read from the game's Creature or quest tables for these columns.
+
+Places on the map come from where players stood, at two moments (addon 0.3.10). When an NPC's window
+opens (merchant, gossip, quest, trainer, flight map, bank, auction house, stable, innkeeper), the
+player is within a few yards of that NPC, so the addon records the player's position as the NPC's
+(`positionKind: "interaction"`) with the service the window offered (vendor, trainer, quest giver and so
+on), once per NPC, service and zone. When the player opens a herb, ore vein, chest or other object, its
+loot row carries the player's position, how it was opened (from the spell cast on it) and the object's
+name as the game showed it, taken only from a herb, ore or chest cast, so the target of any other spell (a
+player you healed, say) never becomes a name. Where you stand when you only target or mouse over an NPC
+(`positionKind: "player"`) is never used as the NPC's place. A Polestar Recorder file's NPC windows become
+the same `interaction` positions, and its kills and rares seen on the unit become `player` ones. A rare or
+treasure the minimap showed is at its own position, as the game's vignette API gives it (`vignette` for a
+rare, an `object_sighting` for a treasure), so it can make a pin. An NPC pin needs three installs on the same
+map; a treasure's, three installs within one cluster, as below; a dungeon entrance players zoned in from,
+three installs on the same map, and it confirms the entrance the game files place rather than adding a
+second one. A boss is listed for an instance once three installs report its encounter there. Instance,
+encounter and object names arrive in the player's client language, so each is shown only when three
+installs report the same one; an object's spawn point needs three installs within one cluster (positions closer than 1 on the
+0 to 100 map scale), and a place seen by one or two installs is only counted, never drawn. An object's
+name is shown only when three installs report the same one; otherwise it is "Object" and its id. Fishing
+gives the zone only, never a pin. Object places come from play only: nothing is read from the game's
+files for them.
+
+**Item numbers players report.** *Proposed 2026-10-21, in the pull request that adds the `item_fact` kind
+(the maintainer review).* The numbers on an item's tooltip that the game files do not hold (armour, block,
+damage per second, each stat and each resistance) come from players' own tooltips (addon 0.3.10). When the
+game shows the player an item's tooltip, the addon reads those numbers for the plain item, never an enchant or
+a random suffix on the player's copy, and records the item id, which line, the number and the client build.
+Nothing about the character is recorded, and nothing is read from a tooltip about anything other than an item.
+These are player data like any other upload: public as anonymous records, under CC BY-SA 4.0, and stated on a
+page only when three installs report the same number for the same line. A patch can change an item, so the
+number is decided within the newest build that three installs reported. Each number shown says how many
+installs reported it, from which build and when it was last seen. A line installs disagree on is not shown;
+it stays `[?]`, and the tooltip says the installs disagree. The game files' tooltip carries these numbers only
+where it is already shown (the item tooltip rule below).
 
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan
@@ -177,6 +245,13 @@ interface files, is a different thing and is covered by the second extension. Th
   reported (a drop, a vendor offer, an auction scan), never in bulk and never for an id someone types
   into a URL. The one exception is an item the item name rule below names: its name, quality, icon and these facts. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.
+  *Proposed 2026-10-22, in the pull request that adds them (the maintainer review):* the same rules cover
+  the lines the game prints from the ids those tables hold: the item set's name (`ItemSet`), the
+  Unique-Equipped category (`ItemLimitCategory`), the classes and races that may use the item
+  (`ChrClasses`, `ChrRaces`, announced races only), the skill, spell and reputation it requires
+  (`SkillLine`, `SpellName`, `Faction`), and its Use, Equip and Chance on hit lines (`ItemEffect`, with the
+  spell's description resolved like the talents'). Stat amounts, armour and weapon damage stay `[?]`, and
+  the tooltip says why in plain words.
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
   our zone outlines. A held-back zone's picture shows only with spoilers on. A continent's own
   picture always shows (decided 2026-10-19): it is the original world's parchment map, with no names
@@ -212,45 +287,46 @@ batch." The rules above also cover:
   made, approves or supports Everloot. No logo in the files means no banner: Blizzard's marketing
   logos and art are still never used, not even as a stand-in.
 
-**Item names from the game files and the Warcraft Wiki.** Decided 2026-10-19 by Carlos: "Wiki match
-only". An item's name, quality and icon, and since 2026-10-20 its tooltip facts (item level, required level,
-binding, sell price, weapon speed, stat kinds and flavour text), may be shown on the item page and the category lists before
-players confirm it, when the name in the game files of the current build (`ItemSparse`) and the item's
-page in the Warcraft Wiki dump of 2023-11-13 give the same name, apart from case, spacing and the kind
-of apostrophe. The wiki page predates WoW: Forever, so a match says the item is released content in
-another version of the game, not something Forever has yet to reveal. The game files cannot say that on
-their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
-as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
+**Item names from the game files and the Warcraft Wiki.** Decided 2026-10-19 by Carlos ("Wiki match
+only") and widened 2026-10-21 by Carlos: "the goal is to name all the items that exist". Every item the
+current build lists (`Item`) is named when a source names it, before players confirm it, on the item page
+and the category lists, with its quality and icon and, where the game files hold them, its tooltip facts (item
+level, required level, binding, sell price, weapon speed, stat kinds and flavour text). The name comes from:
 
-- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers), and
-  the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
-  `/methodology#credits` names the Warcraft Wiki contributors. A name
-  3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
+- the game files of the current build (`ItemSparse`), wherever they name the item. Where the item's page in the
+  Warcraft Wiki dump of 2023-11-13 gives the same name, apart from case, spacing and the kind of apostrophe,
+  the name also carries the wiki's credit; where the two differ, the game files' name shows, as this build has it;
+- else the Warcraft Wiki dump's name, where only the wiki names the item.
+
+The rules:
+
+- Each name says where it comes from in a tooltip on the name (and in words for screen readers; on a link, the
+  tooltip is the link's hover card). A name the wiki gives reads *Name from the Warcraft Wiki*; the site-wide
+  footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and `/methodology#credits`
+  names the Warcraft Wiki contributors. A name from the game files alone carries the quiet unconfirmed marker,
+  *From the game files, not yet confirmed by players*. A name 3 installs agree on comes first, with the tooltip
+  *Name confirmed by players*. No source label is printed beside a name.
+- There is no id range and no placeholder filter: an item from a later version, an unreleased one, or one the
+  files call "Deprecated" or "[PH]" is named as the files name it. The marker and the build stamp say what the
+  name is: found in game files, unconfirmed.
 - The tooltip facts follow the name (added 2026-10-20, at Carlos's request that the database show the game file
   data it already holds, as Wowhead does). Until players confirm the item, its page keeps the quiet unconfirmed
   marker on the icon, whose tooltip says so, and prints no source line. The lists sort and filter by item level,
   required level and binding; an item whose facts are not shown matches none of those filters.
-- For the lowest spoiler risk, only items below id 25,000, the original game's range, are named this
-  way (`SHOWN_MAX_ITEM_ID` in `kb/src/item-name-rule.ts`). Higher ids belong to later versions, such as
-  Wrath Classic's Scourge event. A name that reads like a placeholder or an internal entry is never
-  shown either: one starting with "Deprecated", "DEP", "[PH]", "PH ", "Test", "QA" or "Monster -", or
-  containing "UNUSED", "zzOLD" or "(old)", in any case, or starting with "OLD" in capitals ("Old
-  Greatsword" is a real item and shows).
-- Every other item keeps "Item N", with no tooltip facts: a name only the game files give (it may be unreleased), a name only
-  the wiki gives (it may not be in Forever), an item whose two names differ, and a match the two rules
-  above hold back. A category page where
-  fewer than half the rows have a name stays out of search.
+- An item no source names keeps "Item N". The game server sends those names while the game runs, so they come
+  from the addon's uploads, after 3 installs agree. A category page where fewer than half the rows have a name
+  stays out of search.
 - Pages only. The data downloads, the API and the MCP server carry no item names and no tooltip facts for these
   items, as before; a test checks that their code does not read the names. The embeddable cards keep the
   three-install rule.
 - The names come from a ledger a maintainer builds with `npm run kb -- item-names`. It records every name
   each source gives for each item id, mismatches and single-source names included, and it only grows: a
-  new build, dump or source adds to it and removes nothing. It holds every name in the build, released or
-  not, so it stays on the maintainer's machine like the snapshots. Only the matched names go to the
-  private storage the site's server reads, never to git or the public asset bucket.
-- The maintainer review is the pull request that sets or changes the rule or adds a source. The first
-  one (2026-10-19) listed the count per tier, a sample of the shown names, the highest item ids among
-  them and the mismatches. A file for a new build is checked the same way before it is uploaded.
+  new build, dump or source adds to it and removes nothing. It stays on the maintainer's machine like the
+  snapshots. The names the site shows go to the private storage the site's server reads, never to git or the
+  public asset bucket. In build 1.60.1.70450: 31,849 items, 23,096 named (9,305 where the files and the wiki
+  agree, 228 where they differ, 9,698 from the files alone, 3,865 from the wiki alone) and 8,753 left to players.
+- The maintainer review is the pull request that sets or changes the rule or adds a source. A file for a new
+  build is checked against the last run's counts (`npm run kb -- name-gaps`) before it is uploaded.
 
 **Third extension: game icons and tooltip text in embeddable cards.** Decided 2026-10-19 (Carlos
 approved it with the site structure plan). The hover card any site can show through
@@ -264,45 +340,46 @@ and tooltip facts, the same ones its page shows:
 - **Same spoiler and takedown rules** as the pages. The downloads, the rest of the API and the MCP
   server still carry no icons or tooltip text.
 
-**Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20, awaiting the
-maintainer's approval.* The game files list quests by id (`QuestV2`) but carry no titles. A quest's
-title may be shown on its page, in the quest lists and where an item page names the quest as a reward,
-before players confirm it, when the quest id is in the current build's `QuestV2` table and the quest's
-page in the Warcraft Wiki dump of 2023-11-13 gives that id in its quest infobox. The title is the
-infobox's name, or the page title where the infobox has none, kept as the wiki writes it; a few carry
-the wiki's own note, such as "(Alliance, 55)". The rules:
+**Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20; decided 2026-10-21
+by Carlos, and widened the same day to every quest the wiki titles.* The game files list quests by id
+(`QuestV2`) but carry no titles. A quest's title may be shown on its page, in the quest lists and where an item
+page names the quest as a reward, before players confirm it, when the quest id is in the current build's
+`QuestV2` table and the quest's page in the Warcraft Wiki dump of 2023-11-13 gives that id in its quest infobox.
+The title is the infobox's name, or the page title where the infobox has none, kept as the wiki writes it; a
+few carry the wiki's own note, such as "(Alliance, 55)". The rules:
 
 - As with item names, a title 3 installs agree on comes first. A wiki title says where it comes from in
-  a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers); on the quest
+  a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers; on a link, in the link's hover card); on the quest
   page it also carries the quiet unconfirmed marker. No source label is printed beside it. The
   footer credit reads "Item and quest names from the Warcraft Wiki (CC BY-SA 4.0)".
-- Only quests below id 10,000, the original game's range (`SHOWN_MAX_QUEST_ID` in
-  `kb/src/game-name-rule.ts`). The client also lists quests from later seasons and versions at higher ids.
-- Where wiki pages give one id different titles (a quest renamed in a later version, say), none is
-  shown. A quest the wiki lacks keeps "Quest N", and so does a wiki title for an id the build does not list.
+- Any quest id the build lists, with no id range. Where wiki pages give one id different titles (a quest
+  renamed in a later version, say), the first page's title shows and the run lists the id for review. A quest
+  the wiki lacks keeps "Quest N" until players title it, and a wiki title for an id the build does not list is
+  never shown.
+- Where a Forever-era source names a quest differently from the wiki, the wiki title is held
+  (`CONTESTED_QUEST_IDS`, 9 quests found on 2026-10-21 against Polestar's guides) until players confirm
+  one. The other source's title is never shown.
+- `QuestV2` lists only quests with a completion bit (every row has a `UniqueBitFlag`), so repeatable
+  quests such as Additional Runecloth or the Scourgestone turn-ins are not in it and never get a wiki
+  title. Their pages and titles come from player uploads alone.
 - Pages only. The data downloads, the API and the MCP server carry no quest titles from this file; a
   test checks that their code does not read it.
 - A maintainer makes the file with `npm run kb -- game-names`, into the same private storage as the item
   names, never git or the public asset bucket. Unlike the item names it keeps no ledger: it is rebuilt
-  from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,191 with one wiki
-  title, 47 where the pages disagree and 3,376 the wiki lacks; 3,184 shown after the id range holds back 7.
+  from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,229 titled (47 of them
+  where the pages disagree), 9 held as contested and 3,376 the wiki lacks.
 
-**Item set and spell names from the game files.** *Proposed 2026-10-20, awaiting the maintainer's
-approval.* The client layer relates items to item sets and to the spells that create or use them, by
-id. The names of those sets (`ItemSet.Name_lang`) and spells (`SpellName.Name_lang`) may be shown beside
-the relations on the item pages. They come from the game files alone, so:
+**Item set and spell names from the game files.** *Proposed 2026-10-20; decided 2026-10-21
+by Carlos, and widened the same day to every set and spell the files name.* The names of item sets
+(`ItemSet.Name_lang`) and spells (`SpellName.Name_lang`) may be shown on their pages and beside the relations on
+the item pages. They come from the game files alone, so:
 
 - Each carries the quiet unconfirmed marker, with *From the game files, not yet confirmed by players*
   as its tooltip. No source label is printed.
-- Only the sets and spells the committed client layer's relations name, and only in the original
-  game's ranges: set ids below 1,000 and spell ids below 30,000 (`SHOWN_MAX_SET_ID`,
-  `SHOWN_MAX_SPELL_ID`). Above them sit Season of Discovery sets and recipes and entries new to Forever,
-  which could spoil unreleased content. A name that reads like an internal entry is held back too: the
-  item rule's placeholders, a bracketed tag such as "[DNT]", "OLD" at the end, or the client's own
-  "DND" (do not display) mark.
-- Every other one keeps "item set N" or "spell N".
-- Pages only, in the same private storage, made by the same command. In build 1.60.1.70450: 532 sets
-  in the relations, 172 shown; 4,085 spells, 4,044 named in the files, 1,868 shown.
+- Every set and spell of the build with a name, with no id range and no placeholder filter, as with items.
+  One without a name keeps "item set N" or "spell N".
+- Pages only, in the same private storage, made by the same command. In build 1.60.1.70450: 536 sets, all
+  named; 31,939 spells, 31,926 named.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node
@@ -316,7 +393,10 @@ above apply. Tooltip text, icons and frame art shown with it keep the rules abov
 not git.
 
 **The map layer.** From the map tables we publish zone rectangles (`UiMapAssignment`), continents
-and instances (`Map`, `UiMap`) and dungeon and raid entrance points (`Map.Corpse`), each stamped
+and instances (`Map`, `UiMap`), dungeon and raid entrance points (`Map.Corpse`) and, for each entrance
+and flight master, the zone the files put it in (for an entrance, the outdoor `AreaTable` area named
+after the instance when there is one, else the terrain chunk's area in the ADT files; either way up
+`AreaTable` to the area a zone's `UiMapAssignment` names; only the zone id is published), each stamped
 with the build it came from. Like the talent catalog, it may be shown on the site and committed as
 a clearly marked game-data file in `web/src/data/game-data/`, with a README that says it is
 Blizzard's and outside our licence. It is labelled *found in game files, unconfirmed* until
@@ -427,6 +507,12 @@ maintainer has checked and added to `kb/curated/ecosystem.json`.
 **Open sources.** The lore archive is built from the Warcraft Wiki dump of 2023-11-13
 (CC BY-SA 4.0). We may add other openly licensed datasets later. Each one goes in the
 [source ledger](sources/LEDGER.md) with its licence and exact version before any of it ships.
+A Classic 1.12 baseline, pfQuest's database (built from the VMaNGOS and CMaNGOS emulator databases,
+GPL-2.0 and GPL-3.0), is used on a maintainer's machine to check what Forever players have confirmed and
+where they have not looked yet. It is never published and never mixed into the CC BY-SA data: only what
+players' uploads confirm is published. Decided 2026-10-21 by Carlos: the coverage page, the API and the MCP tool may
+show counts and percentages whose denominator comes from the baseline (how many facts of a kind a zone is expected
+to hold), but never a baseline name, id or row.
 
 **Facts we write ourselves**, in our own words, each with the page it came from and the date.
 
@@ -442,7 +528,8 @@ same licence.
 - **Touching the running game.** No reading or changing the game's memory, no automation, no
   bypassing protections. The addon uses only the game's own addon API. The Desktop App and the command-line uploader read the
   SavedVariables file the game writes, and writes `/ask` answers into a file the addon loads after
-  `/reload`.
+  `/reload`. The upload page reads only the file a player chooses: Everloot's own, or a Polestar
+  Recorder file the player recorded and chose to upload.
 - **Decrypting game data.** Content Blizzard encrypts stays encrypted.
 - **Bulk exports of Blizzard's art or text.** Icons, tooltip text and frame textures appear on
   pages only, never in the downloads, API or MCP server.
@@ -516,10 +603,14 @@ things are asked in return: credit it, and use a free key when you copy all of i
   the licence above do not apply to them. The code is AGPL-3.0 and has its own terms.
 
 **What we keep about keys, and for how long.** For each key: a one-way hash of it, its last four
-characters, its label, its account, when it was made, last used and revoked, and a count of its
-requests per day and endpoint. Not what was asked. Daily counts are kept 90 days. A revoked key and
-its counts are deleted 30 days after it was revoked, or at once when its owner deletes it on
-/account. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
+characters, its name, what its owner says it is for, its permissions, its account, when it was
+made, when it expires, when it was last used and revoked, and a count of its requests per day and
+endpoint. Not what was asked. The purpose is asked when a key is made so we know what keys are used
+for; it is not published. A key made on /account expires on the date its owner picks (7, 30, 90 or
+365 days, or a date up to a year ahead); past it, every endpoint refuses the key, as it does a
+revoked one. Keys made before expiry existed, and the Desktop App's key, have no end date. Daily
+counts are kept 90 days. A revoked key and its counts are deleted 30 days after it was revoked, or
+at once when its owner deletes it on /account; an expired key stays until its owner deletes it. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
 requests are counted per hour against a keyed hash of the address, which is deleted after about a
 day; the address itself is never stored.
 

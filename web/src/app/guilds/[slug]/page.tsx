@@ -21,7 +21,16 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const params = await props.params;
   const family = getFamily(params.slug);
   if (!family) return { title: "Guild family" };
-  return pageMetadata({ title: `${family.name} – WoW Forever Guild`, description: family.summary, path: `/guilds/${family.slug}` });
+  return pageMetadata({ title: `${family.name} – WoW Forever Guild`, description: familyDescription(family.summary, family.facts), path: `/guilds/${family.slug}` });
+}
+
+/** The summary, then how many rows each of the page's three tables holds. */
+function familyDescription(summary: string, facts: readonly FamilyFact[]): string {
+  const n = (kind: FamilyFact["kind"], one: string, many: string) => {
+    const count = facts.filter((fact) => fact.kind === kind).length;
+    return `${count} ${count === 1 ? one : many}`;
+  };
+  return `${summary} ${n("guild-site", "guild hall", "guild halls")}, ${n("claim", "claim", "claims")} and ${n("sighting", "sighted name", "sighted names")}.`;
 }
 
 export default async function GuildFamilyPage(props: { params: Promise<{ slug: string }> }) {

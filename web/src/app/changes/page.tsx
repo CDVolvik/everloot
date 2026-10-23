@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
 import { Badge, Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
-import { CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, filterTimeline, loadTimeline, parseFilter, postPath, type ChangeEntry, type ChangeFilter } from "@/lib/changes";
+import { CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, filterTimeline, forumRegions, loadTimeline, parseFilter, postPath, type ChangeEntry, type ChangeFilter } from "@/lib/changes";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadSiteAssets } from "@/lib/game-assets";
 import { changesJsonLd } from "@/lib/jsonld";
@@ -69,7 +69,11 @@ const href = (q: Partial<ChangesQuery>) => listHref("/changes", [
 ]);
 const active = (q: ChangesQuery) => [q.q, q.show !== "all", q.game !== "forever", q.region, q.author, q.days].filter(Boolean).length;
 
-const SOURCE_LABEL = (e: ChangeEntry) => e.type === "build" ? "" : e.source === "bluesky" ? "Bluesky" : REGIONS[e.region ?? "us"];
+/** Every forum an announcement was posted on: "US forum", or "US · EU forum" for one posted on both. */
+const SOURCE_LABEL = (e: ChangeEntry) => e.type === "build" ? "" : e.source === "bluesky" ? "Bluesky"
+  : `${forumRegions(e).map((r) => r.toUpperCase()).join(" · ")} forum`;
+/** The announcement and its regional copies, for the filters that look inside them. */
+const copiesOf = (e: ChangeEntry) => [e, ...(e.copies ?? [])];
 
 export default async function ChangesPage({ searchParams }: { searchParams: Promise<Search> }) {
   const q = changesQuery((await searchParams) ?? {});
@@ -79,9 +83,9 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
   const text = q.q?.toLowerCase();
   const since = q.days ? new Date(Date.now() - q.days * 86_400_000).toISOString() : undefined;
   const matched = filterTimeline(scope, q.show).filter((e) =>
-    (!text || [e.title, e.excerpt, e.summary, e.author, e.category, e.version].some((s) => s?.toLowerCase().includes(text)))
-    && (!q.region || (e.source === "forum" && (e.region ?? "us") === q.region))
-    && (!q.author || e.author === q.author)
+    (!text || copiesOf(e).some((c) => [c.title, c.excerpt, c.summary, c.author, c.category, c.version].some((s) => s?.toLowerCase().includes(text))))
+    && (!q.region || (e.source === "forum" && forumRegions(e).includes(q.region)))
+    && (!q.author || copiesOf(e).some((c) => c.author === q.author))
     && (!since || e.at >= since));
   const sort = q.sort ?? DEFAULT_SORT;
   const key = (e: ChangeEntry) => sort.key === "type" ? TYPE_LABEL[e.type] : sort.key === "title" ? e.title.toLowerCase()
@@ -136,7 +140,11 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
   ];
 
   const count = (f: (e: ChangeEntry) => boolean) => scope.filter(f).length;
-  const authors = [...scope.reduce((m, e) => (e.author ? m.set(e.author, (m.get(e.author) ?? 0) + 1) : m), new Map<string, number>())]
+  // An announcement counts once for each person who posted a copy of it.
+  const authors = [...scope.reduce((m, e) => {
+    for (const a of new Set(copiesOf(e).map((c) => c.author))) if (a) m.set(a, (m.get(a) ?? 0) + 1);
+    return m;
+  }, new Map<string, number>())]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const controls: FilterControl[] = [
     {
@@ -152,7 +160,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
     {
       type: "menu", key: "region", label: "Region",
       options: [{ label: "Any region", href: here({ region: undefined }), on: !q.region, reset: true }, ...(Object.keys(REGIONS) as Region[]).map((r) => ({
-        label: REGIONS[r], href: here({ region: r }), on: q.region === r, count: count((e) => e.source === "forum" && (e.region ?? "us") === r),
+        label: REGIONS[r], href: here({ region: r }), on: q.region === r, count: count((e) => e.source === "forum" && forumRegions(e).includes(r)),
       }))],
     },
     {

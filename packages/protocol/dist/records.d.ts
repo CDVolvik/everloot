@@ -10,7 +10,7 @@ import { z } from "zod";
  * the generated JSON Schema's description, so a reader of the schema files knows the server checks them.
  */
 export declare const RULES: {
-    readonly loot: readonly ["loot needs a source: npc or object"];
+    readonly loot: readonly ["loot needs a source: npc or object", "a loot position needs mapId, x and y together"];
     readonly achievement_catalog: readonly ["criteria cannot outnumber criteriaCount"];
     readonly achievement_owned: readonly ["quantity and required come together", "quantity cannot exceed required", "criteriaMet cannot exceed criteriaTotal", "only a completed achievement has a date", "earnedOn is a real calendar date"];
     readonly reputation_owned: readonly ["floor cannot exceed ceiling"];
@@ -18,6 +18,7 @@ export declare const RULES: {
     readonly gold_snapshot: readonly ["peak gold cannot be below current gold"];
     readonly map_bounds: readonly ["map bounds need a width and a height"];
     readonly talent_snapshot: readonly ["talent points must equal the sum of node ranks", "talent node ids must be unique"];
+    readonly item_fact: readonly ["an item fact other than damage_per_second is a whole number"];
 };
 export declare const INSTALL_ID: z.ZodString;
 /** What the game calls a creature (`UnitCreatureType`), in English. The addon sends only these exact names. */
@@ -26,6 +27,10 @@ export declare const NPC_CREATURE_TYPES: readonly ["Beast", "Dragonkin", "Demon"
 export declare const NPC_RANKS: readonly ["normal", "elite", "rare", "rare_elite", "boss"];
 /** The group a quest asks for, from the quest tag the game reports. */
 export declare const QUEST_TAGS: readonly ["group", "dungeon", "raid", "pvp"];
+/** What the NPC does for players, from the window that opened (a merchant who repairs is `repair`). */
+export declare const NPC_ROLES: readonly ["vendor", "trainer", "questgiver", "flightmaster", "banker", "auctioneer", "stablemaster", "innkeeper", "repair"];
+/** How an object was opened, from the spell the player cast on it. */
+export declare const GATHER_KINDS: readonly ["herb", "ore", "chest", "fishing", "other"];
 export declare const npcSighting: z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -36,15 +41,28 @@ export declare const npcSighting: z.ZodObject<{
     mapId: z.ZodNumber;
     x: z.ZodNumber;
     y: z.ZodNumber;
-    level: z.ZodNumber;
-    reaction: z.ZodEnum<{
+    level: z.ZodOptional<z.ZodNumber>;
+    reaction: z.ZodOptional<z.ZodEnum<{
         friendly: "friendly";
         hostile: "hostile";
         neutral: "neutral";
-    }>;
+    }>>;
     positionKind: z.ZodOptional<z.ZodEnum<{
+        interaction: "interaction";
         npc: "npc";
         player: "player";
+        vignette: "vignette";
+    }>>;
+    role: z.ZodOptional<z.ZodEnum<{
+        auctioneer: "auctioneer";
+        banker: "banker";
+        flightmaster: "flightmaster";
+        innkeeper: "innkeeper";
+        questgiver: "questgiver";
+        repair: "repair";
+        stablemaster: "stablemaster";
+        trainer: "trainer";
+        vendor: "vendor";
     }>>;
     creatureType: z.ZodOptional<z.ZodEnum<{
         Beast: "Beast";
@@ -81,6 +99,17 @@ export declare const lootWindow: z.ZodObject<{
         itemId: z.ZodNumber;
         count: z.ZodNumber;
     }, z.core.$strip>>;
+    mapId: z.ZodOptional<z.ZodNumber>;
+    x: z.ZodOptional<z.ZodNumber>;
+    y: z.ZodOptional<z.ZodNumber>;
+    gatherKind: z.ZodOptional<z.ZodEnum<{
+        chest: "chest";
+        fishing: "fishing";
+        herb: "herb";
+        ore: "ore";
+        other: "other";
+    }>>;
+    sourceObjectName: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const questEvent: z.ZodObject<{
     installId: z.ZodString;
@@ -105,6 +134,52 @@ export declare const questEvent: z.ZodObject<{
         pvp: "pvp";
         raid: "raid";
     }>>;
+}, z.core.$strip>;
+/** The instance kinds `GetInstanceInfo` reports for a dungeon (`party`) and a raid. */
+export declare const INSTANCE_TYPES: readonly ["party", "raid"];
+/** Zoning into a dungeon or raid, with the last position outside it: the entrance. */
+export declare const instanceEntrance: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"instance_entrance">;
+    instanceMapId: z.ZodNumber;
+    name: z.ZodString;
+    instanceType: z.ZodEnum<{
+        party: "party";
+        raid: "raid";
+    }>;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+}, z.core.$strip>;
+/** A boss encounter's end, as `ENCOUNTER_END` reports it. */
+export declare const encounterEnd: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"encounter">;
+    encounterId: z.ZodNumber;
+    name: z.ZodString;
+    instanceMapId: z.ZodNumber;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    size: z.ZodOptional<z.ZodNumber>;
+    success: z.ZodBoolean;
+    npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+}, z.core.$strip>;
+/** A game object the game's vignette API showed on the minimap, such as a treasure chest, at its own position. */
+export declare const objectSighting: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"object_sighting">;
+    objectId: z.ZodNumber;
+    name: z.ZodString;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+    instanceMapId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const vendorList: z.ZodObject<{
     installId: z.ZodString;
@@ -418,6 +493,7 @@ export declare const trainerSeen: z.ZodObject<{
     recipe: z.ZodString;
     requiredRank: z.ZodNumber;
     costCopper: z.ZodOptional<z.ZodNumber>;
+    trainerNpcId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const priceSeen: z.ZodObject<{
     installId: z.ZodString;
@@ -483,6 +559,52 @@ export declare const mapBounds: z.ZodObject<{
 }, z.core.$strip>;
 /** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
 export declare const CLIENT_BUILD: z.ZodString;
+/**
+ * The tooltip numbers a player can see and the game files do not give: armour, block, the weapon's damage per
+ * second, each stat and each resistance. The addon reads them with `GetItemStats` on the plain item (no enchant,
+ * no random suffix), whose keys do not depend on the client's language.
+ */
+export declare const ITEM_FACTS: readonly ["armor", "block", "damage_per_second", "health", "mana", "agility", "strength", "intellect", "spirit", "stamina", "defense_rating", "dodge_rating", "parry_rating", "block_rating", "hit_rating", "crit_rating", "haste_rating", "expertise_rating", "resilience_rating", "attack_power", "mana_regeneration", "spell_power", "holy_resistance", "fire_resistance", "nature_resistance", "frost_resistance", "shadow_resistance", "arcane_resistance"];
+/** One number on an item's tooltip, as the player's own client showed it: anonymous, like `item_seen`. */
+export declare const itemFact: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"item_fact">;
+    itemId: z.ZodNumber;
+    fact: z.ZodEnum<{
+        agility: "agility";
+        arcane_resistance: "arcane_resistance";
+        armor: "armor";
+        attack_power: "attack_power";
+        block: "block";
+        block_rating: "block_rating";
+        crit_rating: "crit_rating";
+        damage_per_second: "damage_per_second";
+        defense_rating: "defense_rating";
+        dodge_rating: "dodge_rating";
+        expertise_rating: "expertise_rating";
+        fire_resistance: "fire_resistance";
+        frost_resistance: "frost_resistance";
+        haste_rating: "haste_rating";
+        health: "health";
+        hit_rating: "hit_rating";
+        holy_resistance: "holy_resistance";
+        intellect: "intellect";
+        mana: "mana";
+        mana_regeneration: "mana_regeneration";
+        nature_resistance: "nature_resistance";
+        parry_rating: "parry_rating";
+        resilience_rating: "resilience_rating";
+        shadow_resistance: "shadow_resistance";
+        spell_power: "spell_power";
+        spirit: "spirit";
+        stamina: "stamina";
+        strength: "strength";
+    }>;
+    value: z.ZodNumber;
+    clientBuild: z.ZodString;
+}, z.core.$strip>;
 /**
  * One talent build: one spec group of one character, no name. `loadoutString` is Blizzard's own export from
  * C_Traits.GenerateImportString when the client allowed it; `exportStatus` says how that went.
@@ -693,15 +815,28 @@ export declare const recordSchemas: {
         mapId: z.ZodNumber;
         x: z.ZodNumber;
         y: z.ZodNumber;
-        level: z.ZodNumber;
-        reaction: z.ZodEnum<{
+        level: z.ZodOptional<z.ZodNumber>;
+        reaction: z.ZodOptional<z.ZodEnum<{
             friendly: "friendly";
             hostile: "hostile";
             neutral: "neutral";
-        }>;
+        }>>;
         positionKind: z.ZodOptional<z.ZodEnum<{
+            interaction: "interaction";
             npc: "npc";
             player: "player";
+            vignette: "vignette";
+        }>>;
+        role: z.ZodOptional<z.ZodEnum<{
+            auctioneer: "auctioneer";
+            banker: "banker";
+            flightmaster: "flightmaster";
+            innkeeper: "innkeeper";
+            questgiver: "questgiver";
+            repair: "repair";
+            stablemaster: "stablemaster";
+            trainer: "trainer";
+            vendor: "vendor";
         }>>;
         creatureType: z.ZodOptional<z.ZodEnum<{
             Beast: "Beast";
@@ -738,6 +873,17 @@ export declare const recordSchemas: {
             itemId: z.ZodNumber;
             count: z.ZodNumber;
         }, z.core.$strip>>;
+        mapId: z.ZodOptional<z.ZodNumber>;
+        x: z.ZodOptional<z.ZodNumber>;
+        y: z.ZodOptional<z.ZodNumber>;
+        gatherKind: z.ZodOptional<z.ZodEnum<{
+            chest: "chest";
+            fishing: "fishing";
+            herb: "herb";
+            ore: "ore";
+            other: "other";
+        }>>;
+        sourceObjectName: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>;
     readonly quest: z.ZodObject<{
         installId: z.ZodString;
@@ -793,6 +939,86 @@ export declare const recordSchemas: {
             uncommon: "uncommon";
         }>;
         itemLevel: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>;
+    readonly instance_entrance: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"instance_entrance">;
+        instanceMapId: z.ZodNumber;
+        name: z.ZodString;
+        instanceType: z.ZodEnum<{
+            party: "party";
+            raid: "raid";
+        }>;
+        difficulty: z.ZodOptional<z.ZodNumber>;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+    }, z.core.$strip>;
+    readonly encounter: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"encounter">;
+        encounterId: z.ZodNumber;
+        name: z.ZodString;
+        instanceMapId: z.ZodNumber;
+        difficulty: z.ZodOptional<z.ZodNumber>;
+        size: z.ZodOptional<z.ZodNumber>;
+        success: z.ZodBoolean;
+        npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    readonly object_sighting: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"object_sighting">;
+        objectId: z.ZodNumber;
+        name: z.ZodString;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        instanceMapId: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>;
+    readonly item_fact: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"item_fact">;
+        itemId: z.ZodNumber;
+        fact: z.ZodEnum<{
+            agility: "agility";
+            arcane_resistance: "arcane_resistance";
+            armor: "armor";
+            attack_power: "attack_power";
+            block: "block";
+            block_rating: "block_rating";
+            crit_rating: "crit_rating";
+            damage_per_second: "damage_per_second";
+            defense_rating: "defense_rating";
+            dodge_rating: "dodge_rating";
+            expertise_rating: "expertise_rating";
+            fire_resistance: "fire_resistance";
+            frost_resistance: "frost_resistance";
+            haste_rating: "haste_rating";
+            health: "health";
+            hit_rating: "hit_rating";
+            holy_resistance: "holy_resistance";
+            intellect: "intellect";
+            mana: "mana";
+            mana_regeneration: "mana_regeneration";
+            nature_resistance: "nature_resistance";
+            parry_rating: "parry_rating";
+            resilience_rating: "resilience_rating";
+            shadow_resistance: "shadow_resistance";
+            spell_power: "spell_power";
+            spirit: "spirit";
+            stamina: "stamina";
+            strength: "strength";
+        }>;
+        value: z.ZodNumber;
+        clientBuild: z.ZodString;
     }, z.core.$strip>;
     readonly guild_snapshot: z.ZodObject<{
         installId: z.ZodString;
@@ -1058,6 +1284,7 @@ export declare const recordSchemas: {
         recipe: z.ZodString;
         requiredRank: z.ZodNumber;
         costCopper: z.ZodOptional<z.ZodNumber>;
+        trainerNpcId: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>;
     readonly gold_snapshot: z.ZodObject<{
         installId: z.ZodString;
@@ -1220,15 +1447,28 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     mapId: z.ZodNumber;
     x: z.ZodNumber;
     y: z.ZodNumber;
-    level: z.ZodNumber;
-    reaction: z.ZodEnum<{
+    level: z.ZodOptional<z.ZodNumber>;
+    reaction: z.ZodOptional<z.ZodEnum<{
         friendly: "friendly";
         hostile: "hostile";
         neutral: "neutral";
-    }>;
+    }>>;
     positionKind: z.ZodOptional<z.ZodEnum<{
+        interaction: "interaction";
         npc: "npc";
         player: "player";
+        vignette: "vignette";
+    }>>;
+    role: z.ZodOptional<z.ZodEnum<{
+        auctioneer: "auctioneer";
+        banker: "banker";
+        flightmaster: "flightmaster";
+        innkeeper: "innkeeper";
+        questgiver: "questgiver";
+        repair: "repair";
+        stablemaster: "stablemaster";
+        trainer: "trainer";
+        vendor: "vendor";
     }>>;
     creatureType: z.ZodOptional<z.ZodEnum<{
         Beast: "Beast";
@@ -1264,6 +1504,17 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         itemId: z.ZodNumber;
         count: z.ZodNumber;
     }, z.core.$strip>>;
+    mapId: z.ZodOptional<z.ZodNumber>;
+    x: z.ZodOptional<z.ZodNumber>;
+    y: z.ZodOptional<z.ZodNumber>;
+    gatherKind: z.ZodOptional<z.ZodEnum<{
+        chest: "chest";
+        fishing: "fishing";
+        herb: "herb";
+        ore: "ore";
+        other: "other";
+    }>>;
+    sourceObjectName: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -1316,6 +1567,82 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         uncommon: "uncommon";
     }>;
     itemLevel: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"instance_entrance">;
+    instanceMapId: z.ZodNumber;
+    name: z.ZodString;
+    instanceType: z.ZodEnum<{
+        party: "party";
+        raid: "raid";
+    }>;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"encounter">;
+    encounterId: z.ZodNumber;
+    name: z.ZodString;
+    instanceMapId: z.ZodNumber;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    size: z.ZodOptional<z.ZodNumber>;
+    success: z.ZodBoolean;
+    npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"object_sighting">;
+    objectId: z.ZodNumber;
+    name: z.ZodString;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+    instanceMapId: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"item_fact">;
+    itemId: z.ZodNumber;
+    fact: z.ZodEnum<{
+        agility: "agility";
+        arcane_resistance: "arcane_resistance";
+        armor: "armor";
+        attack_power: "attack_power";
+        block: "block";
+        block_rating: "block_rating";
+        crit_rating: "crit_rating";
+        damage_per_second: "damage_per_second";
+        defense_rating: "defense_rating";
+        dodge_rating: "dodge_rating";
+        expertise_rating: "expertise_rating";
+        fire_resistance: "fire_resistance";
+        frost_resistance: "frost_resistance";
+        haste_rating: "haste_rating";
+        health: "health";
+        hit_rating: "hit_rating";
+        holy_resistance: "holy_resistance";
+        intellect: "intellect";
+        mana: "mana";
+        mana_regeneration: "mana_regeneration";
+        nature_resistance: "nature_resistance";
+        parry_rating: "parry_rating";
+        resilience_rating: "resilience_rating";
+        shadow_resistance: "shadow_resistance";
+        spell_power: "spell_power";
+        spirit: "spirit";
+        stamina: "stamina";
+        strength: "strength";
+    }>;
+    value: z.ZodNumber;
+    clientBuild: z.ZodString;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -1560,6 +1887,7 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     recipe: z.ZodString;
     requiredRank: z.ZodNumber;
     costCopper: z.ZodOptional<z.ZodNumber>;
+    trainerNpcId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -1707,10 +2035,16 @@ export type IntakeRecord = z.infer<typeof anyRecord>;
 export type StoredRecord = Exclude<IntakeRecord, {
     kind: "census_self" | "census_seen" | "player_seen" | "character_link";
 }> | StoredCensusRecord;
+/** Where an upload's rows came from when the Everloot addon did not write them. */
+export declare const UPLOAD_SOURCES: readonly ["polestar_recorder"];
+export type UploadSource = (typeof UPLOAD_SOURCES)[number];
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export declare const uploadPayload: z.ZodObject<{
     addonVersion: z.ZodString;
     clientBuild: z.ZodOptional<z.ZodString>;
     protocol: z.ZodOptional<z.ZodString>;
+    source: z.ZodOptional<z.ZodEnum<{
+        polestar_recorder: "polestar_recorder";
+    }>>;
     records: z.ZodArray<z.ZodUnknown>;
 }, z.core.$strip>;

@@ -42,8 +42,9 @@ export default function Page() {
       <P>
         It follows the same rules as the website. The app sends anonymous open-world events, and census rows if you
         allowed the census on its setup screen (the box is ticked until you untick it; a switch in its settings changes
-        it later). It never sends named data (guild, gear, gold, collection), player rows or your installed addon list.
-        Those stay on your computer. Nothing touches the game client.
+        it later). It never sends named data (guild, gear, gold, collection) or your installed addon list; those stay on your
+        computer. Player rows stay there too, unless you turn on <em>Send the player pages with the uploads</em> in its
+        settings. Nothing touches the game client.
       </P>
 
       <H2 id="platforms">Platforms</H2>

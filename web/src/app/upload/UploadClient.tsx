@@ -1,9 +1,11 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
-import { parseEverlootLua } from "@/lib/sv-parse";
+import { parseEverlootLua, parsePolestarTable } from "@/lib/sv-parse";
+import { convertRecorder, type RecorderPayload } from "@/lib/polestar-recorder";
 import { censusSummary, prepareUpload, sendBatches, type SharingChoices, type UploadSession } from "@/lib/upload-batches";
 import type { SharingCategory } from "../../../../kb/src/publication";
+import { parseSettledList, settledSkip, type SettledList } from "../../../../kb/src/settled-list";
 import Card from "@/components/ui/Card";
 import SectionHeading from "@/components/ui/SectionHeading";
 
@@ -17,9 +19,19 @@ const button = "btn btn-primary disabled:opacity-50";
 const outlineButton = "btn";
 const input = "w-full rounded-control border border-edge bg-canvas p-3 text-base text-fg";
 
+/** The settled list for the file's build, or null (nothing skipped) without a build or when the site does not answer. */
+async function loadSettled(build: unknown): Promise<SettledList | null> {
+  if (typeof build !== "string") return null;
+  try {
+    const response = await fetch(`/api/coverage/settled?build=${encodeURIComponent(build)}`, { signal: AbortSignal.timeout(5000) });
+    return response.ok ? parseSettledList(await response.json()) : null;
+  } catch { return null; }
+}
+
 /** `playerPages`: the site collects player rows. Off, the server drops them, and the preview says so. */
 export default function UploadClient({ playerPages = false }: { playerPages?: boolean } = {}) {
   const [payload, setPayload] = useState<unknown>(null);
+  const [settled, setSettled] = useState<SettledList | null>(null);
   const [choices, setChoices] = useState<SharingChoices>({});
   const [tokens, setTokens] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,31 +46,35 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
   const [withdrawStatus, setWithdrawStatus] = useState("");
   const prepared = useMemo(() => {
     if (!payload) return { value: null, error: null };
-    try { return { value: prepareUpload(payload, choices, tokens.split(/\s+/).filter(Boolean)), error: null }; }
+    const skip = settledSkip(settled, (payload as { clientBuild?: unknown }).clientBuild);
+    try { return { value: prepareUpload(payload, choices, tokens.split(/\s+/).filter(Boolean), undefined, skip), error: null }; }
     catch (e) { return { value: null, error: e instanceof Error ? e.message : "Could not prepare this file." }; }
-  }, [payload, choices, tokens]);
+  }, [payload, choices, tokens, settled]);
   const busy = sending || loading;
   function resetSession() { saved.current = null; setSession(null); setError(null); }
   async function loadFile(file: File) {
     if (busy) return;
     const id = ++loadId.current;
-    resetSession(); setPayload(null); setChoices({}); setTokens(""); setLoading(true);
+    resetSession(); setPayload(null); setSettled(null); setChoices({}); setTokens(""); setLoading(true);
     try {
       if (file.size > 20_000_000) throw new Error("This file exceeds 20 MB. Keep the original and split it before uploading.");
       const text = await file.text();
       let value: unknown;
-      if (/\.lua$/i.test(file.name) || /EverlootDB\s*=/.test(text.slice(0, 500))) {
+      // A Polestar Recorder file is converted here, in the browser; its names never leave this page.
+      if (/PolestarRecorderDB\s*=/.test(text.slice(0, 500))) value = await convertRecorder(parsePolestarTable(text));
+      else if (/\.lua$/i.test(file.name) || /EverlootDB\s*=/.test(text.slice(0, 500))) {
         const parsed = parseEverlootLua(text);
         value = { addonVersion: parsed.version, clientBuild: parsed.clientBuild, records: parsed.records };
       } else value = JSON.parse(text);
       prepareUpload(value, {}, []);
-      if (loadId.current === id) setPayload(value);
+      const list = await loadSettled((value as { clientBuild?: unknown } | null)?.clientBuild);
+      if (loadId.current === id) { setSettled(list); setPayload(value); }
     } catch (e) { if (loadId.current === id) setError(e instanceof Error ? e.message : "Could not read this file."); }
     finally { if (loadId.current === id) setLoading(false); }
   }
   function sample() {
     if (busy) return;
-    resetSession(); setChoices({}); setTokens("");
+    resetSession(); setSettled(null); setChoices({}); setTokens("");
     const base = { installId: `sample-${crypto.randomUUID()}`, capturedAt: new Date().toISOString() };
     setPayload({ addonVersion: "0.2.0", records: [
       { ...base, eventId: "sample:1", kind: "npc_sighting", npcId: 1234, name: "Forest Spider", mapId: 141, x: 42.5, y: 61, level: 60, reaction: "hostile" },
@@ -90,11 +106,14 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
   const accepted = session?.receipts.reduce((n, receipt) => n + (receipt.accepted?.length ?? 0), 0) ?? 0;
   const rejected = session?.receipts.reduce((n, receipt) => n + (receipt.rejected?.length ?? 0), 0) ?? 0;
   const complete = !!session && session.next === session.batches.length;
+  const recorder = (payload as Partial<RecorderPayload> | null)?.recorder;
+  const skipped = recorder ? Object.entries(recorder.skipped).sort(([a], [b]) => a.localeCompare(b)) : [];
+  const capped = recorder ? Object.entries(recorder.capped).sort(([a], [b]) => a.localeCompare(b)) : [];
   return (
     <div className="space-y-6">
       <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (!busy && e.dataTransfer.files[0]) void loadFile(e.dataTransfer.files[0]); }}>
         <Card className="text-center">
-        <p className="text-fg-2">Drop your Everloot.lua or payload JSON here.</p>
+        <p className="text-fg-2">Drop your Everloot.lua, Polestar_Recorder.lua or payload JSON here.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <label className={button}>Choose file
             <input aria-label="Choose Everloot file" type="file" accept="application/json,.json,.lua" className="sr-only" disabled={busy}
@@ -127,6 +146,15 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
             <span className="text-fg-2">{kind}</span><span className="text-accent font-semibold">{count}</span>
           </li>)}
         </ul>
+        {recorder && <div className="mt-3 text-sm text-fg-2">
+          {recorder.sessions === 0
+            ? <p>This <a className="text-accent hover:underline underline-offset-4" href="https://github.com/fitzforge/polestar" rel="noopener">Polestar Recorder</a> file holds nothing Everloot can use yet. The game can leave it empty after a restart: play a session with the Recorder on, log out, and choose it again.</p>
+            : <p>From your <a className="text-accent hover:underline underline-offset-4" href="https://github.com/fitzforge/polestar" rel="noopener">Polestar Recorder</a> file: {recorder.sessions} {recorder.sessions === 1 ? "session" : "sessions"} of {recorder.characters} {recorder.characters === 1 ? "character" : "characters"}, each sent as its own upload.</p>}
+          {recorder.unread > 0 && <p className="mt-1 text-fg-2">{recorder.unread} {recorder.unread === 1 ? "session is" : "sessions are"} in a format Everloot does not read and stay out.</p>}
+          <p className="mt-1 text-fg-2">What is sent: where you stood when an NPC&apos;s window was open (quest givers, vendors, trainers, flight masters), NPCs you killed or saw as rares (where you stood, never a map pin), rares and treasures your minimap showed (at their own place), the dungeons and raids you entered (where you stood before zoning in) and the bosses you fought there, the quests you accepted with their givers, turn-ins and rewards, and your loot windows (counted, not yet in the drop rates). Character names, realms, session names and your notes stay on this computer. The server gives each character its own install id, so a fact counts once three characters on three connections agree on it.</p>
+          {skipped.length > 0 && <p className="mt-1 text-fg-2">Not converted: {skipped.map(([kind, n]) => `${kind} (${n.toLocaleString("en-US")})`).join(", ")}.</p>}
+          {capped.length > 0 && <p className="mt-1 text-fg-2">The Recorder stopped recording some kinds at its limits: {capped.map(([kind, n]) => `${kind} (${n.toLocaleString("en-US")} not recorded)`).join(", ")}. Those sessions are missing events of that kind.</p>}
+        </div>}
         {prepared.value.addons.length > 0 && <div className="mt-3 text-sm text-fg-2">
           <p>Installed addons in this upload ({prepared.value.addons.length}), recorded because you ran <code>/everloot addons on</code>:</p>
           <p className="mt-1 text-fg-2">{prepared.value.addons.join(", ")}</p>
@@ -142,6 +170,9 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
             ? <p className="mt-1 text-fg-2">Each row holds a character&apos;s name, realm, race, class, level and guild, and the day it was seen, never where. Everloot keeps the newest row per character and shows it on a public player page with a link to hide it. Characters whose owners hid them are skipped.</p>
             : <p className="mt-1 text-fg-2">Everloot does not collect player rows yet, so the server drops these. They stay in your file.</p>}
         </div>}
+        {prepared.value.skipped.length > 0 && <p className="mt-3 text-sm text-fg-2">
+          Skipped {prepared.value.skipped.length.toLocaleString("en-US")} already settled: {prepared.value.skipped.length === 1 ? "this row repeats a fact" : "these rows repeat facts"} at least five installs agree on, with no other report for 14 days, so Everloot does not need {prepared.value.skipped.length === 1 ? "it" : "them"} again. {prepared.value.skipped.length === 1 ? "It stays" : "They stay"} in your file.
+        </p>}
         <p className="mt-3 text-sm text-fg-2">{prepared.value.held.legacy} legacy records without event IDs, {prepared.value.held.named} unchecked named records, and {prepared.value.held.invalid} invalid records stay out of this upload. Keep your original file.</p>
         <p className="mt-2 text-sm text-fg-2">{prepared.value.batches.length} batches. Only a confirmed storage receipt advances progress. Named choices are checked against the grant on the server.</p>
         <button disabled={busy || !prepared.value.batches.length || complete} onClick={() => void send()} className={outlineButton + " mt-4"}>

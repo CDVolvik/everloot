@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Privacy and your data",
-  description: "What an Everloot upload carries, what is published, what is never published, and how to withdraw, delete or opt out.",
+  description: "What an Everloot upload carries, what is published and what never is, the census, player pages, cookies, and how to withdraw, delete or opt out.",
   path: "/docs/guides/privacy",
 });
 
@@ -34,13 +34,14 @@ export default function Page() {
         <li>Named data (guild, gear, gold, collection) is sent only if you tick it and have a verified sharing grant. The Desktop App never sends it.</li>
         <li>The installed addon list is off in the game until you turn it on, and it is sent only from the upload page, after the preview.</li>
         <li>The census is on in a new install of the addon and says so once in chat. It is sent from the upload page, after the preview, or by the Desktop App if you allowed the census there.</li>
-        <li>Player rows (names of characters you saw) are off in the game until you turn them on, and they are sent only from the upload page, after the preview. The Desktop App never sends them.</li>
+        <li>Player rows (names of characters you saw) are off in the game until you turn them on, and they are sent only from the upload page, after the preview, or by the Desktop App if you turn on <em>Send the player pages with the uploads</em> in its settings.</li>
         <li>An upload that contains a scan is stored with a keyed one-way hash of the address it came from, never the address, so distinct reporters can be counted. The hash stays in private storage and is never published.</li>
+        <li>A Polestar Recorder file you choose on the upload page is converted in your browser into NPC positions, quests, loot, dungeon entrances, boss encounters and treasures. Its character names, realms, session names and notes are not sent. The server gives it an install id made from keyed hashes of the character and of the address, and keeps a keyed hash of the address with the upload. Neither is published.</li>
       </List>
 
       <H2 id="published">What is published</H2>
       <List>
-        <li>Your anonymous observations are published as individual records, without character names and without the install id, so anyone can check our counts. They are under CC BY-SA 4.0, credited to Everloot contributors.</li>
+        <li>Your anonymous observations are published as individual records, without character names and without the install id. Each carries a per-install pseudonym instead, a keyed hash that cannot be turned back into the id, so anyone can check our counts. They are under CC BY-SA 4.0, credited to Everloot contributors.</li>
         <li>The facts the site states, such as drop rates, spawn points and recipe ranges, appear only after at least 3 installs report them. Distinct install ids do not prove independent players.</li>
         <li>Full auction scans are not public records. They feed market values, and a value is published when 3 distinct reporters scanned the item.</li>
         <li>Character names appear in three places only: named records their owner shares with a grant (gear, gold, collection), guild boards a guild&apos;s officers publish, and <a href="#player-pages" className={docLink}>player pages</a>.</li>

@@ -61,7 +61,22 @@ export const DEFAULT_CATEGORIES: CategoryState = allCategories(true);
 export const DEFAULT_SPOILERS = false;
 
 export interface MapZone { mapId: number; name: string; x: number; y: number; width: number; height: number; heldBack: boolean }
-export interface MapEntrance { id: string; names: string[]; raid: boolean; x: number; y: number; worldX: number; worldY: number }
+/**
+ * A dungeon or raid entrance. `files` is false for one only players place (absent: the game files place it);
+ * `confirmed` is how many installs zoned in from it once 3 agree, and `lastSeen` the latest time one did (absent:
+ * not confirmed). `instanceMapIds` come with the pins answer, not the page.
+ */
+export interface MapEntrance {
+  id: string; names: string[]; raid: boolean; x: number; y: number; worldX: number; worldY: number;
+  instanceMapIds?: number[]; files?: boolean; confirmed?: number | null; lastSeen?: string | null;
+}
+/** A treasure players saw on the minimap, at its own position, where 3 installs agree on the spot. */
+export interface MapTreasure {
+  id: string; objectId: number; name: string | null; mapId: number; zoneName: string;
+  x: number; y: number; zoneX: number; zoneY: number; reporters: number;
+  /** The latest time an install saw it; absent on an answer cached before treasures had dates. */
+  lastSeen?: string | null;
+}
 export interface MapFlightMaster { id: string; name: string; x: number; y: number; heldBack: boolean }
 export interface MapFlightLine { id: string; from: string; to: string; points: [number, number][]; heldBack: boolean }
 export interface MapPin {
@@ -69,7 +84,7 @@ export interface MapPin {
   x: number; y: number; zoneX: number; zoneY: number; reporters: number; heldBack: boolean;
 }
 export interface MapItems {
-  zones: MapZone[]; entrances: MapEntrance[]; pins: MapPin[];
+  zones: MapZone[]; entrances: MapEntrance[]; pins: MapPin[]; treasures: MapTreasure[];
   flightMasters: MapFlightMaster[]; flightLines: MapFlightLine[];
 }
 /** What the map draws besides the zones: the body of `/api/map/pins`, which the page fetches instead of inlining it. */
@@ -79,9 +94,10 @@ export type MapPinSet = Omit<MapItems, "zones">;
 export function readPinSet(body: unknown): MapPinSet | null {
   const b = body as Partial<Record<keyof MapPinSet, unknown>> | null;
   if (!b || typeof b !== "object") return null;
-  const { entrances, flightMasters, flightLines, pins } = b;
+  const { entrances, flightMasters, flightLines, pins, treasures } = b;
   if (![entrances, flightMasters, flightLines, pins].every(Array.isArray)) return null;
-  return { entrances, flightMasters, flightLines, pins } as MapPinSet;
+  // An answer cached before treasures were drawn has none; it is still a pin set.
+  return { entrances, flightMasters, flightLines, pins, treasures: Array.isArray(treasures) ? treasures : [] } as MapPinSet;
 }
 
 /** What the categories and the spoiler switch let through. Pure: the same inputs always give the same list. */
@@ -90,6 +106,7 @@ export function visibleItems(items: MapItems, show: CategoryState, spoilers: boo
     zones: show.zone ? items.zones.filter((z) => spoilers || !z.heldBack) : [],
     entrances: items.entrances.filter((e) => (e.raid ? show.raid : show.dungeon)),
     pins: items.pins.filter((p) => (p.kind === "npc" ? show.npc : show.vendor) && (spoilers || !p.heldBack)),
+    treasures: show.chest ? items.treasures : [],
     flightMasters: show.flight ? items.flightMasters.filter((f) => spoilers || !f.heldBack) : [],
     flightLines: show.path ? items.flightLines.filter((l) => spoilers || !l.heldBack) : [],
   };
@@ -119,6 +136,7 @@ export function categoryCounts(items: MapItems, spoilers: boolean, scope: Box | 
   counts.raid = all.entrances.filter((e) => e.raid && at(e.x, e.y)).length;
   counts.npc = all.pins.filter((p) => p.kind === "npc" && at(p.x, p.y)).length;
   counts.vendor = all.pins.filter((p) => p.kind === "vendor" && at(p.x, p.y)).length;
+  counts.chest = all.treasures.filter((t) => at(t.x, t.y)).length;
   return counts;
 }
 
@@ -160,7 +178,7 @@ export const wayCommand = (x: number, y: number, name: string) => `/way ${x} ${y
 
 // --- Search ---
 
-export type SearchKind = "zone" | "entrance" | "flight" | "npc" | "vendor";
+export type SearchKind = "zone" | "entrance" | "flight" | "npc" | "vendor" | "treasure";
 export interface SearchHit { kind: SearchKind; id: string; label: string; detail: string; x: number; y: number }
 
 const RANK_LIMIT = 8;
@@ -189,6 +207,7 @@ export function searchMap(items: MapItems, query: string, limit = RANK_LIMIT): S
     add({ kind: "flight", id: f.id, label: f.name, detail: "Flight master", x: f.x, y: f.y }, [f.name]);
   }
   for (const p of items.pins) add({ kind: p.kind, id: p.id, label: p.name ?? `NPC ${p.npcId}`, detail: `${p.kind === "vendor" ? "Vendor" : "NPC"} in ${p.zoneName}`, x: p.x, y: p.y }, [p.name ?? `NPC ${p.npcId}`]);
+  for (const t of items.treasures) add({ kind: "treasure", id: t.id, label: t.name ?? `Object ${t.objectId}`, detail: `Treasure in ${t.zoneName}`, x: t.x, y: t.y }, [t.name ?? `Object ${t.objectId}`]);
   return hits.sort((a, b) => a.rank - b.rank || a.label.length - b.label.length || a.label.localeCompare(b.label) || a.id.localeCompare(b.id)).slice(0, limit).map(({ rank: _rank, ...hit }) => hit);
 }
 
@@ -283,7 +302,7 @@ export function initialView(input: {
   if (view.at && view.zoom !== null) return { x: view.at[0], y: view.at[1], zoom: view.zoom };
   if (marker) return { fit: spotBox(marker.x, marker.y) };
   const pinned = view.pin
-    ? [...items.entrances.map((e) => ({ id: `e${e.id}`, x: e.x, y: e.y })), ...items.flightMasters, ...items.pins].find((p) => p.id === view.pin)
+    ? [...items.entrances.map((e) => ({ id: `e${e.id}`, x: e.x, y: e.y })), ...items.flightMasters, ...items.pins, ...items.treasures].find((p) => p.id === view.pin)
     : undefined;
   if (pinned) return { fit: spotBox(pinned.x, pinned.y) };
   const zone = zoneId !== null ? items.zones.find((z) => z.mapId === zoneId) : undefined;
@@ -367,16 +386,20 @@ export const pinHref = (continentId: number, id: string, spoilers = false): stri
 export interface PageLink { href: string; label: string }
 
 /**
- * The page for an item on the map, by kind: an NPC's or a vendor's database page, the zone page that holds an
- * entrance (there is no dungeon page yet), the zone page for a spot. Flight masters have no page, so no link.
- * `zonePages` maps a zone id to its page; a zone without one (held back) gets no link.
+ * The page for an item on the map, by kind: an NPC's or a vendor's database page, a treasure's object page, an
+ * entrance's instance page when it leads to one instance with a page, else the zone page that holds it, and the zone
+ * page for a spot. Flight masters have no page, so no link. `zonePages` and `instancePages` map an id to its page;
+ * one without (a held-back zone) gets no link.
  */
 export function openPageLink(
-  item: { kind: "entrance" | "flight" | "npc" | "vendor" | "spot"; npcId?: number; x: number; y: number },
-  zones: readonly MapZone[], zonePages: Readonly<Record<number, string>>,
+  item: { kind: "entrance" | "flight" | "npc" | "vendor" | "treasure" | "spot"; npcId?: number; objectId?: number; instanceMapIds?: number[]; x: number; y: number },
+  zones: readonly MapZone[], zonePages: Readonly<Record<number, string>>, instancePages: Readonly<Record<number, string>> = {},
 ): PageLink | null {
   if (item.kind === "npc" && item.npcId) return { href: `/database/npcs/${item.npcId}`, label: "Open NPC page" };
   if (item.kind === "vendor" && item.npcId) return { href: `/database/vendors/${item.npcId}`, label: "Open vendor page" };
+  if (item.kind === "treasure" && item.objectId) return { href: `/database/objects/${item.objectId}`, label: "Open object page" };
+  const instance = item.kind === "entrance" && item.instanceMapIds?.length === 1 ? instancePages[item.instanceMapIds[0]!] : undefined;
+  if (instance) return { href: instance, label: "Open instance page" };
   if (item.kind === "entrance" || item.kind === "spot") {
     const zone = zoneSpot(zones, item.x, item.y)?.zone;
     const href = zone ? zonePages[zone.mapId] : undefined;

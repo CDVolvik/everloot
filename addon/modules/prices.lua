@@ -1,5 +1,6 @@
 -- Everloot prices in item tooltips: the player's own latest full scan, and community market values
 -- the companion wrote into the EverlootPrices slot addon (checksummed; they show after /reload).
+-- The drop sources in the same file (modules/drops.lua) follow the prices in the same tooltip.
 -- Display only: nothing here talks to the network or acts on the auction house.
 
 local E = Everloot
@@ -41,6 +42,7 @@ local community = {}
 
 function E:ResetPrices()
   community = {}
+  if E.ResetDrops then E:ResetDrops() end
 end
 
 --- Adler-32 of `data` in slices of VERIFY_SLICE characters, one per frame; `done(ok)` gets the verdict.
@@ -64,6 +66,8 @@ local function verify(data, sum, done)
   end
   slice()
 end
+
+E.VerifyChecksum = verify
 
 --- One realm's price file entry from EverlootPricesDB: "itemId,market,min,historical,quantity,day,reporters;..."
 --- with an Adler-32 `sum` over that string. A blank market is unrecorded. The string is searched, not
@@ -152,10 +156,24 @@ end
 
 E.PriceLines = priceLines
 
+--- The tooltip: price lines, then drop lines. Once the Desktop App's file is in the game and its prices have been
+--- checked, what is missing is said in one grey line; without the file a tooltip carries no Everloot line it has no value for.
 local function addLines(tooltip, itemId)
   local realm = GetRealmName and GetRealmName()
   if type(realm) ~= "string" or realm == "" then return end
-  for _, line in ipairs((priceLines(realm, itemId))) do tooltip:AddLine(line.text, line.r, line.g, line.b) end
+  local lines, entry = priceLines(realm, itemId)
+  local dropLines, dropNote = E:DropLines(itemId)
+  local missing = {}
+  if type(EverlootPricesDB) == "table" and entry.status ~= "verifying" then
+    if #lines == 0 then
+      missing[#missing + 1] = entry.status == "bad" and not entry.silent and "community prices failed their checksum"
+        or ("no price on " .. realm .. " yet")
+    end
+    missing[#missing + 1] = dropNote
+  end
+  for _, line in ipairs(dropLines or {}) do lines[#lines + 1] = line end
+  if #missing > 0 then lines[#lines + 1] = { text = "Everloot: " .. table.concat(missing, " · "), r = 0.6, g = 0.6, b = 0.6 } end
+  for _, line in ipairs(lines) do tooltip:AddLine(line.text, line.r, line.g, line.b) end
 end
 
 --- The item id in what the player typed after /everloot price: a shift-clicked link, a bare id, or the
@@ -195,6 +213,9 @@ function E.PriceCommand(text, tries)
       or "  No price for this item on this realm yet: no public day (3 reporters) and no scan of your own.")
   end
   for _, line in ipairs(lines) do print(hex(line.r, line.g, line.b) .. line.text .. "|r") end
+  local dropLines, dropNote = E:DropLines(id)
+  for _, line in ipairs(dropLines or {}) do print(hex(line.r, line.g, line.b) .. line.text .. "|r") end
+  if dropNote and type(EverlootPricesDB) == "table" then print("  " .. dropNote:gsub("^%l", string.upper)) end
   print("  Full history and other realms: everloot.app/tools/auctions?realm=" .. realm:gsub(" ", "+") .. "&item=" .. id)
 end
 

@@ -4,7 +4,8 @@ import { itemFactsFromRecords } from "./drop-rollup.js";
 import { itemPage, ITEM_AGREEMENT, type ItemFacts } from "./item-page.js";
 import { loreUrls, moreLine } from "./page-urls.js";
 import { search, type SearchHit } from "./search.js";
-import { npcPage, WORLD_AGREEMENT, worldFactsFromRecords, type WorldFacts } from "./world-pages.js";
+import { agreedNpcNames, npcPage, WORLD_AGREEMENT, worldFactsFromRecords, type WorldFacts } from "./world-pages.js";
+import type { RecheckScope } from "./coverage.js";
 
 /**
  * answer_sources: the evidence behind a question, every piece with its source, licence and date, so
@@ -41,8 +42,8 @@ export interface AnswerSources {
 }
 
 /** The two fact sets the tool reads from the corpus, built once per corpus version like the other tools. */
-export function answerSourcesFactsFromRecords(records: unknown[]): AnswerSourcesFacts {
-  return { items: itemFactsFromRecords(records), world: worldFactsFromRecords(records) };
+export function answerSourcesFactsFromRecords(records: unknown[], recheck: readonly RecheckScope[] = []): AnswerSourcesFacts {
+  return { items: itemFactsFromRecords(records, recheck), world: worldFactsFromRecords(records, recheck) };
 }
 
 const clean = (value: string) => value.trim().toLowerCase();
@@ -113,7 +114,7 @@ function observedEvidence(question: string, facts: AnswerSourcesFacts, dataAsOf:
       });
     }
   }
-  const npcNames = agreedNames(facts.world.npcs.map((n) => ({ installId: n.installId, id: n.npcId, name: n.name })), WORLD_AGREEMENT);
+  const npcNames = agreedNpcNames(facts.world);
   for (const [npcId, name] of npcNames) {
     if (!mentions(question, name)) continue;
     const page = npcPage(npcId, facts.world);

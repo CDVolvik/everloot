@@ -314,7 +314,7 @@ async function openAiLoop(o: AnswerOptions): Promise<ChatReply> {
     try {
       res = await send(`${o.provider.baseUrl}/chat/completions`, {
         method: "POST",
-        headers: { "content-type": "application/json", ...(o.key ? { authorization: `Bearer ${o.key}` } : {}), "x-title": "Everloot" },
+        headers: { "content-type": "application/json", ...(o.key ? { authorization: `Bearer ${o.key}` } : {}), ...o.provider.headers },
         body: JSON.stringify({ model: o.model, max_tokens: 1500, messages, tools, stream: true }),
         signal: o.signal,
       });
@@ -355,11 +355,11 @@ async function openAiLoop(o: AnswerOptions): Promise<ChatReply> {
 
 /**
  * Checks a saved key against its provider with a request that costs nothing: Anthropic's model list, OpenRouter's
- * key details, or the models a local Ollama has pulled. Like the chat, it goes from this browser straight to the
+ * key details, another provider's model list with the key, or the models a local Ollama has pulled. Like the chat, it goes from this browser straight to the
  * provider. Resolves with what to tell the player; throws with the provider's reason.
  */
 export async function testKey(provider: ChatProviderPreset, model: string, key: string, send: typeof fetch = fetch): Promise<string> {
-  const name = provider.label.replace(/ \(.*\)$/, "");
+  const name = provider.name;
   let res: Response;
   try {
     if (provider.api === "anthropic") {
@@ -369,7 +369,7 @@ export async function testKey(provider: ChatProviderPreset, model: string, key: 
     } else if (provider.kind === "openrouter") {
       res = await send(`${provider.baseUrl}/key`, { headers: { authorization: `Bearer ${key}` } });
     } else {
-      res = await send(`${provider.baseUrl}/models`);
+      res = await send(`${provider.baseUrl}/models`, key ? { headers: { authorization: `Bearer ${key}` } } : undefined);
     }
   } catch (err) {
     throw new Error(`${name}: ${err instanceof Error ? err.message : String(err)}${provider.kind === "ollama" ? ". Is Ollama running with OLLAMA_ORIGINS=https://everloot.app?" : ""}`);

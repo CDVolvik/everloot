@@ -5,7 +5,7 @@ import { readJsonFile } from "./json-file";
 import type { ChatInfo, ChatMessage, ChatProgress, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
 import type { LocalTool } from "./local-tools";
-import { DEFAULT_MODEL, ownProvider, ownProviders, removeProvider, setProvider, useModel } from "./providers";
+import { DEFAULT_MODEL, modelsFor, ownProvider, ownProviders, removeProvider, setProvider, useModel } from "./providers";
 import type { ProviderChoice, ProviderKind } from "../shared/providers";
 
 const MAX_MESSAGES = 100;
@@ -22,6 +22,8 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
   try { if (existsSync(path)) messages = (readJsonFile(path) as ChatMessage[]).slice(-MAX_MESSAGES); } catch { messages = []; }
   let busy = false;
   let error: string | null = null;
+  /** Aborts the answer being written; null when none is. */
+  let stopper: AbortController | null = null;
 
   const save = () => {
     mkdirSync(dirname(path), { recursive: true });
@@ -53,24 +55,30 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
 
   return {
     info,
-    clear(): ChatInfo { messages = []; error = null; save(); return info(); },
+    // Not while an answer is being written: its question would go and the answer land alone.
+    clear(): ChatInfo { if (busy) return info(); messages = []; error = null; save(); return info(); },
     setProvider(choice: ProviderChoice): ChatInfo { setProvider(dataFolder, choice); error = null; return info(); },
     useModel(kind: ProviderKind, model: string): ChatInfo { useModel(dataFolder, kind, model); error = null; return info(); },
     removeProvider(kind?: ProviderKind): ChatInfo { removeProvider(dataFolder, kind); return info(); },
+    models: (kind: ProviderKind) => modelsFor(dataFolder, kind),
+    stop(): void { stopper?.abort(); },
     async send(text: string, onProgress?: (progress: ChatProgress) => void): Promise<ChatInfo> {
       const question = text.trim().slice(0, 2000);
       if (!question || busy) return info();
       busy = true; error = null;
+      stopper = new AbortController();
       const history = [...messages];
       messages.push({ role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] });
       try {
         const entries = readProviderEntries(join(dataFolder, "config.json"));
-        const r = await answer({ mcp: target(), entries, history, question, local, onProgress });
-        messages.push({ role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps });
+        const r = await answer({ mcp: target(), entries, history, question, local, onProgress, signal: stopper.signal });
+        messages.push({ role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps, ...(r.stopped ? { stopped: true } : {}) });
       } catch (err) {
-        error = explainKeyError(err instanceof Error ? err.message : String(err));
+        // Stopped before the provider wrote anything (plain search, or still connecting): not an error.
+        if (stopper.signal.aborted) messages.push({ role: "assistant", text: "", at: new Date().toISOString(), model: null, sources: [], steps: [], stopped: true });
+        else error = explainKeyError(err instanceof Error ? err.message : String(err));
       } finally {
-        busy = false;
+        busy = false; stopper = null;
         messages = messages.slice(-MAX_MESSAGES);
         save();
       }

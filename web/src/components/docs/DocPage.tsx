@@ -14,6 +14,7 @@ export default function DocPage({ href, children, aside, title, lede }: { href: 
   if (!page) throw new Error(`${href} is not in the docs table of contents (lib/docs/nav.ts)`);
   const { prev, next } = neighbours(href);
   const trail = [
+    { name: "Home", path: "/" },
     { name: "Docs", path: "/docs" },
     ...(page.tab.href !== "/docs" && page.tab.href !== href ? [{ name: page.tab.label, path: page.tab.href }] : []),
     ...(href !== "/docs" ? [{ name: page.title, path: href }] : []),

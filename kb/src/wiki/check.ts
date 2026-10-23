@@ -3,9 +3,7 @@
  * caller passes the files, the category list and what the game files know, so tests can use small fixtures.
  * The overlap check against the Warcraft Wiki dump is not here; it needs the dump, which CI does not have.
  */
-import { SHOWN_MAX_QUEST_ID, SHOWN_MAX_SET_ID } from "../game-name-rule.js";
-import { SHOWN_MAX_ITEM_ID } from "../item-name-rule.js";
-import { BINDS, FrontMatter, inlineText, parsePage, SECTIONS, type Block, type Inline, type ParsedPage } from "./page.js";
+import { BINDS, BLIZZARD_SOURCED, FrontMatter, inlineText, parsePage, SECTIONS, type Block, type Inline, type ParsedPage } from "./page.js";
 
 /** Ids the committed game data knows. Kinds with no committed list (NPCs, quests, factions) are checked for shape and range only. */
 export interface KnownData {
@@ -36,6 +34,11 @@ export const MIN_PROSE_WORDS = 150;
 
 /** Credit lines name the Warcraft Wiki's contributors, so an adapted page can only come from there. */
 const WIKI_HOST = /(^|\.)warcraft\.wiki\.gg$/;
+
+/** Blizzard's own posts: its WoW news site and the US and EU forums. */
+const BLIZZARD_HOST = /^(?:worldofwarcraft\.blizzard\.com|(?:us|eu)\.forums\.blizzard\.com)$/;
+
+export const hasBlizzardSource = (fm: FrontMatter): boolean => fm.sources.some((s) => BLIZZARD_HOST.test(new URL(s.url).hostname));
 
 const AI_CREDIT = new RegExp(
   String.raw`\b(?:generated|written|drafted|created|produced|authored)\s+(?:with|by|using)\s+(?:the\s+help\s+of\s+)?(?:an?\s+)?(?:ai|llm|claude|anthropic|chatgpt|gpt|openai|copilot|gemini|grok|codex|cursor|devin)\b` +
@@ -148,16 +151,17 @@ function checkPage(p: CheckedPage, ctx: CheckContext, bySlug: ReadonlyMap<string
   if (!binds.success) for (const issue of binds.error.issues) report(`binds${issue.path.length ? `.${issue.path.join(".")}` : ""}: ${issue.message}`);
   const b = fm.binds as Record<string, unknown>;
   if (binds.success) {
+    const sourced = BLIZZARD_SOURCED[fm.type];
+    if (sourced && b[sourced] === undefined && !hasBlizzardSource(fm)) {
+      report(`binds.${sourced}: required unless the page lists a Blizzard post (worldofwarcraft.blizzard.com or the US or EU forums) in sources`);
+    }
     if (typeof b.entrance === "string") {
       const e = known.entrances.get(b.entrance);
       if (!e) report(`binds.entrance "${b.entrance}" is not a dungeon or raid entrance in the game files`);
       else if (e.raid !== (fm.type === "raid")) report(`binds.entrance "${b.entrance}" is a ${e.raid ? "raid" : "dungeon"}, but the page type is ${fm.type}`);
     }
     if (typeof b.zone === "number" && !known.zones.has(b.zone)) report(`binds.zone ${b.zone} is not a released zone in the game files`);
-    if (typeof b.itemSet === "number") {
-      if (b.itemSet >= SHOWN_MAX_SET_ID) report(`binds.itemSet ${b.itemSet} is above the shown range (below ${SHOWN_MAX_SET_ID})`);
-      else if (!known.itemSets.has(b.itemSet)) report(`binds.itemSet ${b.itemSet} is not an item set in the game files`);
-    }
+    if (typeof b.itemSet === "number" && !known.itemSets.has(b.itemSet)) report(`binds.itemSet ${b.itemSet} is not an item set in the game files`);
     for (const c of Array.isArray(b.changes) ? (b.changes as string[]) : []) if (!known.changes.has(c)) report(`binds.changes "${c}" is not an entry on /changes`);
   }
 
@@ -230,10 +234,7 @@ function checkPage(p: CheckedPage, ctx: CheckContext, bySlug: ReadonlyMap<string
 function tokenProblem(kind: string, id: number, known: KnownData): string | null {
   switch (kind) {
     case "item":
-      if (id >= SHOWN_MAX_ITEM_ID) return `is above the shown item range (below ${SHOWN_MAX_ITEM_ID})`;
       return known.items.has(id) ? null : "is not an item in the game files";
-    case "quest":
-      return id >= SHOWN_MAX_QUEST_ID ? `is above the shown quest range (below ${SHOWN_MAX_QUEST_ID})` : null;
     case "zone":
       return known.zones.has(id) ? null : "is not a released zone in the game files";
     default:

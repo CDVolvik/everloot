@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
+import { webApplicationJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { guildFactsFromRecords, handleGuildBoard } from "../../../../../kb/src/guild-board";
@@ -8,6 +10,9 @@ import { trailFor } from "@/lib/breadcrumbs";
 import { Card, Container, Disclosure, EmptyState, Field, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
+
+const HEADING = "Guild board";
+const lede = "Roster, bosses, loot and item level from officer uploads; a figure is public when two of them agree.";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Guild Board", description: "Officer-published WoW: Forever guild roster, progression, loot and item level. A figure is public only when two uploads agree.", path: "/tools/guild-board" }),
@@ -33,10 +38,11 @@ export default async function GuildBoardPage(
 
   return (
     <Container>
+      <JsonLd data={webApplicationJsonLd({ name: HEADING, path: "/tools/guild-board", description: lede })} />
       <PageHeader
         trail={trailFor("/tools/guild-board")!}
-        title="Guild board"
-        lede="Roster, bosses, loot and item level from officer uploads; a figure is public when two of them agree."
+        title={HEADING}
+        lede={lede}
         meta={<span>{corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}</span>}
         actions={<Link href="/guilds/olympus" className="btn">Olympus family record</Link>}
       />

@@ -20,6 +20,9 @@ export const gold = (copper: number | null) => {
 // IPC wraps a thrown error as "Error invoking remote method 'x': Error: ..."; the page shows only the reason.
 export const msg = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']*': /, "").replace(/^(?:Type)?Error: /, "");
 
+/** What an answer's Copy button says: how the last press went, on that answer only, until the feedback runs out. */
+export const copyLabel = (index: number, copied: { index: number; label: string } | null) => (copied?.index === index ? copied.label : "Copy");
+
 export function statusText(j: JobStatus): string {
   switch (j.state) {
     case "off": return "Off";

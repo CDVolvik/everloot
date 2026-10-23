@@ -6,14 +6,15 @@ import { filterItems, describe } from "../../../kb/src/item-taxonomy";
 import { attribution } from "./data-guard";
 import { gameDataNotice, loadEdges } from "./edges";
 import { CLIENT_TAXONOMY as T } from "./items";
+import { published, publicInstallSecret } from "./public-install";
 import { computeRollups } from "./rollup-compute";
 import { uploadStore } from "./upload-store";
 
 /**
  * The bulk export: the published data as files, one newline-delimited JSON file per dataset plus an
  * index.json (`bulkIndex` in the protocol). Every row is exactly a row the JSON API serves, read through
- * the same loaders, so the export can never hold a row the API would not: records leave without their
- * install id, drops and edges follow the three-install rule, items carry the game-file notice. A file
+ * the same loaders, so the export can never hold a row the API would not: records leave with a per-install
+ * pseudonym in place of the install id, drops and edges follow the three-install rule, items carry the game-file notice. A file
  * whose data was unreachable is left out and the index says so through `dataAsOf`; absent is not empty.
  */
 
@@ -24,22 +25,16 @@ interface Dataset {
   rows: Row[];
 }
 
-/** What leaves the site: the same record without the install id (as /api/corpus/public). */
-function published<T extends object>(record: T): Omit<T, "installId"> {
-  const copy = { ...record } as Record<string, unknown>;
-  delete copy.installId;
-  return copy as Omit<T, "installId">;
-}
-
 async function datasets(): Promise<{ sets: Dataset[]; dataAsOf: string | null }> {
   const sets: Dataset[] = [];
   const corpus = await uploadStore.loadCorpus();
   const dataAsOf = corpus.unreachable ? null : (corpus.dataAsOf ?? null);
   if (!corpus.unreachable) {
     const wanted = new Set<string>(PUBLIC_RECORD_KINDS);
+    const secret = publicInstallSecret();
     sets.push({
       file: { name: "corpus.ndjson", dataset: "corpus", format: "ndjson", rowsOf: "corpusPublicResponse", field: "records", data: "observed", attribution: attribution("/database"), gameData: null },
-      rows: corpus.records.filter((r) => wanted.has(r.kind)).map((r) => published(r) as Row),
+      rows: corpus.records.filter((r) => wanted.has(r.kind)).map((r) => published(r, secret) as Row),
     });
     const { rates, measuredZeros, stats } = await computeRollups();
     if (!stats.unreachable) {

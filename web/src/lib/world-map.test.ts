@@ -200,6 +200,12 @@ describe("player-observed points", () => {
     expect(JSON.stringify(continentCandidates(0, observedFacts(records), false, data))).not.toMatch(/npcId|"x"|installId|"a"/);
   });
 
+  test("an interaction position is read like the NPC's own: a candidate at one install, a pin at three, on the 0 to 100 scale", () => {
+    const at = (installId: string) => ({ ...sighting(installId, 40, 1429), positionKind: "interaction", role: "questgiver", level: undefined, reaction: undefined });
+    expect(continentCandidates(0, observedFacts([at("a")]), false, data)).toEqual([{ category: "npc", mapId: 1429, count: 1 }]);
+    expect(continentPins(0, observedFacts(["a", "b", "c"].map(at)), false, data)).toMatchObject([{ npcId: 40, zoneX: 40, zoneY: 60, reporters: 3 }]);
+  });
+
   test("a held-back zone's candidates count only with spoilers on", () => {
     const records = [sighting("a", 30, 2482)];
     expect(continentCandidates(1, observedFacts(records), false, data)).toEqual([]);
@@ -234,5 +240,12 @@ describe("flights on the map", () => {
       for (const z of WORLD_MAP.heldBackZones) expect(names).not.toContain(z.name);
     }
     expect(continentFlights(1, true).masters.some((m) => /Hyjal/.test(m.name))).toBe(true);
+  });
+
+  test("the real file holds back exactly the masters on held-back ground, not ones under a held-back rectangle", () => {
+    const held = [0, 1].flatMap((c) => continentFlights(c, true).masters.filter((m) => m.heldBack).map((m) => m.name)).sort();
+    // Talonbranch Glade stands on Felwood's ground, inside Mount Hyjal's rectangle: it is not a spoiler.
+    expect(held).toEqual(["Farholde Keep, Riverglades", "Powderfuse Port, Riverglades", "Rog'mar, Riverglades", "Summit of Eternity, Mount Hyjal", "Tainted Foothills, Mount Hyjal"]);
+    expect(continentFlights(1).masters.map((m) => m.name)).toContain("Talonbranch Glade, Felwood");
   });
 });

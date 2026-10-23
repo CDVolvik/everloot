@@ -1,7 +1,7 @@
 {
   "$id": "https://everloot.app/schema/mcp/object_page.json",
   "title": "Game object page",
-  "description": "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
+  "description": "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. The name is shown when 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.",
   "annotations": {
     "readOnlyHint": true,
     "openWorldHint": false
@@ -51,6 +51,12 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "drops": {
             "type": "array",
@@ -129,10 +135,66 @@
           "queued": {
             "type": "boolean",
             "description": "Observations exist but fewer than 3 installs reported them."
+          },
+          "pendingLoot": {
+            "type": "object",
+            "properties": {
+              "windows": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Reported loot windows not yet in the rates."
+              },
+              "reporters": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Distinct reporters behind those windows."
+              }
+            },
+            "required": [
+              "windows",
+              "reporters"
+            ],
+            "additionalProperties": false,
+            "description": "Loot windows reported but not yet in the rates. Absent when there are none."
+          },
+          "pins": {
+            "description": "Where players saw the object on the minimap, at its own position; a pin needs 3 installs at one spot. Absent when there is none.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mapId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "reporters": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "mapId",
+                "x",
+                "y",
+                "reporters"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
           "objectId",
+          "name",
           "drops",
           "zero",
           "queued"

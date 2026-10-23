@@ -4,7 +4,7 @@ import {
   assetUrl, BANNER_MAP, buildFolder, classAndProfessionIcons, continentArt, creditWhat, emblems, FETCH_TIMEOUT_MS, forgetPrivateReads, iconUrl,
   instanceThumbs, itemIconUrl, itemShard, itemTip, gameNameFor, launchArt, loadingArt, loadItemNames, loadItemSetNames, loadItemTips, loadQuestNames, loadSpellNames, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
 } from "./game-assets";
-import { itemTipText, qualityColor } from "./item-names";
+import { itemTipText, qualityColor, tipLines, WHY } from "./item-names";
 import { cameraBox, zoneArtShown, ZONE_ART_ZOOM, type Box, type Camera } from "./map-view";
 import { itemIndex, memoryStore, shard0, siteManifest } from "./game-assets.fixture";
 
@@ -133,7 +133,7 @@ test("the private bucket needs all four server-only variables, signs its reads, 
 
 test("an item tooltip reads like the game's and marks the stat amounts the tables do not give", () => {
   const text = itemTipText(shard0["25"]);
-  expect(text.lines).toEqual(["Binds when equipped", "Unique", "One-Hand · Sword", "Speed 1.90", "+[?] Stamina", "+[?] Strength", "Requires Level 5", "Item Level 2", '"Old."', "Sell Price: 7c"]);
+  expect(text.lines).toEqual(["Binds when equipped", "Unique", "One-Hand · Sword", "[?] - [?] Damage · Speed 1.90", "([?] damage per second)", "+[?] Stamina", "+[?] Strength", "Requires Level 5", "Item Level 2", '"Old."', "Sell Price: 7c"]);
   expect(text.partial).toBe(true);
   expect(itemTipText(shard0["9"]).partial).toBe(false);
   // A stat kind without a word is left out, not printed as "unknown stat 51".
@@ -142,6 +142,53 @@ test("an item tooltip reads like the game's and marks the stat amounts the table
   expect(odd.partial).toBe(false);
   expect(qualityColor(3)).toMatch(/^#/);
   expect(itemTip(shard0["9"], { base: BASE, version: "v", label: "l" }).color).toBe(qualityColor(1));
+});
+
+test("every placeholder kind comes with its reason in plain words, once", () => {
+  expect(itemTipText(shard0["25"]).why).toEqual([WHY.stats, WHY.damage]);
+  expect(itemTipText(shard0["9"]).why).toEqual([]);
+  expect(itemTipText({ ...shard0["9"], c: 4, sc: 1, s: 20 }).why).toEqual([WHY.armor]);
+  expect(tipLines(itemTipText(shard0["25"])).slice(-2)).toEqual([WHY.stats, WHY.damage]);
+  for (const line of Object.values(WHY)) expect(line).toMatch(/^\[\?\] .+: .+\.$/);
+});
+
+test("the set, the Unique-Equipped category, the restrictions and the effects print where the game prints them", () => {
+  const helm = {
+    ...shard0["9"], c: 4, sc: 4, s: 1, r: 60, l: 66, u: 1, t: "Shiny.",
+    is: { id: 1, n: "Synthetic Battlegear" }, lc: "Unique-Equipped: Synthetic Signet (1)",
+    cr: ["Classes: Warrior"], rq: ["Requires Synthetic Guild - Honored"], fx: ["Equip: Synthetic effect.", "Use: Restores [?] health."],
+  };
+  const text = itemTipText(helm);
+  expect(text.lines).toEqual([
+    "Unique-Equipped: Synthetic Signet (1)", "Head · Plate", "[?] Armor", "Classes: Warrior", "Requires Level 60", "Requires Synthetic Guild - Honored",
+    "Item Level 66", "Equip: Synthetic effect.", "Use: Restores [?] health.", "Set: Synthetic Battlegear", '"Shiny."', "Sell Price: 13c",
+  ]);
+  expect(text.why).toEqual([WHY.armor, WHY.effect]);
+  // A requirement the files do not name is marked and explained; so is a set without a name.
+  expect(itemTipText({ ...helm, rq: ["Requires PvP rank [?]"], is: { id: 2, n: null } }).why).toEqual([WHY.armor, WHY.restriction, WHY.effect, WHY.set]);
+});
+
+test("a record from an older shard says its restrictions, set and effects are not known, rather than that it has none", () => {
+  const older = { ...shard0["9"], cr: undefined, rq: undefined, fx: undefined };
+  const text = itemTipText(older);
+  expect(text.lines).toEqual(expect.arrayContaining(["Restrictions: [?]", "Set: [?]", "Equip and Use: [?]"]));
+  expect(text.why).toEqual([WHY.older]);
+  expect(text.partial).toBe(true);
+  // An empty list from a newer shard is "none": no placeholder.
+  expect(itemTipText(shard0["9"]).lines.join(" ")).not.toContain("[?]");
+});
+
+test("a weapon with no stats still marks its damage, and worn armor its armor value, as not in the tables", () => {
+  const plain = itemTipText({ ...shard0["25"], st: [], b: 0, u: 0, r: 1, t: undefined });
+  expect(plain.lines).toEqual(["One-Hand · Sword", "[?] - [?] Damage · Speed 1.90", "([?] damage per second)", "Item Level 2", "Sell Price: 7c"]);
+  expect(plain.partial).toBe(true);
+  const chest = { ...shard0["9"], c: 4, sc: 1, s: 20 };
+  expect(itemTipText(chest).lines.slice(0, 2)).toEqual(["Chest · Cloth", "[?] Armor"]);
+  expect(itemTipText(chest).partial).toBe(true);
+  // A shirt, a ring (armor subclass 0) and a libram carry no armor line, and nothing else gets a damage line.
+  for (const r of [{ ...chest, s: 4 }, { ...chest, sc: 0, s: 11 }, { ...chest, sc: 7, s: 28 }, { ...shard0["9"], d: 1500 }]) {
+    expect(itemTipText(r).lines.join(" ")).not.toMatch(/Armor|Damage|damage per second/);
+  }
 });
 
 test("the raid builder's icons match the buff table: trees by name, not position, and families by their spells", () => {
@@ -255,14 +302,16 @@ test("the shown item names come from one private file for the client layer's bui
   const names = await loadItemNames("1.60.1.70450", BASE, store);
   expect(store.reads).toEqual([`${FOLDER}/item-names.json`]);
   expect(names?.wiki).toEqual({ name: namesFile.wiki.name, url: "https://warcraft.wiki.gg" });
-  expect(names?.names.get(19019)).toEqual({ name: "Thunderfury, Blessed Blade of the Windseeker", color: qualityColor(5), wikiPage: "https://warcraft.wiki.gg/wiki/Thunderfury,_Blessed_Blade_of_the_Windseeker" });
+  expect(names?.names.get(19019)).toEqual({ name: "Thunderfury, Blessed Blade of the Windseeker", color: qualityColor(5), wikiPage: "https://warcraft.wiki.gg/wiki/Thunderfury,_Blessed_Blade_of_the_Windseeker", source: "wiki" });
   expect(names?.names.has(9)).toBe(false);
 });
 
-test("the reader applies the id cap and the placeholder rule again, whatever the file holds", async () => {
-  const file = { ...namesFile, count: 4, names: { ...namesFile.names, 191666: { n: "Skeletal Steed", q: 4, w: "Skeletal_Steed" }, 883: { n: "Deprecated Fire Eyed Skull", q: 1, w: "Deprecated_Fire_Eyed_Skull" } } };
+test("every id shows; a name without a wiki page is the game files' alone, and one without a quality is common", async () => {
+  const file = { ...namesFile, count: 4, names: { ...namesFile.names, 191666: { n: "Skeletal Steed", q: 4 }, 883: { n: "Deprecated Fire Eyed Skull", w: "Deprecated_Fire_Eyed_Skull" } } };
   const names = await loadItemNames("1.60.1.70450", BASE, memoryStore({ [`${FOLDER}/item-names.json`]: file }));
-  expect([...names!.names.keys()].sort((a, b) => a - b)).toEqual([2589, 19019]);
+  expect([...names!.names.keys()].sort((a, b) => a - b)).toEqual([883, 2589, 19019, 191666]);
+  expect(names!.names.get(191666)).toEqual({ name: "Skeletal Steed", color: qualityColor(4), wikiPage: null, source: "files" });
+  expect(names!.names.get(883)).toEqual({ name: "Deprecated Fire Eyed Skull", color: qualityColor(1), wikiPage: "https://warcraft.wiki.gg/wiki/Deprecated_Fire_Eyed_Skull", source: "wiki" });
 });
 
 test("without the file, the bucket or the asset URL, or with a file for another build or of another kind, no names show", async () => {
@@ -284,13 +333,16 @@ const questFile = {
 const setFile = { schema: "everloot.item-set-names/1", build: { version: "1.60.1.70450" }, count: 2, names: { 1: "The Gladiator", 1570: "Twilight Invoker's Vestments" } };
 const spellFile = { schema: "everloot.spell-names/1", build: { version: "1.60.1.70450" }, count: 3, names: { 3275: "Linen Bandage", 16633: "Create Item Visual (DND)", 1316597: "Stock Crate" } };
 
-test("quest titles, set names and spell names each come from their own private file, with the rule applied again", async () => {
+test("quest titles, set names and spell names each come from their own private file, every id the file names", async () => {
   const store = memoryStore({ [`${FOLDER}/quest-names.json`]: questFile, [`${FOLDER}/item-set-names.json`]: setFile, [`${FOLDER}/spell-names.json`]: spellFile });
   const quests = await loadQuestNames("1.60.1.70450", BASE, store);
   expect(quests?.wiki).toEqual({ name: namesFile.wiki.name, url: "https://warcraft.wiki.gg" });
-  expect([...quests!.names]).toEqual([[176, { name: "Wanted: Hogger", wikiPage: "https://warcraft.wiki.gg/wiki/Wanted:_Hogger" }]]);
-  expect([...(await loadItemSetNames("1.60.1.70450", BASE, store))!.names]).toEqual([[1, "The Gladiator"]]);
-  expect([...(await loadSpellNames("1.60.1.70450", BASE, store))!.names]).toEqual([[3275, "Linen Bandage"]]);
+  expect([...quests!.names]).toEqual([
+    [176, { name: "Wanted: Hogger", wikiPage: "https://warcraft.wiki.gg/wiki/Wanted:_Hogger" }],
+    [65593, { name: "Hearts of the Lovers", wikiPage: "https://warcraft.wiki.gg/wiki/Hearts_of_the_Lovers" }],
+  ]);
+  expect([...(await loadItemSetNames("1.60.1.70450", BASE, store))!.names]).toEqual([[1, "The Gladiator"], [1570, "Twilight Invoker's Vestments"]]);
+  expect([...(await loadSpellNames("1.60.1.70450", BASE, store))!.names]).toEqual([[3275, "Linen Bandage"], [16633, "Create Item Visual (DND)"], [1316597, "Stock Crate"]]);
   expect(store.reads).toEqual([`${FOLDER}/quest-names.json`, `${FOLDER}/item-set-names.json`, `${FOLDER}/spell-names.json`]);
 });
 

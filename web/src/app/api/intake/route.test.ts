@@ -104,6 +104,19 @@ describe("POST /api/intake", () => {
     expect(await response.json()).toMatchObject({ ok: false });
   });
 
+  test.each([["a NUL", "install-\u00001234"], ["half a character pair", "install-\ud8001234"]])(
+    "an install id with %s is refused before anything is written: the index cannot store it",
+    async (_, installId) => {
+      const POST = await freshPost();
+      const response = await POST(request({ addonVersion: "0.1.0", records: [loot(installId)] }));
+
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({ ok: false, error: "This install id holds a character the store cannot keep." });
+      expect(store.installQuota).not.toHaveBeenCalled();
+      expect(store.putUpload).not.toHaveBeenCalled();
+    },
+  );
+
   test("a valid envelope with no accepted row is refused and writes nothing", async () => {
     const POST = await freshPost();
     const response = await POST(request({ addonVersion: "0.1.0", records: [{ ...loot("install-1234"), capturedAt: "nope" }] }));
@@ -535,6 +548,19 @@ describe("player rows in an upload", () => {
     expect(players.upsert.mock.calls[0]![0]).toHaveLength(1000);
     expect(capped.rejected).toHaveLength(1);
     expect(capped.rejected[0].reason).toMatch(/at most 1000/);
+  });
+
+  test("a row the players table would refuse is dropped with a reason, and the other rows still go", async () => {
+    vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+    const POST = await freshPost();
+    // "a-" is a realm the protocol allows, but its key is one character and the table wants two.
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Thrallina", { realm: "a-" }), player("Throgar"), canonicalLoot] }));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.rejected).toHaveLength(1);
+    expect(body.rejected[0].reason).toMatch(/cannot be stored/);
+    expect(players.upsert.mock.calls[0]![0].map((r: { name: string }) => r.name)).toEqual(["Throgar"]);
+    expect(store.putUpload.mock.calls[0]![2].records.map((r: { kind: string }) => r.kind)).toEqual(["loot"]);
   });
 
   test("when the table cannot be written the upload is not confirmed and the player can retry", async () => {

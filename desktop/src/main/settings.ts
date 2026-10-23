@@ -12,6 +12,7 @@ export function defaultSettings(): Settings {
     upload: true,
     prices: true,
     census: true,
+    players: false,
     ask: { enabled: false, mcpUrl: `${DEFAULT_ENDPOINT}/mcp`, tokenFile: null },
     market: { realms: [] },
     consentedAt: null,
@@ -42,6 +43,7 @@ export function mergeSettings(base: Settings, patch: unknown): Settings {
     upload: bool(p.upload, base.upload),
     prices: bool(p.prices, base.prices),
     census: bool(p.census, base.census),
+    players: bool(p.players, base.players),
     ask: {
       enabled: bool(ask.enabled, base.ask.enabled),
       mcpUrl: isHttp(ask.mcpUrl) ? ask.mcpUrl : base.ask.mcpUrl,

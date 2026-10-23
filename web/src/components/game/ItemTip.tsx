@@ -2,12 +2,13 @@
 
 import { cloneElement, isValidElement, useEffect, useId, useState, type ReactElement } from "react";
 import type { ItemTip as Tip } from "@/lib/game-assets";
-import TalentTooltip from "@/components/talents/TalentTooltip";
+import { CardPopup, GameCard } from "./GameCard";
 import GameIcon from "./GameIcon";
 
 // An item link with the item's icon in front and the game's tooltip on hover and keyboard focus
-// (Escape closes it), drawn by the talent calculator's tooltip. The link keeps its own text. The
-// tooltip text is also the link's description, so a screen reader gets it without hovering.
+// (Escape closes it), in the same card as every other database link (HoverCards), from the tooltip the
+// page already has. The link keeps its own text. The tooltip text is also the link's description, so a
+// screen reader gets it without hovering. Touch gets no card: a tap goes to the page.
 // Without a tip (no asset URL, or no record for the item) the link is returned exactly as it was.
 
 export default function ItemTip({ tip, size = 20, children }: { tip: Tip | null | undefined; size?: number; children: ReactElement }) {
@@ -18,35 +19,33 @@ function Tipped({ tip, size, children }: { tip: Tip; size: number; children: Rea
   const id = useId();
   const anchorId = `item${id}`;
   const descId = `${anchorId}-desc`;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<{ anchor: HTMLElement; x: number | null } | null>(null);
   // Escape closes it however it opened: a tooltip opened by hovering has no focus inside it to catch the key.
   useEffect(() => {
     if (!open) return;
-    const close = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const close = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(null); };
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
   }, [open]);
   const link = isValidElement<{ "aria-describedby"?: string }>(children) ? cloneElement(children, { "aria-describedby": descId }) : children;
+  const lines = [...tip.lines, ...tip.why];
   return (
     <span
       id={anchorId}
       className="inline-flex items-center gap-1.5 align-middle"
       data-item-tip
-      onPointerEnter={() => setOpen(true)}
-      onPointerLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      onPointerEnter={(e) => { if (e.pointerType !== "touch") setOpen({ anchor: e.currentTarget, x: e.clientX }); }}
+      onPointerLeave={() => setOpen(null)}
+      onFocus={(e) => setOpen({ anchor: e.currentTarget, x: null })}
+      onBlur={() => setOpen(null)}
     >
       {tip.icon && <GameIcon src={tip.icon} size={size} />}
       {link}
       <span id={descId} hidden>{[`${tip.name}, ${tip.quality}`, ...tip.lines, tip.label].join(". ")}</span>
       {open && (
-        <TalentTooltip
-          anchorId={anchorId}
-          id={`${anchorId}-tip`}
-          titleColor={tip.color}
-          content={{ title: tip.name, rank: null, text: tip.lines.join("\n") || null, partial: tip.partial, lock: null, label: tip.label }}
-        />
+        <CardPopup anchor={open.anchor} x={open.x} id={`${anchorId}-tip`} icon={Boolean(tip.icon)}>
+          <GameCard card={{ title: tip.name, color: tip.color, icon: tip.icon, lines, foot: tip.label }} />
+        </CardPopup>
       )}
     </span>
   );

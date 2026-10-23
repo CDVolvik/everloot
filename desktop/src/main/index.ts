@@ -411,6 +411,7 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("chatInfo", () => chat.info());
   ipcMain.handle("chatSend", (e, text: unknown) => (typeof text === "string" ? chat.send(text, (p) => { if (!e.sender.isDestroyed()) e.sender.send("chatProgress", p); }) : chat.info()));
   ipcMain.handle("chatClear", () => chat.clear());
+  ipcMain.handle("chatStop", () => chat.stop());
   ipcMain.handle("chatSetProvider", (_e, raw: unknown) => {
     const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
     if (!presetFor(String(c.kind))) throw new Error("Pick a provider");
@@ -422,6 +423,7 @@ if (!app.requestSingleInstanceLock()) {
     if (!presetFor(String(kind)) || typeof model !== "string") throw new Error("Pick a model");
     return chat.useModel(kind as ProviderKind, model.slice(0, 200));
   });
+  ipcMain.handle("chatModels", (_e, kind: unknown) => (presetFor(String(kind)) ? chat.models(kind as ProviderKind) : null));
 
 
   // A stray rejection or exception becomes a line on the Log page instead of Electron's dialog; the jobs keep running.

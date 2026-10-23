@@ -77,12 +77,12 @@ function agreed(kind: "item" | "npc" | "quest", names: Map<number, string>, q: s
   return { results: out, total: out.length };
 }
 
-/** Objects have no names in uploads yet: an id that has public loot observations is the only way to one. */
-async function objectById(id: number | null): Promise<SearchResult[]> {
+/** An object is found by its id when it has public loot observations; its name is the agreed one, if any. */
+async function objectById(id: number | null, names: Map<number, string>): Promise<SearchResult[]> {
   if (id === null) return [];
   const facts = await loadObjectFacts();
   return !facts.unreachable && objectList(facts).some((o) => o.objectId === id)
-    ? [{ label: `Object ${id}`, href: entityHref("object", id), note: `id ${id}`, exact: true, id }] : [];
+    ? [{ label: names.get(id) ?? `Object ${id}`, href: entityHref("object", id), note: `id ${id}`, exact: true, id }] : [];
 }
 
 /**
@@ -101,7 +101,7 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT, names
 
   const names = given ?? await loadNames();
   for (const kind of ["item", "npc", "quest"] as const) if (want(kind)) found.set(kind, agreed(kind, names[`${kind}s`], q, id));
-  if (want("object")) { const objects = await objectById(id); found.set("object", { results: objects, total: objects.length }); }
+  if (want("object")) { const objects = await objectById(id, names.objects); found.set("object", { results: objects, total: objects.length }); }
 
   if (!only) {
     // Achievements, factions, titles and quest chains three players reported, by name or id; none when the rollup cannot be read.
@@ -159,11 +159,25 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT, names
       return { type, heading: HEADINGS[type], results: f.results.slice(0, limit).map(strip), total: f.total };
     })
     .filter((g) => g.results.length > 0)
-    // Stable: groups with an exact hit move up, the rest keep their order. The lore archive (Warcraft Wiki copies)
-    // keeps its place after Everloot's own pages even on an exact name: the Forever record comes first.
-    .map((g, i) => ({ g, i, exact: g.type !== "lore" && g.results.some((r) => r.exact) }))
-    .sort((a, b) => Number(b.exact) - Number(a.exact) || a.i - b.i)
+    .map((g, i) => ({ g, i, tier: tier(g) }))
+    .sort((a, b) => a.tier - b.tier || a.i - b.i)
     .map(({ g }) => g);
+}
+
+/** The things a player meets in the game: their groups lead the page. */
+const GAME: ReadonlySet<SearchType> = new Set(["item", "npc", "quest", "object", "zone"]);
+const DATABASE: ReadonlySet<SearchType> = new Set([...GAME, "achievement", "faction", "title", "chain"]);
+
+/**
+ * Where a group sits, lowest first; the order above within a tier. An exact name or id on a game entry leads,
+ * then any other exact hit, then the game entries, then the rest of the database. The lore archive (Warcraft
+ * Wiki copies) comes after every database group, even on an exact name: the Forever record comes first.
+ */
+function tier(g: SearchGroup): number {
+  const exact = g.results.some((r) => r.exact);
+  if (g.type === "lore") return 4;
+  if (exact) return GAME.has(g.type) ? 0 : 1;
+  return GAME.has(g.type) ? 2 : DATABASE.has(g.type) ? 3 : 5;
 }
 
 /** Drops the internal rank from a result. */
@@ -191,7 +205,7 @@ export async function suggest(raw: string, scope?: Scope, names?: Names): Promis
   const ranked: { s: Suggestion; r: number; t: number }[] = [];
   for (const [t, type] of order.entries()) {
     if (type === "object") {
-      for (const o of await objectById(id)) ranked.push({ s: { type, id: o.id!, label: o.label, href: o.href }, r: -1, t });
+      for (const o of await objectById(id, all.objects)) ranked.push({ s: { type, id: o.id!, label: o.label, href: o.href }, r: -1, t });
       continue;
     }
     for (const x of agreed(type, all[`${type}s`], q, id).results.slice(0, SUGGEST_LIMIT)) {

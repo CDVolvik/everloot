@@ -10,7 +10,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Your Everloot account",
-  description: "What an Everloot account is for today, how to sign in, and how to make and revoke API keys.",
+  description: "What an Everloot account is for today, how to sign in with Battle.net or email, what your account page shows, and how to make, roll and revoke API keys.",
   path: "/docs/guides/account",
 });
 
@@ -65,7 +65,10 @@ export default function Page() {
           and a link to change your password if you signed up with one.{profiles && <> Your handle, display name and status are edited on <Link href="/settings" className={docLink}>Settings</Link>.</>}
         </li>
         <li><strong>API keys.</strong> Your keys, described below.</li>
-        <li><strong>Chat keys.</strong> The keys Chat uses to answer with your own model. They stay in that browser and never reach Everloot.</li>
+        <li>
+          <strong>Chat keys.</strong> One card per provider Chat supports, with its key, its model and a Test button, and the
+          provider Chat uses by default. The keys stay in that browser and never reach Everloot.
+        </li>
         <li><strong>Data and privacy.</strong> What we keep, where you delete each part, and how to delete your account.</li>
       </List>
 
@@ -76,11 +79,18 @@ export default function Page() {
         which also says how to send a key.
       </P>
       <List>
-        <li>Make a key on your account page. You can give it a label, such as what it is for, up to 60 characters.</li>
+        <li>
+          Choose <strong>Create API key</strong> on your account page. Give it a name, say in a sentence what it is for, pick
+          its permissions and pick when it expires: 7, 30 or 90 days, a year, or a date of your own. 90 days is a good default.
+        </li>
         <li>A key starts with <C>evl_</C>. It is shown once, when you make it, so copy it then. We store only a one-way hash of it.</li>
-        <li>You can have {KEYS_PER_ACCOUNT} keys at a time. Revoke one to make another.</li>
-        <li>The list shows the last four characters of each key, its label, when it was made and when it was last used.</li>
-        <li>Revoking a key stops it at once.</li>
+        <li>You can have {KEYS_PER_ACCOUNT} active keys at a time. Revoke one to make another; expired keys do not count.</li>
+        <li>
+          The list shows each key&apos;s name, what it is for, its last four characters, its permissions, when it was made,
+          when it expires and when it was last used.
+        </li>
+        <li>Revoking a key stops it at once. So does reaching its end date.</li>
+        <li><strong>Roll</strong> gives a key a new secret with the same name, permissions and lifetime, and stops the old one.</li>
         {builds && <li>A key made with <strong>Read my saved builds</strong> can also read your saved builds. The Desktop App uses one to put your builds in the game.</li>}
       </List>
       <Callout kind="warning">

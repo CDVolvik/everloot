@@ -1,7 +1,7 @@
 {
   "$id": "https://everloot.app/schema/mcp/world_map_near.json",
   "title": "What is near a place on the map",
-  "description": "Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.",
+  "description": "Entrances, NPCs, vendors and treasures near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files; one is confirmed once 3 installs zoned in from it. NPCs, vendors and treasures are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Reads Everloot's current authorized public corpus when connected.",
   "annotations": {
     "readOnlyHint": true,
     "openWorldHint": false
@@ -95,7 +95,7 @@
             "maximum": 9007199254740991
           },
           "entrances": {
-            "description": "From the game files, found in game files, unconfirmed. Nearest first.",
+            "description": "From the game files, found in game files, unconfirmed unless confirmed is set. Nearest first.",
             "type": "array",
             "items": {
               "type": "object",
@@ -117,6 +117,12 @@
                 },
                 "yards": {
                   "type": "number"
+                },
+                "confirmed": {
+                  "description": "Installs that zoned in from this entrance, once 3 agree on it; absent until then.",
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
                 }
               },
               "required": [
@@ -222,6 +228,59 @@
               },
               "required": [
                 "npcId",
+                "name",
+                "mapId",
+                "zoneName",
+                "x",
+                "y",
+                "yards",
+                "reporters"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "treasures": {
+            "description": "Game objects players saw on the minimap at their own position, such as treasure chests; a pin needs 3 installs at one spot.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "objectId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mapId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "zoneName": {
+                  "type": "string"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "yards": {
+                  "type": "number"
+                },
+                "reporters": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "objectId",
                 "name",
                 "mapId",
                 "zoneName",

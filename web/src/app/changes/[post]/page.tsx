@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import { Container } from "@/components/ui";
 import { longDate } from "@/data/wow-forever";
-import { GAME_LABEL, TYPE_LABEL, loadTimeline, loadWriteups, postIdOfSegment, postPath, type BlueWriteup, type ChangeEntry } from "@/lib/changes";
+import { GAME_LABEL, TYPE_LABEL, loadTimeline, loadWriteups, postIdOfSegment, postPath, writeupFor, type BlueWriteup, type ChangeEntry } from "@/lib/changes";
 import { loadSiteAssets } from "@/lib/game-assets";
 import { blueWriteupJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
@@ -39,14 +39,19 @@ const isPost = (e: ChangeEntry) => e.type !== "build" && postPath(e) !== null;
 
 interface Found { entry: ChangeEntry; all: ChangeEntry[]; path: string; writeup: BlueWriteup | null }
 
+/** The announcement an address names. A regional copy's address finds the announcement, whose page is the one shown. */
 function find(segment: string): Found | null {
   const id = postIdOfSegment(segment);
   if (!id) return null;
   const all = loadTimeline();
-  const entry = all.find((e) => e.id === id && e.type !== "build");
+  const entry = all.find((e) => e.type !== "build" && (e.id === id || e.copies?.some((c) => c.id === id)));
   if (!entry) return null;
-  return { entry, all, path: postPath(entry)!, writeup: loadWriteups().get(id) ?? null };
+  return { entry, all, path: postPath(entry)!, writeup: writeupFor(entry, loadWriteups()) };
 }
+
+/** "on the EU forum", or "in a second thread on the US forum" for a repeat on the same forum. */
+const copyPlace = (entry: ChangeEntry, copy: ChangeEntry) =>
+  copy.source === "forum" && copy.region === entry.region ? `in a second thread on the ${sourceLabel(copy)}` : `on the ${sourceLabel(copy)}`;
 
 /** The search snippet: our write-up's opening when there is one, else what the page is, in our words. */
 function describe({ entry, writeup }: Found): string {
@@ -110,6 +115,7 @@ export default async function BluePostPage(props: Props) {
   const sameDay = others.filter((e) => e.at.slice(0, 10) === day).slice(0, RELATED);
   const authorHref = `/changes?${new URLSearchParams([...(entry.game === "classic" ? [["game", "classic"]] : []), ["author", entry.author ?? ""]]).toString()}`;
   const where = entry.source === "bluesky" ? "on Bluesky" : "on Blizzard's forums";
+  const copies = entry.copies ?? [];
 
   return (
     <Container width="reading">
@@ -154,6 +160,18 @@ export default async function BluePostPage(props: Props) {
         {entry.url && (
           <p className="mt-8">
             <a data-original href={entry.url} rel="noopener" className={`${LINK} font-medium`}>Read the full post {where}</a>
+          </p>
+        )}
+        {copies.length > 0 && (
+          <p data-also-posted className="mt-2 text-meta text-fg-2">
+            Also posted{" "}
+            {copies.map((c, i) => (
+              <span key={c.id}>
+                {i > 0 && (i === copies.length - 1 ? " and " : ", ")}
+                {c.url ? <a href={c.url} rel="noopener" className={LINK}>{copyPlace(entry, c)}</a> : copyPlace(entry, c)}
+              </span>
+            ))}
+            .
           </p>
         )}
 
