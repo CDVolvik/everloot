@@ -35,6 +35,11 @@ test("breadcrumbs go from Home to the page and never through /tools", () => {
   expect(trailFor("/tools/talents/notaclass")).toBeNull();
   expect(trailFor("/addons/polestar/packs")?.map((c) => c.path)).toEqual(["/", "/addons", "/addons/polestar", "/addons/polestar/packs"]);
   expect(trailFor("/wow-forever/")?.map((c) => c.path)).toEqual(["/", "/wow-forever"]);
+  expect(trailFor("/map/kalimdor")?.map((c) => c.path)).toEqual(["/", "/map", "/map/kalimdor"]);
+  expect(trailFor("/map/eastern-kingdoms")?.map((c) => c.name)).toEqual(["Home", "World map", "Eastern Kingdoms"]);
+  expect(trailFor("/database/coverage")?.map((c) => c.path)).toEqual(["/", "/database", "/database/coverage"]);
+  expect(trailFor("/database/download")?.map((c) => c.path)).toEqual(["/", "/database", "/database/download"]);
+  expect(trailFor("/docs")).toEqual([{ name: "Home", path: "/" }, { name: "Docs", path: "/docs" }]);
   for (const path of ["/tools/talents", "/tools/raid", "/lore/npcs", "/database/drops", "/map", "/changes"]) {
     expect(trailFor(path)!.some((c) => c.path === "/tools"), path).toBe(false);
   }
