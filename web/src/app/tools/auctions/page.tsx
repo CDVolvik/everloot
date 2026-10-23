@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import JsonLd from "@/components/JsonLd";
+import { webApplicationJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
 import { crossRealmHref, itemIdParam, realmHref, realmSlug, slugParam } from "@/lib/auction-house";
 import { browseView } from "./browse-view";
@@ -30,5 +32,12 @@ export default async function AuctionHousePage(props: Props) {
   const slug = realmText ? slugParam(realmSlug(realmText)) : null;
   if (slug) redirect(legacyItem ? `${realmHref({ slug })}/${legacyItem}` : realmHref({ slug }));
   if (legacyItem) redirect(crossRealmHref(legacyItem));
-  return browseView({ slug: null, search: Object.fromEntries(Object.entries(searchParams).filter(([k]) => k !== "realm" && k !== "item")) });
+  const view = await browseView({ slug: null, search: Object.fromEntries(Object.entries(searchParams).filter(([k]) => k !== "realm" && k !== "item")) });
+  // The page has no lead line, so the application is described by the meta description. Its name is the H1.
+  return (
+    <>
+      <JsonLd data={webApplicationJsonLd({ name: "Auction House", path: "/tools/auctions", description: DESCRIPTION })} />
+      {view}
+    </>
+  );
 }

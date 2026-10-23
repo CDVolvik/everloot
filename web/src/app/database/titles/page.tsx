@@ -10,7 +10,7 @@ import {
   type ListQuery, type Search,
 } from "../list-parts";
 
-const META = { title: "WoW Forever Title List", description: "Player titles in WoW: Forever. A title is listed once three players report it the same way.", path: "/database/titles" };
+const META = { title: "WoW Forever Title List", description: "Player titles in WoW: Forever by name and title ID, searchable by either. A title is listed once three players report it the same way.", path: "/database/titles" };
 export const dynamic = "force-dynamic";
 
 const SORTS = ["name", "id"] as const;

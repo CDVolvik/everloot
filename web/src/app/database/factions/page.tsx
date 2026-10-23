@@ -10,7 +10,7 @@ import {
   type ListQuery, type Search,
 } from "../list-parts";
 
-const META = { title: "WoW Forever Faction List", description: "Reputation factions in WoW: Forever, by standing header. A faction is listed once three players report it the same way.", path: "/database/factions" };
+const META = { title: "WoW Forever Faction List", description: "Reputation factions in WoW: Forever by name, standing header and faction ID. A faction is listed once three players report it the same way.", path: "/database/factions" };
 export const dynamic = "force-dynamic";
 
 const SORTS = ["name", "header", "id"] as const;
