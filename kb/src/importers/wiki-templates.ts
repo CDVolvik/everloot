@@ -14,6 +14,8 @@ export const REPAIRED_TEMPLATES = [
   "npc", "item", "quest", "spell", "zone", "ability", "race",
   "rep", "faction standing", "patch",
   "horde icon", "horde icon small", "alliance icon", "alliance icon small", "neutral icon", "neutral icon small",
+  "alliance", "horde", "neutral",
+  "wp", "wplink", "au", "alternate universe", "loot", "coppercost", "cv-ah",
   "ss", "for", "stub", "removed",
 ];
 
@@ -75,7 +77,21 @@ function render(inner: string): string | null {
     }
     return positional[positional.length - 1];
   }
-  if (/^(horde|alliance|neutral) icon( small)?$/.test(name)) return REMOVED;
+  // {{wp|Article|label}} links Wikipedia, {{au|Name|label}} the "Name (alternate universe)" page; both show the label or the name.
+  if (["wp", "wplink", "au", "alternate universe"].includes(name)) return positional[1] || positional[0] || "";
+  // {{loot|quality|Item|label}}: the label, else the item name.
+  if (name === "loot") return positional[2] || positional[1] || "";
+  // {{coppercost|86000}}: one copper amount, shown as gold, silver and copper.
+  if (name === "coppercost") {
+    const copper = (positional[0] ?? "").replace(/,/g, "");
+    if (!/^\d+$/.test(copper)) return null;
+    const n = Number(copper);
+    return money([String(Math.floor(n / 10000)), String(Math.floor((n % 10000) / 100)), String(n % 100)]);
+  }
+  // {{cv-AH|Alliance text|Horde text}}: the wiki shows one side by the reader's faction, "A or H" without it.
+  if (name === "cv-ah") return [positional[0], positional[1]].filter(Boolean).join(" or ");
+  // {{Alliance}}, {{Horde}}, {{Neutral}} are the small faction icon alone.
+  if (/^(horde|alliance|neutral)( icon( small)?)?$/.test(name)) return REMOVED;
   if (name === "ss" || name === "for" || name === "removed" || name.startsWith("stub")) return REMOVED;
   return null;
 }

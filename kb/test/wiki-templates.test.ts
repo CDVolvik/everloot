@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import wtf from "wtf_wikipedia";
 import { countDamage, repairTemplates, REPAIRED_TEMPLATES } from "../src/importers/wiki-templates.js";
 
 test("money templates render as gold, silver and copper", () => {
@@ -89,4 +90,51 @@ test("deep nesting stays linear: past the depth cap, braces are kept as text", (
 test("a removed template mid-line keeps the line's own leading space", () => {
   expect(repairTemplates(" pre {{stub}}")).toBe(" pre");
   expect(repairTemplates("{{ss|Zone}} Text after")).toBe("Text after");
+});
+
+test("faction icons {{Alliance}}, {{Horde}} and {{Neutral}} vanish without a gap", () => {
+  expect(repairTemplates("can be purchased from {{Alliance}} [[Dawn-Seeker Kasrek]] in [[Stormshield]] or {{Horde}} [[Dawn-Seeker Skariss]] in [[Warspear]]"))
+    .toBe("can be purchased from [[Dawn-Seeker Kasrek]] in [[Stormshield]] or [[Dawn-Seeker Skariss]] in [[Warspear]]");
+  expect(repairTemplates("*{{Neutral}} [[Amber Ledge]], at Borean Tundra.")).toBe("* [[Amber Ledge]], at Borean Tundra.");
+  expect(repairTemplates("| capital = {{Horde|sort=}} [[Thunder Bluff]]")).toBe("| capital = [[Thunder Bluff]]");
+  expect(repairTemplates("==={{Alliance}} Alliance===")).toBe("=== Alliance===");
+});
+
+test("Wikipedia and alternate-universe links show their label or the article name", () => {
+  expect(repairTemplates("holds similarities to the {{wp|Beringia}} \"ice bridge\" theory."))
+    .toBe("holds similarities to the Beringia \"ice bridge\" theory.");
+  expect(repairTemplates("the {{wp|Thunderbird (mythology)|Thunderbird}} appears")).toBe("the Thunderbird appears");
+  expect(repairTemplates("The word \"tauren\" is an {{wplink|anagram}} of \"nature\"")).toBe("The word \"tauren\" is an anagram of \"nature\"");
+  expect(repairTemplates("While leveling on {{Au|Draenor}} during")).toBe("While leveling on Draenor during");
+  expect(repairTemplates("{{Au|Draenor|alternate Draenor}}")).toBe("alternate Draenor");
+});
+
+test("{{coppercost}} splits one copper amount into gold, silver and copper", () => {
+  expect(repairTemplates("You will receive: {{coppercost|86000}} (or {{coppercost|104600}} at max level)"))
+    .toBe("You will receive: 8g 60s (or 10g 46s at max level)");
+  expect(repairTemplates("You will receive: {{coppercost|13}} (or {{coppercost|30}} at max level)"))
+    .toBe("You will receive: 13c (or 30c at max level)");
+  expect(repairTemplates("{{coppercost|1300}}")).toBe("13s");
+  expect(repairTemplates("{{coppercost|0}}")).toBe("0c");
+});
+
+test("{{loot}} shows the item name or its label, dropping the quality", () => {
+  expect(repairTemplates("A '''Blue Ribboned Holiday Gift''' is a {{loot|common|Wrapped Gift Package}} container item"))
+    .toBe("A '''Blue Ribboned Holiday Gift''' is a Wrapped Gift Package container item");
+  expect(repairTemplates("{{loot|common|Love Token|Love Tokens}}")).toBe("Love Tokens");
+  expect(repairTemplates("{{loot|epic|Emblem of Valor|Valor}}")).toBe("Valor");
+});
+
+test("{{cv-AH}} shows both faction variants joined by \"or\"", () => {
+  expect(repairTemplates("This item is created with {{cv-AH|[[Battle for Azeroth proficiency|Kul Tiran]]|[[Battle for Azeroth|Zandalari]]}} [[Tailoring]]"))
+    .toBe("This item is created with [[Battle for Azeroth proficiency|Kul Tiran]] or [[Battle for Azeroth|Zandalari]] [[Tailoring]]");
+  expect(repairTemplates("is sold by {{cv-AH|{{NPC||Trader Narasu}}|{{NPC||Provisioner Nasela}}}} in {{cv-AH|[[Telaar]]|[[Garadar]]}} in [[Nagrand]]"))
+    .toBe("is sold by Trader Narasu or Provisioner Nasela in [[Telaar]] or [[Garadar]] in [[Nagrand]]");
+  expect(repairTemplates("when {{cv-AH|Kul Tiran|Zandalari|}} tailoring is taught.")).toBe("when Kul Tiran or Zandalari tailoring is taught.");
+});
+
+test("a sentence that broke on these templates converts without damage", () => {
+  const src = "can be purchased from {{Alliance}} [[Dawn-Seeker Kasrek]] in [[Stormshield]] or {{Horde}} [[Dawn-Seeker Skariss]] in [[Warspear]] for {{Cost|10,000}}.";
+  expect(countDamage(wtf(src).text())).toBeGreaterThan(0);
+  expect(countDamage(wtf(repairTemplates(src)).text())).toBe(0);
 });
