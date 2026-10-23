@@ -138,3 +138,54 @@ test("a sentence that broke on these templates converts without damage", () => {
   expect(countDamage(wtf(src).text())).toBeGreaterThan(0);
   expect(countDamage(wtf(repairTemplates(src)).text())).toBe(0);
 });
+
+test("{{co}} and {{coords}} show the map coordinates in brackets", () => {
+  expect(repairTemplates("f Hearthglen are at {{co|48|21|Western Plaguelands}}.")).toBe("f Hearthglen are at [48, 21].");
+  expect(repairTemplates("| location = [[Booty Bay]], [[Cape of Stranglethorn]]{{coords|43.1|73.0|Cape of Stranglethorn}}"))
+    .toBe("| location = [[Booty Bay]], [[Cape of Stranglethorn]][43.1, 73.0]");
+  expect(repairTemplates("{{co|47|78|Arathi Highlands||1}}")).toBe("[47, 78]");
+  expect(repairTemplates("{{coords}}")).toBe("[0, 0]");
+});
+
+test("{{reputation}} and {{quality}} show the label, else the standing or quality as written", () => {
+  expect(repairTemplates("to go from {{reputation|revered}} to {{reputation|exalted}}, 880 kills total"))
+    .toBe("to go from revered to exalted, 880 kills total");
+  expect(repairTemplates("*[[Mantles of the Dawn]] ({{reputation|Revered}})")).toBe("*[[Mantles of the Dawn]] (Revered)");
+  expect(repairTemplates("especially {{quality|epic}} ones")).toBe("especially epic ones");
+  expect(repairTemplates("Teaches only {{Quality|poor|Apprentice}} level.")).toBe("Teaches only Apprentice level.");
+  expect(repairTemplates("{{quality|rare|Thunderfury|Thunderfury, Blessed Blade|nobold=1}}")).toBe("Thunderfury, Blessed Blade");
+});
+
+test("{{costitem}} shows the count and the item name", () => {
+  expect(repairTemplates("| [[Plans: Vicious Pyrium Breastplate]] || {{Costitem|5|Pyrium Bar}}"))
+    .toBe("| [[Plans: Vicious Pyrium Breastplate]] || 5 Pyrium Bar");
+  expect(repairTemplates("{{costitem|1500|Gold Ore}}")).toBe("1,500 Gold Ore");
+  expect(repairTemplates("{{costitem||Pyrium Bar}}")).toBe("1 Pyrium Bar");
+  expect(repairTemplates("{{costitem|5}}")).toBe("5");
+});
+
+test("{{cost}} shows its named currencies after the coins, in the template's order", () => {
+  expect(repairTemplates("for {{cost|eo=500}} and")).toBe("for 500 Elemental Overflow and");
+  expect(repairTemplates("{{cost|sts=10}}")).toBe("10 Storm Sigil");
+  expect(repairTemplates("{{cost|5|hon=1500|ach=10}}")).toBe("5g 10 Achievement point 1500 Honor");
+  expect(repairTemplates("{{cost|g=2|s=50}}")).toBe("2g 50s");
+  expect(repairTemplates("{{cost|es=30}}")).toBe("30 Eye of the Storm Mark of Honor");
+  expect(repairTemplates("{{cost|cost=3|name=Mark of Sargeras|icon=inv_misc_token.png}}")).toBe("3 Mark of Sargeras");
+});
+
+test("sentences that broke on {{reputation}}, {{costitem}} and {{cost}} currencies convert without damage", () => {
+  const vendor = "is sold by [[Mythressa]] for {{cost|eo=500}} and [[Rethelshi]] in [[Valdrakken]] for {{cost|sts=10}} {{costitem|1|Helm of Raging Tempests}}.";
+  expect(wtf(repairTemplates(vendor)).text()).toBe(
+    "is sold by Mythressa for 500 Elemental Overflow and Rethelshi in Valdrakken for 10 Storm Sigil 1 Helm of Raging Tempests.",
+  );
+  for (const src of [
+    "He was {{reputation|friendly}} towards the [[Horde]] and the [[Alliance]], although once the escort quest was started he became {{reputation|neutral}} to the Alliance.",
+    "The '''{{quality|Rare|Toxic Revenger}}''' is a one-handed dagger",
+    "Rare blue items are between {{quality|uncommon|uncommon|green}} and {{quality|epic|epic|purple}} in [[quality]].",
+  ]) {
+    expect(countDamage(wtf(src).text())).toBeGreaterThan(0);
+    expect(countDamage(wtf(repairTemplates(src)).text())).toBe(0);
+  }
+  expect(wtf(repairTemplates("purchase it for {{costitem|1|Apexis Crystal (item)}} {{costitem|50|Apexis Shard}} from")).text())
+    .toBe("purchase it for 1 Apexis Crystal (item) 50 Apexis Shard from");
+});
