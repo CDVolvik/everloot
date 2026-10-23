@@ -56,6 +56,9 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Desktop app: a Stop button on the Chat page while an answer is being written. It ends the request to the
+  provider (Anthropic or an OpenAI-compatible server) and any tool calls still to come; the question and the text
+  that had arrived stay in the transcript, marked "Stopped", and a screen reader hears "Stopped".
 - Site: the open data export, at `/database/download`. The published data as NDJSON files anyone can download
   and build on, under CC BY-SA 4.0: what three installs agree on, and the game files' own layer, with a
   manifest that says the build, the date the data was current, the method, the row count of every file and

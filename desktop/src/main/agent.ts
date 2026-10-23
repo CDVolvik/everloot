@@ -85,6 +85,8 @@ export interface AgentOptions {
   local?: LocalTool[];
   /** Called as the answer is written: the text so far in this round, and each tool as it runs. */
   onProgress?: (progress: ChatProgress) => void;
+  /** The Stop button: ends the provider's request and the tool loop; the reply keeps what was written so far. */
+  signal?: AbortSignal;
 }
 
 interface ToolDef { name: string; description: string; inputSchema: unknown }
@@ -96,7 +98,7 @@ async function listTools(mcp: Client, local: LocalTool[]): Promise<ToolDef[]> {
   return [...local, ...listed.tools.filter((t) => !names.has(t.name)).map((t) => ({ name: t.name, description: t.description ?? "", inputSchema: t.inputSchema }))];
 }
 
-export interface AgentReply { text: string; model: string | null; sources: string[]; steps: ChatStep[] }
+export interface AgentReply { text: string; model: string | null; sources: string[]; steps: ChatStep[]; stopped?: boolean }
 
 /** The first provider in config.json answers; none means plain search. */
 export async function answer(options: AgentOptions): Promise<AgentReply> {
@@ -109,7 +111,7 @@ export async function answer(options: AgentOptions): Promise<AgentReply> {
 
 /** No provider: the top sourced hits, verbatim. */
 async function plain(o: AgentOptions): Promise<AgentReply> {
-  const hits = await (o.session ?? withMcp)(o.mcp, async (c) => textOf(await c.callTool({ name: "search_knowledge", arguments: { query: o.question, limit: 3 } })));
+  const hits = await (o.session ?? withMcp)(o.mcp, async (c) => textOf(await c.callTool({ name: "search_knowledge", arguments: { query: o.question, limit: 3 } }, undefined, { signal: o.signal })));
   const sources = sourcesIn(hits);
   const steps: ChatStep[] = [{ tool: "search_knowledge", input: o.question, chars: hits.length }];
   if (!sources.length) return { text: NOTHING, model: null, sources: [], steps };
@@ -117,11 +119,13 @@ async function plain(o: AgentOptions): Promise<AgentReply> {
 }
 
 /** Runs one tool call for the model, local or MCP, and records it. */
-async function runTool(mcp: Client, local: LocalTool[], name: string, input: Record<string, unknown>, steps: ChatStep[], sources: string[]): Promise<string> {
+async function runTool(mcp: Client, local: LocalTool[], name: string, input: Record<string, unknown>, steps: ChatStep[], sources: string[], signal?: AbortSignal): Promise<string> {
   let out: string;
   const mine = local.find((t) => t.name === name);
-  try { out = mine ? mine.run(input) : textOf(await mcp.callTool({ name, arguments: input })); }
+  try { out = mine ? mine.run(input) : textOf(await mcp.callTool({ name, arguments: input }, undefined, { signal })); }
   catch (err) { out = `Tool error: ${err instanceof Error ? err.message : String(err)}`; }
+  // Stopped: the loop ends here rather than sending the model another round.
+  signal?.throwIfAborted();
   for (const s of sourcesIn(out)) if (!sources.includes(s)) sources.push(s);
   steps.push({ tool: name, input: JSON.stringify(input).slice(0, 200), chars: out.length });
   return out.slice(0, MAX_RESULT);
@@ -134,19 +138,21 @@ async function anthropicLoop(o: AgentOptions, entry: ProviderEntry): Promise<Age
   const model = entry.model ?? DEFAULT_MODEL;
   const client = o.anthropicClient ?? new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 });
   const maxRounds = o.maxRounds ?? 8;
+  const steps: ChatStep[] = [];
+  const sources: string[] = [];
+  let usedModel = model;
+  let draft = "";
   return (o.session ?? withMcp)(o.mcp, async (mcp) => {
     const local = o.local ?? [];
     const tools: Anthropic.Tool[] = (await listTools(mcp, local)).map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema as Anthropic.Tool["input_schema"] }));
+    // A stopped answer can be empty, and the APIs refuse an empty message.
     const messages: Anthropic.MessageParam[] = [
-      ...o.history.slice(-10).map((m): Anthropic.MessageParam => ({ role: m.role, content: m.text })),
+      ...o.history.slice(-10).filter((m) => m.text).map((m): Anthropic.MessageParam => ({ role: m.role, content: m.text })),
       { role: "user", content: o.question },
     ];
-    const steps: ChatStep[] = [];
-    const sources: string[] = [];
-    let usedModel = model;
     for (let round = 0; round <= maxRounds; round++) {
-      let draft = "";
-      const stream = client.messages.stream({ model, max_tokens: 1500, system: SYSTEM, tools, messages });
+      draft = "";
+      const stream = client.messages.stream({ model, max_tokens: 1500, system: SYSTEM, tools, messages }, { signal: o.signal });
       stream.on("text", (delta) => { draft += delta; o.onProgress?.({ text: draft, tool: null }); });
       const res = await stream.finalMessage();
       usedModel = res.model;
@@ -159,11 +165,15 @@ async function anthropicLoop(o: AgentOptions, entry: ProviderEntry): Promise<Age
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const use of toolUses) {
         o.onProgress?.({ text: draft, tool: use.name });
-        results.push({ type: "tool_result", tool_use_id: use.id, content: await runTool(mcp, local, use.name, use.input as Record<string, unknown>, steps, sources) });
+        results.push({ type: "tool_result", tool_use_id: use.id, content: await runTool(mcp, local, use.name, use.input as Record<string, unknown>, steps, sources, o.signal) });
       }
       messages.push({ role: "user", content: results });
     }
     return { text: NOTHING, model: usedModel, sources, steps };
+  }).catch((err: unknown): AgentReply => {
+    // Stopped: what was written of the round in progress, with the tools that had run.
+    if (o.signal?.aborted) return { text: draft.trim(), model: usedModel, sources, steps, stopped: true };
+    throw err;
   });
 }
 
@@ -228,25 +238,27 @@ async function openAiLoop(o: AgentOptions, entry: ProviderEntry): Promise<AgentR
   const send = o.send ?? fetch;
   const model = entry.model;
   const maxRounds = o.maxRounds ?? 8;
+  const steps: ChatStep[] = [];
+  const sources: string[] = [];
+  let usedModel = model;
+  let draft = "";
   return (o.session ?? withMcp)(o.mcp, async (mcp) => {
     const local = o.local ?? [];
     const tools = (await listTools(mcp, local)).map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.inputSchema } }));
     const messages: OaiMessage[] = [
       { role: "system", content: SYSTEM },
-      ...o.history.slice(-10).map((m): OaiMessage => ({ role: m.role, content: m.text })),
+      ...o.history.slice(-10).filter((m) => m.text).map((m): OaiMessage => ({ role: m.role, content: m.text })),
       { role: "user", content: o.question },
     ];
-    const steps: ChatStep[] = [];
-    const sources: string[] = [];
-    let usedModel = model;
     for (let round = 0; round <= maxRounds; round++) {
+      draft = "";
       let res: Response;
       try {
         res = await send(url, {
           method: "POST",
           headers: { "content-type": "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}), "user-agent": "everloot-desktop" },
           body: JSON.stringify({ model, max_tokens: 1500, messages, tools, stream: true }),
-          signal: AbortSignal.timeout(90_000),
+          signal: o.signal ? AbortSignal.any([o.signal, AbortSignal.timeout(90_000)]) : AbortSignal.timeout(90_000),
         });
       } catch (err) {
         throw new Error(`${entry.baseUrl}: ${err instanceof Error ? err.message : String(err)}`);
@@ -254,7 +266,7 @@ async function openAiLoop(o: AgentOptions, entry: ProviderEntry): Promise<AgentR
       // A server that ignores stream answers with one JSON body; both shapes are read.
       let body: OaiResponse;
       if (res.ok && res.body && (res.headers.get("content-type") ?? "").includes("text/event-stream")) {
-        try { body = await readStream(res.body, (text) => o.onProgress?.({ text, tool: null })); }
+        try { body = await readStream(res.body, (text) => { draft = text; o.onProgress?.({ text, tool: null }); }); }
         catch (err) { throw new Error(`${entry.baseUrl}: ${err instanceof Error ? err.message : String(err)}`); }
       } else body = (await res.json().catch(() => ({}))) as OaiResponse;
       if (!res.ok) throw new Error(`${entry.baseUrl}: HTTP ${res.status}${body.error?.message ? `, ${body.error.message}` : ""}`);
@@ -278,9 +290,12 @@ async function openAiLoop(o: AgentOptions, entry: ProviderEntry): Promise<AgentR
           continue;
         }
         o.onProgress?.({ text, tool: call.function.name });
-        messages.push({ role: "tool", tool_call_id: call.id, content: await runTool(mcp, local, call.function.name, input, steps, sources) });
+        messages.push({ role: "tool", tool_call_id: call.id, content: await runTool(mcp, local, call.function.name, input, steps, sources, o.signal) });
       }
     }
     return { text: NOTHING, model: usedModel, sources, steps };
+  }).catch((err: unknown): AgentReply => {
+    if (o.signal?.aborted) return { text: draft.trim(), model: usedModel, sources, steps, stopped: true };
+    throw err;
   });
 }

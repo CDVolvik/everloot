@@ -142,6 +142,8 @@ export interface ChatMessage {
   model: string | null;
   sources: string[];
   steps: ChatStep[];
+  /** The player pressed Stop while it was written: the text is what had arrived. */
+  stopped?: boolean;
 }
 export interface ChatInfo {
   messages: ChatMessage[];
@@ -300,6 +302,8 @@ export interface EverlootApi {
   chatInfo(): Promise<ChatInfo>;
   chatSend(text: string): Promise<ChatInfo>;
   chatClear(): Promise<ChatInfo>;
+  /** Stops the answer being written; the pending chatSend resolves with what had arrived. */
+  chatStop(): Promise<void>;
   /** Saves a provider pick (its key, if any, to a file in the data folder) and points config.json at it; the key never comes back to the page. */
   chatSetProvider(choice: ProviderChoice): Promise<ChatInfo>;
   /** Removes a saved provider and its key; without a kind, the one in use. */
