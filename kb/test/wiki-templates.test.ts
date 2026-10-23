@@ -189,3 +189,38 @@ test("sentences that broke on {{reputation}}, {{costitem}} and {{cost}} currenci
   expect(wtf(repairTemplates("purchase it for {{costitem|1|Apexis Crystal (item)}} {{costitem|50|Apexis Shard}} from")).text())
     .toBe("purchase it for 1 Apexis Crystal (item) 50 Apexis Shard from");
 });
+
+test("{{api}} shows the label or the name, and keeps a function's argument list", () => {
+  expect(repairTemplates("the return of {{api|GetSubZoneText}}() or {{api|GetZoneText}}()")).toBe("the return of GetSubZoneText() or GetZoneText()");
+  expect(repairTemplates("{{api|CreateFrame()}} and {{api|t=w|ScriptRegion:EnableMouse|EnableMouse}}")).toBe("CreateFrame() and EnableMouse");
+  expect(repairTemplates("via {{api|t=wh|OnEvent}} handlers")).toBe("via OnEvent handlers");
+});
+
+test("icon-only templates (race, class, socket, quest marker, expansion logo) vanish", () => {
+  expect(repairTemplates("{{RaceIcon|Human|Male}} Human")).toBe("Human");
+  expect(repairTemplates("{{ClassIcon|Mage|small}} Mage and {{socket icon|Red}} gem")).toBe("Mage and gem");
+  expect(repairTemplates("Accept {{QuestStart}} the quest {{Wotlk-inline|}} patch")).toBe("Accept the quest patch");
+});
+
+test("{{mob}}, {{fu}}, {{expac}}, {{achievement}}, {{school}}, {{gossip}}, {{keypress}} and the wiki links render their name or label", () => {
+  expect(repairTemplates("kill {{Mob|C'Thun (tactics)||C'Thun}} and {{mob|Blackhand Elite}}")).toBe("kill C'Thun and Blackhand Elite");
+  expect(repairTemplates("{{Fu|Durotan}} of the {{fu|Frostwolf clan|Frostwolves}}")).toBe("Durotan of the Frostwolves");
+  expect(repairTemplates("added in {{expac|Dragonflight}}")).toBe("added in Dragonflight");
+  expect(repairTemplates("earn {{achievement|icon=|Kul Tiran Curator}} or {{achievement|The Fishing Diplomat|the fish}}")).toBe("earn Kul Tiran Curator or the fish");
+  expect(repairTemplates("{{School|Fire}} damage, {{Gossip|Um, what?}}, press {{keypress|Shift|1}}")).toBe("Fire damage, Um, what?, press Shift+1");
+  expect(repairTemplates("{{Sc|Ares (game)|Project Ares}} {{dash}} {{StarCraft|Nova}}")).toBe("Project Ares – Nova");
+});
+
+test("{{title}} shows its text in angle brackets", () => {
+  expect(repairTemplates("Cheese Vendor {{title|Cheese Vendor}}")).toBe("Cheese Vendor <Cheese Vendor>");
+});
+
+test("sentences that broke on {{RaceIcon}} and {{mob}} convert without damage", () => {
+  for (const src of [
+    "Fought {{RaceIcon|Human|Male}} Varian at {{RaceIcon|Orc|Male}} Garrosh",
+    "She kills {{Mob|Lady Vashj (tactics)||Lady Vashj}} at {{mob|Sunblade Imp}} too",
+  ]) {
+    expect(countDamage(wtf(src).text())).toBeGreaterThan(0);
+    expect(countDamage(wtf(repairTemplates(src)).text())).toBe(0);
+  }
+});
