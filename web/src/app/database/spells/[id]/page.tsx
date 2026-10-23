@@ -26,13 +26,20 @@ const relLabel: Record<string, string> = {
   reward_from: "Reward from",
 };
 
+/**
+ * The other end of one of the spell's relations: the target of one the spell starts (taught by), the item of
+ * one that points at the spell (an item created by it, a reagent for it).
+ */
+const otherEnd = (e: Edge) => (e.toKind === "spell" ? { kind: e.fromKind, id: e.fromId } : { kind: e.toKind, id: e.toId });
+
 /** Where a spell''s relation target has a page, a link to it; otherwise the kind and the id. */
 function SpellTarget({ edge }: { edge: Edge }) {
-  const label = entityLabel(edge.toKind, edge.toId);
-  const href = edge.toKind === "item" ? `/database/items/${edge.toId}`
-    : edge.toKind === "npc" ? `/database/npcs/${edge.toId}`
-    : edge.toKind === "quest" ? `/database/quests/${edge.toId}`
-    : edge.toKind === "object" ? `/database/objects/${edge.toId}`
+  const { kind, id } = otherEnd(edge);
+  const label = entityLabel(kind, id);
+  const href = kind === "item" ? `/database/items/${id}`
+    : kind === "npc" ? `/database/npcs/${id}`
+    : kind === "quest" ? `/database/quests/${id}`
+    : kind === "object" ? `/database/objects/${id}`
     : null;
   return href ? <Link href={href} className={LINK}>{label}</Link> : <span>{label}</span>;
 }
@@ -54,10 +61,12 @@ async function loadSpell(spellId: number) {
     loadSpellNames(CLIENT_LAYER.build.version),
   ]);
   const both = [...edges.observed, ...edges.client];
-  const all = edgesFrom(both, "spell", spellId);
+  // Both directions: the files store what a spell creates and what it costs on the item (item -> created_by
+  // or reagent_for -> spell), and what teaches it on the spell (spell -> in_skill_line -> skill).
+  const all = [...edgesFrom(both, "spell", spellId), ...edgesTo(both, "spell", spellId)];
   const name = spellNames?.names.get(spellId);
   const tip = assets?.spellTips.get(spellId);
-  const unknown = spellNames !== null && !edges.unreachable && name === undefined && !tip && !all.length && !edgesTo(both, "spell", spellId).length;
+  const unknown = spellNames !== null && !edges.unreachable && name === undefined && !tip && !all.length;
   return { edges, assets, all, name, tip, unknown };
 }
 
@@ -94,7 +103,7 @@ export default async function SpellPage(props: Props) {
   const summary = entitySummary({
     identity: [tip?.name ?? name, `Spell ${spellId}`].filter(Boolean).join(" · "),
     observed: creates.length
-      ? `The files say it creates ${creates.length} ${creates.length === 1 ? "item" : "items"}${costs.length ? ` and costs ${costs.length}` : ""}.`
+      ? `The files say it creates ${creates.length} ${creates.length === 1 ? "item" : "items"}${costs.length ? ` and costs ${costs.length} ${costs.length === 1 ? "reagent" : "reagents"}` : ""}.`
       : "The files say nothing about what it creates.",
     named: Boolean(name),
   });
@@ -104,7 +113,7 @@ export default async function SpellPage(props: Props) {
     return {
       id, label, count: rows.length,
       panel: rows.length
-        ? <><p className="mb-2 text-meta text-fg-2">{evidenceLine(rows[0]!, Date.now())}</p><DataTable dense caption={`${label}: ${title}`} columns={relationColumns} rows={rows} rowKey={(e) => `${e.rel}-${e.toKind}-${e.toId}`} /></>
+        ? <><p className="mb-2 text-meta text-fg-2">{evidenceLine(rows[0]!, Date.now())}</p><DataTable dense caption={`${label}: ${title}`} columns={relationColumns} rows={rows} rowKey={(e) => { const o = otherEnd(e); return `${e.rel}-${e.evidence}-${o.kind}-${o.id}`; }} /></>
         : <EmptyTab message={empty} players={false} />,
     };
   };

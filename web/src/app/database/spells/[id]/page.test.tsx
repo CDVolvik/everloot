@@ -25,6 +25,11 @@ const render = async (id: string) => renderToStaticMarkup(await SpellPage(props(
 // A spell the client layer says a profession teaches, and one only an item's "created by" points at.
 const taught = CLIENT_EDGES.find((e) => e.fromKind === "spell" && e.rel === "in_skill_line")!.fromId;
 const creator = CLIENT_EDGES.find((e) => e.toKind === "spell" && e.rel === "created_by" && !CLIENT_EDGES.some((x) => x.fromKind === "spell" && x.fromId === e.toId))!.toId;
+// A spell the items say it creates and costs: both edges point from the item to the spell, and none starts at it.
+const crafted = CLIENT_EDGES.find((e) => e.rel === "created_by"
+  && CLIENT_EDGES.some((x) => x.rel === "reagent_for" && x.toId === e.toId)
+  && !CLIENT_EDGES.some((x) => x.fromKind === "spell" && x.fromId === e.toId))!.toId;
+const into = (rel: string) => CLIENT_EDGES.filter((e) => e.toKind === "spell" && e.toId === crafted && e.rel === rel).map((e) => e.fromId);
 const known = (names: [number, string][]) => {
   files.spells = { version: "1.60.1.70532", names: new Map(names) };
   files.unreachable = false;
@@ -69,4 +74,20 @@ test("a spell only an item points at is known, and without a name it is noindex"
   known([]);
   expect(await render(String(creator))).toContain(`Spell ${creator}`);
   expect((await generateMetadata(props(String(creator)))).robots).toMatchObject({ index: false });
+});
+
+test("Creates and Costs list the items whose edges point at the spell", async () => {
+  const [made, reagents] = [into("created_by"), into("reagent_for")];
+  expect(made.length).toBeGreaterThan(0);
+  expect(reagents.length).toBeGreaterThan(0);
+  const page = await render(String(crafted));
+  for (const item of [...made, ...reagents]) expect(page).toContain(`href="/database/items/${item}"`);
+  expect(page).not.toContain("The files say it creates nothing.");
+  expect(page).not.toContain("The files say it costs nothing.");
+  expect(page).toContain(`The files say it creates ${made.length} ${made.length === 1 ? "item" : "items"} and costs ${reagents.length}`);
+});
+
+test("a named spell whose only relations are what it creates and costs is indexed", async () => {
+  known([[crafted, "Some Recipe"]]);
+  expect((await generateMetadata(props(String(crafted)))).robots).toMatchObject({ index: true, follow: true });
 });
