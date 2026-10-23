@@ -10,7 +10,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Your Everloot account",
-  description: "What an Everloot account is for today, how to sign in, and how to make and revoke API keys.",
+  description: "What an Everloot account is for today, how to sign in with Battle.net or email, what your account page shows, and how to make, roll and revoke API keys.",
   path: "/docs/guides/account",
 });
 
