@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import type { WorldFacts } from "../../../kb/src/world-pages";
-import { hasContent, parseZoneSegment, publicZones, zoneByMapId, zoneContents, zoneHref, zoneMapHref, zoneSlug } from "./zones";
+import { WORLD_MAP } from "./world-map";
+import { hasContent, parseZoneSegment, placedEntrances, publicZones, zoneByMapId, zoneContents, zoneHref, zoneMapHref, zoneSlug } from "./zones";
 
 // SYNTHETIC data in the shape of the generated file; the numbers and names are made up.
 const data: WorldMapData = {
@@ -81,6 +82,19 @@ describe("zoneContents", () => {
     expect(zoneContents(twoOnly, data).get(1429)!.quests).toEqual([]);
   });
 
+  test("an entrance goes to the zone the files put it in, over the rectangles, and on held-back ground it is not placed", () => {
+    const city = { uiMapId: 1453, name: "Synthetic City", continentId: 0, bounds: { top: -8700, bottom: -8900, left: 900, right: 700 } };
+    const placed: WorldMapData = {
+      ...data, zones: [...data.zones, city],
+      entrances: data.entrances.map((e) => (e.mapId === 34 ? { ...e, uiMapId: 1429 } : e.mapId === 389 ? { ...e, uiMapId: 2482 } : e)),
+    };
+    // The Stockade lies in the city's smaller rectangle too, but its ground is the forest's.
+    const contents = zoneContents(empty, placed);
+    expect(contents.get(1429)!.entrances.map((e) => e.names[0])).toEqual(["Synthetic Stockade"]);
+    expect(contents.get(1453)!.entrances).toEqual([]);
+    expect([...contents.values()].flatMap((c) => c.entrances).map((e) => e.names[0])).not.toContain("Synthetic Chasm");
+  });
+
   test("an entrance goes to the smallest released zone around it; one in a held-back zone is not placed", () => {
     const contents = zoneContents(empty, data);
     expect(contents.get(1429)!.entrances).toEqual([{ names: ["Synthetic Stockade"], instanceMapIds: [34], raid: false, x: 19.8, y: 35.5, files: true, confirmed: null, lastSeen: null, bosses: [] }]);
@@ -117,5 +131,44 @@ describe("zoneContents", () => {
     expect(hasContent(contents.get(1429))).toBe(false);
     expect(hasContent(zoneContents(empty, data).get(1429))).toBe(true);
     expect(hasContent(undefined)).toBe(false);
+  });
+});
+
+describe("the committed map data: the zone each entrance is in", () => {
+  // What the game files say, independent of the zone rectangles: the AreaTable area of the terrain chunk under
+  // each entrance (its ADT tile), walked up the ParentAreaID chain to the zone area a UiMapAssignment names.
+  // Read from build 1.60.1.70532; the area chain is in the comment.
+  const expected: Record<string, string> = {
+    "Shadowfang Keep": "Silverpine Forest", // Shadowfang Keep > Silverpine Forest
+    "Stormwind Stockade": "Stormwind City", // Stormwind City
+    "Deadmines": "Westfall", // The Dagger Hills > Westfall
+    "Wailing Caverns": "The Barrens", // The Barrens
+    "Razorfen Kraul": "The Barrens", // Razorfen Kraul > The Barrens
+    "Blackfathom Deeps": "Darkshore", // Twilight Vale > Darkshore; Ashenvale's ground starts a chunk south
+    "Uldaman": "Loch Modan", // Stonesplinter Valley > Loch Modan
+    "Gnomeregan": "Dun Morogh", // Dun Morogh
+    "Sunken Temple": "Swamp of Sorrows", // Swamp of Sorrows
+    "Razorfen Downs": "The Barrens", // Razorfen Downs > The Barrens
+    "Scarlet Monastery": "Tirisfal Glades", // Tirisfal Glades
+    "Zul'Farrak": "Tanaris", // Zul'Farrak > Tanaris
+    "Blackrock Spire": "Burning Steppes", // Blackrock Mountain > Burning Steppes
+    "Blackrock Depths": "Searing Gorge", // Searing Gorge
+    "Onyxia's Lair": "Dustwallow Marsh", // Wyrmbog > Dustwallow Marsh
+    "Scholomance": "Western Plaguelands", // Caer Darrow > Western Plaguelands
+    "Zul'Gurub": "Stranglethorn Vale", // Zul'Gurub > Stranglethorn Vale
+    "Stratholme": "Eastern Plaguelands", // Stratholme > Eastern Plaguelands
+    "Maraudon": "Desolace", // Valley of Spears > Desolace
+    "Ragefire Chasm": "Orgrimmar", // Orgrimmar
+    "Molten Core": "Burning Steppes", // Blackrock Mountain > Burning Steppes
+    "Dire Maul": "Feralas", // Feralas
+    "Blackwing Lair": "Burning Steppes", // Blackrock Mountain > Burning Steppes
+    "Ruins of Ahn'Qiraj": "Silithus", // The Scarab Wall > Silithus
+    "Ahn'Qiraj Temple": "Silithus", // The Scarab Wall > Silithus
+  };
+
+  test("every entrance lands in the zone the game puts it in, not the smallest rectangle around it", () => {
+    const zoneOf = new Map(WORLD_MAP.zones.map((z) => [z.uiMapId, z.name]));
+    const found = Object.fromEntries(placedEntrances(WORLD_MAP).flatMap((e) => e.names.map((n) => [n, e.zone ? zoneOf.get(e.zone.mapId) : null])));
+    expect(found).toEqual(expected);
   });
 });

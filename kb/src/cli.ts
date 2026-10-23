@@ -19,6 +19,7 @@ import { diffSnapshots } from "./client-diff.js";
 import { parseRegistry } from "./ecosystem.js";
 import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem-fetch.js";
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
+import { readTerrainAreas } from "./terrain-area.js";
 import { writeCatalogs } from "./client-catalog.js";
 import { buildClientAssets } from "./client-assets.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
@@ -116,6 +117,8 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client] [--refresh]
     (reads items, spells, talent (Trait) and spell effect tables of the product's current build from Blizzard's CDN into a snapshot
     <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
+    It also reads the terrain tiles under each dungeon entrance and taxi node and keeps each chunk's area id
+    (TerrainArea), so client-map can say which zone a spot is in.
     A table that fails to read is reported, the rest are still written, the build stays queued and
     the exit is 1. Encrypted blocks are skipped, never decrypted. A build already extracted is skipped
     unless --refresh is given. Table layouts come from one pinned WoWDBDefs commit, recorded in the
@@ -162,8 +165,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     would fill it: the addon's uploads, or no source yet. Without --baseline-db or uploads those columns print [?].
     Reads the same sources as item-names and game-names and writes no name file. Ids and counts only, never names; keep it local)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
-    (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
-    snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
+    (zone rectangles in world coordinates, continents, dungeon and raid entrances and flight masters, each with
+    the zone the ground under it belongs to, from a client snapshot, for the world map page. Game file data,
+    stamped with the build. See docs/DATA_POLICY.md)
   build-watch [--product id] [--dry-run] [--check] [--redo] [--force] [--root ..] [--out data/build-watch/out]
     (notices a new game build, regenerates the committed game data and prepares a pull request body and
     a changelog entry; the scheduled workflow opens the PR. --dry-run writes only under --out and changes
@@ -470,6 +474,8 @@ async function main(): Promise<number> {
       const { tables, missing } = await extractTables(source);
       const fileStatus = probeFiles(source, iconIds(tables));
       if (fileStatus) tables.push(fileStatus);
+      const terrain = source.readFile && await readTerrainAreas(source.readFile, tables);
+      if (terrain) tables.push(terrain);
       mkdirSync(outDir, { recursive: true });
       const manifest = writeClientSnapshot(out, { ...build, extractedAt: now.toISOString(), library: CASC_LIBRARY, definitions }, tables, missing);
       // A table that failed to read leaves the build queued, so the next run tries it again.

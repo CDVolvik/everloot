@@ -16,13 +16,18 @@
  * - TaxiNodes, TaxiPath, TaxiPathNode: flight masters (a node with a flight to or from it), and each
  *   flight's line through its path points. Boats and zeppelins are paths that start or end at "Transport"
  *   stand-in nodes (some hop to another continent), not at a dock, so they are left out for now.
+ * - TerrainArea (derived at extraction, terrain-area.ts) and AreaTable: the zone each entrance and flight master
+ *   is in, as the game decides it. The ground under the spot names an area; its `ParentAreaID` chain reaches the
+ *   area a zone's UiMapAssignment names (`AreaID`). Zone rectangles overlap, so they cannot decide this; they are
+ *   only the fallback for a spot the snapshot has no terrain for.
  */
 import { z } from "zod";
 import { readClientManifest, readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
+import { TERRAIN_AREA_TABLE, terrainAreaAt } from "./terrain-area.js";
 
 export const WORLD_MAP_SCHEMA = "everloot.world-map/1";
 /** Tables this file is built from. */
-export const WORLD_MAP_TABLES = ["Map", "UiMap", "UiMapAssignment", "TaxiNodes", "TaxiPath", "TaxiPathNode"] as const;
+export const WORLD_MAP_TABLES = ["Map", "UiMap", "UiMapAssignment", "TaxiNodes", "TaxiPath", "TaxiPathNode", "AreaTable", TERRAIN_AREA_TABLE] as const;
 
 /**
  * Zones of the original world, as numbered by their UiMap ids (1411 to 1458). Zones with later ids are
@@ -52,11 +57,15 @@ export const WorldMapData = z.object({
   zones: z.array(ZoneRow),
   /** Zones with later UiMap ids: Forever additions that may be unreleased. Shown only when the reader turns spoilers on. */
   heldBackZones: z.array(ZoneRow).default([]),
+  /** `uiMapId`, here and on flight masters: the zone the ground under the spot belongs to. Absent when the snapshot had no terrain there. */
   entrances: z.array(z.object({
     mapId: z.number().int(), name: z.string(), raid: z.boolean(), continentId: z.number().int(), worldX: z.number(), worldY: z.number(),
+    uiMapId: z.number().int().optional(),
   })),
   /** Flight masters: the taxi nodes that a flight starts or ends at (TaxiNodes). World yards, as everything else here. */
-  flightNodes: z.array(z.object({ id: z.number().int(), name: z.string(), continentId: z.number().int(), worldX: z.number(), worldY: z.number() })).default([]),
+  flightNodes: z.array(z.object({
+    id: z.number().int(), name: z.string(), continentId: z.number().int(), worldX: z.number(), worldY: z.number(), uiMapId: z.number().int().optional(),
+  })).default([]),
   /** One flight line per pair of nodes (TaxiPath, drawn through its TaxiPathNode points), points as [worldX, worldY] yards, thinned. */
   flightPaths: z.array(z.object({
     from: z.number().int(), to: z.number().int(), continentId: z.number().int(), points: z.array(z.tuple([z.number(), z.number()])),
@@ -87,14 +96,30 @@ export function assignmentRect(row: Record<string, unknown>): WorldRect | null {
 
 type Rows = Map<number, Record<string, unknown>>;
 
-/** The first whole-map assignment of each UiMap (lowest OrderIndex): which game map it lies on and its rectangle. */
-export function placeUiMaps(assignments: Record<string, unknown>[]): Map<number, { mapId: number; rect: WorldRect }> {
-  const placed = new Map<number, { mapId: number; rect: WorldRect }>();
+/** The first whole-map assignment of each UiMap (lowest OrderIndex): which game map it lies on, its rectangle and the area it shows. */
+export function placeUiMaps(assignments: Record<string, unknown>[]): Map<number, { mapId: number; rect: WorldRect; areaId: number }> {
+  const placed = new Map<number, { mapId: number; rect: WorldRect; areaId: number }>();
   for (const a of [...assignments].sort((p, q) => Number(p.OrderIndex) - Number(q.OrderIndex))) {
     const uiMapId = num(a.UiMapID), mapId = num(a.MapID), rect = assignmentRect(a);
-    if (uiMapId !== null && mapId !== null && rect && !placed.has(uiMapId)) placed.set(uiMapId, { mapId, rect });
+    if (uiMapId !== null && mapId !== null && rect && !placed.has(uiMapId)) placed.set(uiMapId, { mapId, rect, areaId: num(a.AreaID) ?? 0 });
   }
   return placed;
+}
+
+/**
+ * The zone (UiMap id) a spot is in, as the game decides it: the area of the ground under it, or the nearest area up
+ * its `ParentAreaID` chain that a zone shows. Null without terrain there, or when no zone shows any of the areas.
+ */
+export function zoneOfGround(
+  terrain: Rows, areas: Rows, zoneOfArea: Map<number, number>, point: { continentId: number; worldX: number; worldY: number },
+): number | null {
+  const seen = new Set<number>();
+  for (let id = terrainAreaAt(terrain, point); id && !seen.has(id); id = num(areas.get(id)?.ParentAreaID)) {
+    seen.add(id);
+    const zone = zoneOfArea.get(id);
+    if (zone !== undefined) return zone;
+  }
+  return null;
 }
 
 export function buildWorldMapData(
@@ -147,6 +172,26 @@ export function buildWorldMapData(
 
   const { flightNodes, flightPaths } = buildFlights(get("TaxiNodes"), get("TaxiPath"), get("TaxiPathNode"), continentIds);
   if (!flightNodes.length) warnings.push("no flight tables in the snapshot: no flight masters or flight lines");
+
+  // The zone each spot is in, from the ground under it. A zone shows the area its whole-map assignment names.
+  const terrain = get(TERRAIN_AREA_TABLE), areas = get("AreaTable");
+  if (terrain && areas) {
+    const zoneOfArea = new Map<number, number>();
+    for (const z of [...zones, ...heldBackZones]) {
+      const areaId = placed.get(z.uiMapId)?.areaId;
+      if (areaId) zoneOfArea.set(areaId, z.uiMapId);
+    }
+    const continentOf = new Map([...zones, ...heldBackZones].map((z) => [z.uiMapId, z.continentId]));
+    let unresolved = 0;
+    for (const spot of [...entrances, ...flightNodes]) {
+      const zone = zoneOfGround(terrain, areas, zoneOfArea, spot);
+      if (zone !== null && continentOf.get(zone) === spot.continentId) spot.uiMapId = zone;
+      else unresolved++;
+    }
+    if (unresolved) warnings.push(`${unresolved} entrance(s) or flight master(s) have no zone from the terrain; the zone rectangles place them`);
+  } else {
+    warnings.push("no terrain areas in the snapshot: entrances and flight masters are placed by zone rectangles, which overlap");
+  }
 
   return WorldMapData.parse({ schema: WORLD_MAP_SCHEMA, source, continents, zones, heldBackZones, entrances, flightNodes, flightPaths, warnings });
 }

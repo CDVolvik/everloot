@@ -83,6 +83,12 @@ describe("instance rows", () => {
     expect(instanceRows(seen, data).has(99)).toBe(false);
   });
 
+  test("the files' zone decides: an entrance inside a released rectangle but on held-back ground has no row", () => {
+    const held = { ...data, entrances: data.entrances.map((e) => (e.mapId === 389 ? { ...e, uiMapId: 2482 } : e)) };
+    expect(instanceRows(seen, held).has(389)).toBe(false);
+    expect(instanceRows(seen, held).has(34)).toBe(true);
+  });
+
   test("the zone page's row and the instance page agree on the entrance and its bosses", () => {
     const row = zoneContents({ npcs: [], quests: [], vendors: [] }, data, seen).get(1429)!.entrances[0]!;
     expect(row).toMatchObject({ names: ["Synthetic Stockade"], instanceMapIds: [34], confirmed: 3, lastSeen: "2026-10-19T10:00:00.000Z" });

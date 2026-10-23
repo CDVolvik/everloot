@@ -15,6 +15,7 @@ import { writeCatalogs } from "../client-catalog.js";
 import { writeClientLayer } from "../client-layer.js";
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "../client-extract.js";
 import { CLIENT_TABLES, clientSnapshotName, readClientMeta, writeClientSnapshot } from "../client-snapshot.js";
+import { readTerrainAreas } from "../terrain-area.js";
 import { ClassCatalog } from "../talents/catalog.js";
 import { writeWorldMapData } from "../world-map-data.js";
 import { clientDigestsOf } from "./client-digests.js";
@@ -33,6 +34,9 @@ export async function extractFromCdn(product: string, region: string, curatedPat
   if (failed.length) throw new Error(`could not read ${failed.map((m) => `${m.table} (${m.reason})`).join(", ")}`);
   const status = probeFiles(source, iconIds(tables));
   if (status) tables.push(status);
+  // The ground under each entrance and flight master, for the zone it is in (map.json).
+  const terrain = source.readFile && await readTerrainAreas(source.readFile, tables);
+  if (terrain) tables.push(terrain);
 
   const work = mkdtempSync(join(tmpdir(), "everloot-build-watch-"));
   try {
