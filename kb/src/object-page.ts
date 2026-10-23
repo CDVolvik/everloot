@@ -6,13 +6,14 @@
  * on the minimap is a pin at 3 installs (object-spawns.ts), and loot windows the rates leave out are only counted
  * (pending-loot.ts).
  */
-import { itemFactsFromRecords, lootWindowsFromRecords, rollupDrops, type DropRate, type ItemNameRow, type MeasuredZero } from "./drop-rollup.js";
+import { itemFactsFromRecords, lootWindowsFromRecords, recheckLootRecords, rollupDrops, type DropRate, type ItemNameRow, type MeasuredZero } from "./drop-rollup.js";
+import type { RecheckScope } from "./coverage.js";
 import { formatMeasuredZero, itemPage } from "./item-page.js";
 import { agreedObjectNames, objectSightingRowsFromRecords, objectSpawns, type ObjectSpawnRow } from "./object-spawns.js";
 import { pendingForObject, pendingLine, pendingLootFromRecords, type PendingCount, type PendingLoot } from "./pending-loot.js";
 
 /** `sightings`: where players saw objects on the minimap; `pending`: loot windows not yet in the rates. */
-export interface ObjectFacts { rates: DropRate[]; measuredZeros: MeasuredZero[]; names: ItemNameRow[]; objects?: ObjectSpawnRow[]; sightings?: ObjectSpawnRow[]; pending?: PendingLoot }
+export interface ObjectFacts { rates: DropRate[]; measuredZeros: MeasuredZero[]; names: ItemNameRow[]; objects?: ObjectSpawnRow[]; sightings?: ObjectSpawnRow[]; pending?: PendingLoot; recheck?: readonly RecheckScope[] }
 
 export interface ObjectDrop { itemId: number; itemName: string | null; kills: number; drops: number; rate: number; reporters: number }
 export interface ObjectPage {
@@ -30,10 +31,13 @@ export interface ObjectPage {
   pins?: { mapId: number; x: number; y: number; reporters: number }[];
 }
 
-export function objectFactsFromRecords(records: unknown[]): ObjectFacts {
-  const { rates, measuredZeros } = rollupDrops(lootWindowsFromRecords(records));
-  const items = itemFactsFromRecords(records);
-  return { rates, measuredZeros, names: items.names, objects: items.objects, sightings: objectSightingRowsFromRecords(records), pending: pendingLootFromRecords(records) };
+const NO_SCOPES: readonly RecheckScope[] = [];
+
+export function objectFactsFromRecords(records: unknown[], recheck: readonly RecheckScope[] = NO_SCOPES): ObjectFacts {
+  const { rates, measuredZeros } = rollupDrops(lootWindowsFromRecords(recheckLootRecords(records, recheck)));
+  const items = itemFactsFromRecords(records, recheck);
+  return { rates, measuredZeros, names: items.names, objects: items.objects, sightings: objectSightingRowsFromRecords(records), pending: pendingLootFromRecords(records),
+    ...(recheck.length ? { recheck } : {}) };
 }
 
 export function objectPage(objectId: number, facts: ObjectFacts): ObjectPage {
@@ -45,9 +49,9 @@ export function objectPage(objectId: number, facts: ObjectFacts): ObjectPage {
     .sort((a, b) => b.rate - a.rate || a.itemId - b.itemId);
   const zero = zeros.find((z) => z.public);
   const pendingLoot = pendingForObject(facts.pending, objectId);
-  const pins = objectSpawns((facts.sightings ?? []).filter((r) => r.objectId === objectId)).pins.map(({ mapId, x, y, reporters }) => ({ mapId, x, y, reporters }));
+  const pins = objectSpawns((facts.sightings ?? []).filter((r) => r.objectId === objectId), [], undefined, facts.recheck ?? []).pins.map(({ mapId, x, y, reporters }) => ({ mapId, x, y, reporters }));
   return {
-    objectId, name: agreedObjectNames(facts.objects ?? []).get(objectId) ?? null, drops,
+    objectId, name: agreedObjectNames(facts.objects ?? [], facts.recheck ?? []).get(objectId) ?? null, drops,
     zero: zero ? { kills: zero.kills, reporters: zero.reporters } : null,
     queued: !drops.length && !zero && (mine.length > 0 || zeros.length > 0),
     ...(pendingLoot ? { pendingLoot } : {}),

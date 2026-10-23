@@ -17,9 +17,10 @@ import {
 import type { WorldMapData } from "./world-map-data.js";
 import { confirmedEntrances, instanceFactsFromRecords, type InstanceEntranceRow } from "./instances.js";
 import { agreedObjectNames, objectSightingRowsFromRecords, objectSpawns, type ObjectSpawnRow } from "./object-spawns.js";
+import type { RecheckScope } from "./coverage.js";
 
 /** What the tool reads: NPC positions, vendor offers, the entrances players zoned in from, and objects seen on the minimap. */
-export type NearFacts = Pick<WorldFacts, "npcs" | "vendors"> & { entrances?: InstanceEntranceRow[]; sightings?: ObjectSpawnRow[] };
+export type NearFacts = Pick<WorldFacts, "npcs" | "vendors" | "recheck"> & { entrances?: InstanceEntranceRow[]; sightings?: ObjectSpawnRow[] };
 
 export type ObservedKind = "npc" | "vendor";
 
@@ -167,7 +168,7 @@ export function nearResult(args: NearArgs, data: WorldMapData, facts: NearFacts)
 
   // An entrance the files place is confirmed by players who zoned into one of its instances; no second pin is made.
   const confirmed = new Map<number, number>();
-  for (const e of confirmedEntrances(facts.entrances ?? [])) confirmed.set(e.instanceMapId, Math.max(confirmed.get(e.instanceMapId) ?? 0, e.reporters));
+  for (const e of confirmedEntrances(facts.entrances ?? [], new Date(), facts.recheck ?? [])) confirmed.set(e.instanceMapId, Math.max(confirmed.get(e.instanceMapId) ?? 0, e.reporters));
   const entrances = placeEntrances(data)
     .map((p) => ({ p, d: distanceYards(origin, p.world) }))
     .filter((e) => e.d <= radius)
@@ -184,7 +185,7 @@ export function nearResult(args: NearArgs, data: WorldMapData, facts: NearFacts)
     .sort((a, b) => a.d - b.d || a.p.npcId - b.p.npcId)
     .slice(0, limit)
     .map(({ p, d }) => ({ npcId: p.npcId, name: p.name, mapId: p.mapId, zoneName: p.zoneName, x: p.x, y: p.y, yards: oneDecimal(d), reporters: p.reporters }));
-  return { ok: true, origin: label, radius, limit, entrances, npcs: observed("npc"), vendors: observed("vendor"), treasures: nearTreasures(facts.sightings ?? [], data, origin, radius, limit) };
+  return { ok: true, origin: label, radius, limit, entrances, npcs: observed("npc"), vendors: observed("vendor"), treasures: nearTreasures(facts.sightings ?? [], data, origin, radius, limit, facts.recheck ?? []) };
 }
 
 /**
@@ -216,17 +217,17 @@ export function handleWorldMapNear(args: NearArgs, data: WorldMapData, facts: Ne
 }
 
 /** The facts this tool reads: NPC positions, vendor offers, entrances and minimap objects. Quests are left out. */
-export function mapFactsFromRecords(records: unknown[]): Required<NearFacts> {
-  const { npcs, vendors } = worldFactsFromRecords(records);
-  return { npcs, vendors, entrances: instanceFactsFromRecords(records).entrances, sightings: objectSightingRowsFromRecords(records) };
+export function mapFactsFromRecords(records: unknown[], recheck: readonly RecheckScope[] = []): Required<NearFacts> {
+  const { npcs, vendors } = worldFactsFromRecords(records, recheck);
+  return { npcs, vendors, recheck, entrances: instanceFactsFromRecords(records).entrances, sightings: objectSightingRowsFromRecords(records) };
 }
 
 /** Treasure pins within the radius, nearest first, outside held-back zones. */
-function nearTreasures(sightings: ObjectSpawnRow[], data: WorldMapData, origin: WorldPoint, radius: number, limit: number): NearTreasure[] {
+function nearTreasures(sightings: ObjectSpawnRow[], data: WorldMapData, origin: WorldPoint, radius: number, limit: number, recheck: readonly RecheckScope[] = []): NearTreasure[] {
   if (!sightings.length) return [];
   const { zones, held } = allZones(data);
-  const names = agreedObjectNames(sightings);
-  return objectSpawns(sightings).pins.flatMap((pin) => {
+  const names = agreedObjectNames(sightings, recheck);
+  return objectSpawns(sightings, [], undefined, recheck).pins.flatMap((pin) => {
     const zone = zones.find((z) => z.mapId === pin.mapId);
     const world = zone && !held.has(pin.mapId) ? zoneToWorld(zones, pin.mapId, pin.x / 100, pin.y / 100) : null;
     const d = world ? distanceYards(origin, world) : Infinity;

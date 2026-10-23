@@ -60,7 +60,17 @@ the full KB suite passed unchanged before any new test was added.
 `rollup-compute.ts` puts them on the world facts, and the readers' callers pass them on: the NPC page's traits, the
 NPC, quest and vendor lists, the sitemap, the map's candidates and observed facts, the zone pages, the instance pages,
 the treasure pins and the object names. `kb/src/world-map-near.ts`'s `observedPins` passes `facts.recheck` into
-`npcPage` and `vendorPage` (a pass-through; the MCP tool still calls it without scopes).
+`npcPage` and `vendorPage` (a pass-through; the MCP tool called it without scopes at the time of this lane).
+
+**Follow-up: the MCP page tools read the scopes too.** `ToolOptions.recheck` carries `RECHECK_SCOPES` from the site's
+`toolLoaders()` into `createToolHandlers`, and every page tool's facts are built with them: the NPC, quest, vendor and
+world-map-near facts attach `recheck`, the object pages cut their loot windows through `recheckLootRecords`, and
+`item_page`, `answer_sources` and `entity_relations` forward the scopes too, and the object page and world-map-near
+cut their treasure names and pins with them. Relation edges reuse the page rules: drops cut through
+`recheckLootRecords`, vendor prices are settled together before the best price is chosen, quest zones use the leading
+giver's vote and every reward id, and a rare's `located_in` edge is scoped as a rare pin. The memo key includes them, so a scoped
+and an unscoped read of one corpus never share facts. `kb/test/mcp-recheck-scopes.test.ts` covers the end-to-end path.
+The standalone `mcp-http-main.ts` still has no scopes (it has no curated file to read); the site's mounts do.
 
 **The drop rates' cut-off, `kb/src/drop-rollup.ts`.** `lootRecheckSince(records, scopes)` gives each loot source a scope
 covers, and `recheckLootRecords(records, scopes)` drops that source's loot-api windows captured at or before the
@@ -158,12 +168,11 @@ reverted, and is in the appendix for the coordinator.
   records the week it last wrote, and a failed rewrite leaves the old week so the next run retries it. Its `scopeSince`
   still passes every map an NPC was seen on as the zones, where the score uses the busiest one; aligning that is a
   further step.
-- **The MCP tools** (`npc_page`, `quest_page`, `vendor_page`, `item_page`, `object_page`, `world_map_near`) build their
-  facts in `kb/src/mcp-server.ts` without scopes, so they do not apply the cut-off yet. That file is lane E's. The fix
-  is to attach the scopes in the fact builders (`recheck` on the world facts, `itemFactsFromRecords(records, scopes)`).
-- **`kb/src/object-page.ts`** (the object page's pins and names), **`kb/src/edges.ts`** (relation edges from drops) and
-  **`kb/src/open-data/build.ts`** call the readers without scopes. The open data is a record of what was reported, so
-  leaving it whole may be right; the object page should pass them.
+- **The MCP tools** now read the scopes (follow-up above): `entity_relations` forwards them into `observedEdges`, which
+  cuts drop windows through `recheckLootRecords` and vendor, quest and `located_in` edges through `recheckRows`, and
+  `world_map_near` passes them to the entrance confirmations.
+- **`kb/src/open-data/build.ts`** still calls the readers without scopes. The open data is a record of what was
+  reported, so leaving it whole may be right.
 - Writing scopes is unchanged: the build watch writes map scopes, `client-diff` and maintainers the rest, and the weekly
   `spot-check` run is still not scheduled.
 

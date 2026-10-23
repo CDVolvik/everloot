@@ -4,6 +4,7 @@ import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mc
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, GAME_DATA_CREDIT, LICENCE, MCP_CREDIT, SITE, type EntityKind } from "@everloot/protocol";
 import { answerSources, answerSourcesFactsFromRecords, formatAnswerSources, type AnswerSourcesFacts } from "./answer-sources.js";
+import type { RecheckScope } from "./coverage.js";
 import { auctionHistory, auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan, planStructured } from "./bridge-plan.js";
 import { handleRecentChanges, recentChangesStructured, type ChangeEntry } from "./changes.js";
@@ -73,7 +74,7 @@ export const TOOL_KINDS = {
   quest_page: ["npc_sighting", "quest", "vendor"],
   vendor_page: ["npc_sighting", "quest", "vendor"],
   world_map_near: ["npc_sighting", "vendor", "instance_entrance", "object_sighting"],
-  entity_relations: ["loot", "vendor", "quest", "npc_sighting"],
+  entity_relations: ["loot", "vendor", "quest", "npc_sighting", "object_sighting"],
   collection_gap: ["collection_catalog", "collection_owned"],
   guild_board: ["guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot"],
   auction_history: ["auction_scan"],
@@ -87,7 +88,7 @@ export type ToolName = keyof typeof TOOL_KINDS;
  * independent copy of this mapping and checks the kinds against the fact functions,
  * so a wrong entry here still fails there.
  */
-const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
+const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[], recheck: readonly RecheckScope[]) => unknown> = {
   answer_sources: answerSourcesFactsFromRecords,
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
@@ -123,22 +124,31 @@ let tooledMemo: TooledMemo | null = null;
  * exact corpus. The source stays in the key so a remote corpus can never share a
  * local one's facts at the same version marker.
  */
-function tooledKey(source: string, corpus: { records: readonly unknown[]; dataAsOf?: string | null }): string {
-  return `${source}|${corpus.dataAsOf ?? ""}|${corpus.records.length}`;
+function tooledKey(
+  source: string,
+  corpus: { records: readonly unknown[]; dataAsOf?: string | null },
+  recheck: readonly RecheckScope[],
+): string {
+  const scopes = recheck
+    .map((s) => `${s.since}|${s.type ?? ""}|${s.zones?.join(",") ?? ""}|${s.ids?.join(",") ?? ""}`)
+    .sort()
+    .join(";");
+  return `${source}|${corpus.dataAsOf ?? ""}|${corpus.records.length}|${scopes}`;
 }
 
 function tooledFacts<T>(
   source: string,
   corpus: { records: readonly unknown[]; dataAsOf?: string | null },
   tool: ToolName,
-  build: (records: unknown[]) => T,
+  recheck: readonly RecheckScope[] = [],
 ): T {
-  const key = tooledKey(source, corpus);
+  const key = tooledKey(source, corpus, recheck);
   if (!tooledMemo || tooledMemo.key !== key) tooledMemo = { key, byTool: new Map() };
   let facts = tooledMemo.byTool.get(tool) as T | undefined;
   if (facts === undefined) {
     const wanted = new Set<string>(TOOL_KINDS[tool]);
-    facts = build(corpus.records.filter((r) => wanted.has((r as { kind?: string }).kind ?? "")));
+    const build = TOOL_FACT_BUILDERS[tool] as (records: unknown[], scopes: readonly RecheckScope[]) => T;
+    facts = build(corpus.records.filter((r) => wanted.has((r as { kind?: string }).kind ?? "")), recheck);
     tooledMemo.byTool.set(tool, facts);
   }
   return facts;
@@ -329,7 +339,7 @@ async function fromPublicCorpus(url: string, render: (records: unknown[]) => str
 }
 
 async function answerFromTooledLoader<T>(
-  loader: CorpusLoader, tool: ToolName, build: (records: unknown[]) => T, render: (facts: T) => string,
+  loader: CorpusLoader, tool: ToolName, render: (facts: T) => string, recheck: readonly RecheckScope[] = [],
 ): Promise<string> {
   let corpus;
   try {
@@ -338,16 +348,16 @@ async function answerFromTooledLoader<T>(
     return UNAVAILABLE;
   }
   if (!corpus) return UNAVAILABLE;
-  return `${render(tooledFacts("loader", corpus, tool, build))}\n${answerFooter(corpus.dataAsOf)}`;
+  return `${render(tooledFacts<T>("loader", corpus, tool, recheck))}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 async function answerFromTooledPublicCorpus<T>(
-  url: string, tool: ToolName, build: (records: unknown[]) => T, render: (facts: T) => string,
+  url: string, tool: ToolName, render: (facts: T) => string, recheck: readonly RecheckScope[] = [],
 ): Promise<string> {
   const corpus = await fetchPublicCorpus(url);
   if (!corpus) return UNAVAILABLE;
   const dataAsOf = typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null;
-  return `${render(tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build))}\n${answerFooter(corpus.dataAsOf)}`;
+  return `${render(tooledFacts<T>("url", { records: corpus.records, dataAsOf }, tool, recheck))}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 /**
@@ -357,31 +367,33 @@ async function answerFromTooledPublicCorpus<T>(
  * The local-files path is a version-less dev fallback and stays unmemoized.
  */
 export function fromTooledUploads<T>(
-  tool: ToolName, render: (facts: T) => string, loader?: CorpusLoader,
+  tool: ToolName, render: (facts: T) => string, loader?: CorpusLoader, recheck: readonly RecheckScope[] = [],
 ): string | Promise<string> {
   const kinds = TOOL_KINDS[tool];
-  const build = TOOL_FACT_BUILDERS[tool] as (records: unknown[]) => T;
-  if (loader) return answerFromTooledLoader(loader, tool, build, render);
+  const build = TOOL_FACT_BUILDERS[tool] as (records: unknown[], scopes: readonly RecheckScope[]) => T;
+  if (loader) return answerFromTooledLoader(loader, tool, render, recheck);
   const base = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
   // Asking for only the kinds a tool reads keeps the body under the byte ceiling for longer.
   const url = base ? `${base}${base.includes("?") ? "&" : "?"}kinds=${kinds.join(",")}` : undefined;
-  if (url) return answerFromTooledPublicCorpus(url, tool, build, render);
+  if (url) return answerFromTooledPublicCorpus(url, tool, render, recheck);
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return UPLOADS_UNSET;
-  return render(build(loadUploadRecords(dir)));
+  return render(build(loadUploadRecords(dir), recheck));
 }
 
 /**
  * The facts one tool reads, with the corpus time, for a handler that renders more than text. Same
  * sources and memo as fromTooledUploads; null when no source is connected or readable.
  */
-export async function readTooledFacts<T>(tool: ToolName, loader?: CorpusLoader): Promise<{ facts: T; dataAsOf: string | null } | null> {
-  const build = TOOL_FACT_BUILDERS[tool] as (records: unknown[]) => T;
+export async function readTooledFacts<T>(
+  tool: ToolName, loader?: CorpusLoader, recheck: readonly RecheckScope[] = [],
+): Promise<{ facts: T; dataAsOf: string | null } | null> {
+  const build = TOOL_FACT_BUILDERS[tool] as (records: unknown[], scopes: readonly RecheckScope[]) => T;
   if (loader) {
     let corpus;
     try { corpus = await loader(); } catch { return null; }
     if (!corpus) return null;
-    return { facts: tooledFacts("loader", corpus, tool, build), dataAsOf: typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null };
+    return { facts: tooledFacts<T>("loader", corpus, tool, recheck), dataAsOf: typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null };
   }
   const base = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
   const url = base ? `${base}${base.includes("?") ? "&" : "?"}kinds=${TOOL_KINDS[tool].join(",")}` : undefined;
@@ -389,11 +401,11 @@ export async function readTooledFacts<T>(tool: ToolName, loader?: CorpusLoader):
     const corpus = await fetchPublicCorpus(url);
     if (!corpus) return null;
     const dataAsOf = typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null;
-    return { facts: tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build), dataAsOf };
+    return { facts: tooledFacts<T>("url", { records: corpus.records, dataAsOf }, tool, recheck), dataAsOf };
   }
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return null;
-  return { facts: build(loadUploadRecords(dir)), dataAsOf: null };
+  return { facts: build(loadUploadRecords(dir), recheck), dataAsOf: null };
 }
 
 /**
@@ -494,9 +506,11 @@ function uploadsConfigured(loader?: CorpusLoader): boolean {
  * so as before and the structure carries connected false and the reason, never an empty page.
  */
 export async function readPage<T>(
-  tool: ToolName, loader: CorpusLoader | undefined, page: (facts: T, dataAsOf: string | null) => { text: string; page: object; url?: string },
+  tool: ToolName, loader: CorpusLoader | undefined,
+  page: (facts: T, dataAsOf: string | null) => { text: string; page: object; url?: string },
+  recheck: readonly RecheckScope[] = [],
 ): Promise<StructuredAnswer> {
-  const read = await readTooledFacts<T>(tool, loader);
+  const read = await readTooledFacts<T>(tool, loader, recheck);
   if (!read) {
     const reason = uploadsConfigured(loader) ? UNAVAILABLE : UPLOADS_UNSET;
     return { text: reason, structured: { connected: false, dataAsOf: null, reason } };
@@ -512,17 +526,19 @@ export async function readPage<T>(
 const inGameFiles = (itemId: number): boolean => categoryOf(CLIENT_TAXONOMY, itemId) !== null;
 
 /** The page of an entity entity_relations was asked about, when the site has one with something on it. */
-async function entityPageUrl(kind: EntityKind, id: number, loader?: CorpusLoader): Promise<string | undefined> {
+async function entityPageUrl(
+  kind: EntityKind, id: number, loader?: CorpusLoader, recheck: readonly RecheckScope[] = [],
+): Promise<string | undefined> {
   if (kind === "item") {
-    const read = await readTooledFacts<ReturnType<typeof itemFactsFromRecords>>("item_page", loader);
+    const read = await readTooledFacts<ReturnType<typeof itemFactsFromRecords>>("item_page", loader, recheck);
     return read ? itemPageUrl(itemPage(id, read.facts), inGameFiles(id)) : undefined;
   }
   if (kind === "object") {
-    const read = await readTooledFacts<ObjectFacts>("object_page", loader);
+    const read = await readTooledFacts<ObjectFacts>("object_page", loader, recheck);
     return read ? objectPageUrl(objectPage(id, read.facts)) : undefined;
   }
   if (kind === "npc" || kind === "quest") {
-    const read = await readTooledFacts<ReturnType<typeof worldFactsFromRecords>>(kind === "npc" ? "npc_page" : "quest_page", loader);
+    const read = await readTooledFacts<ReturnType<typeof worldFactsFromRecords>>(kind === "npc" ? "npc_page" : "quest_page", loader, recheck);
     if (!read) return undefined;
     return kind === "npc" ? npcPageUrl(npcPage(id, read.facts)) : questPageUrl(questPage(id, read.facts));
   }
@@ -537,7 +553,7 @@ function professionArg(profession: string): string {
 }
 
 /** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
-export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader; coverage?: CoverageLoader; settledSummary?: SettledSummaryLoader }
+export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader; coverage?: CoverageLoader; settledSummary?: SettledSummaryLoader; recheck?: readonly RecheckScope[] }
 
 /** A tool's answer: the text every client gets, and the structured content of the tool's output schema. */
 export type ToolAnswer = Answer;
@@ -549,7 +565,10 @@ export type ToolHandlers = { [K in McpToolName]: (args: McpToolArgs<K>) => ToolA
  * a tool answers the same over MCP and over plain HTTP.
  */
 export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandlers {
-  const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
+  const recheck = options.recheck ?? [];
+  const readPageIn = <T>(tool: ToolName, page: (facts: T, dataAsOf: string | null) => { text: string; page: object; url?: string }) =>
+    readPage<T>(tool, options.corpus, page, recheck);
+  const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus, recheck);
   const handlers: ToolHandlers = {
     search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: withPages(db, searchHits(db, args)) } }),
     get_entity: (args) => {
@@ -569,14 +588,14 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       });
     },
     answer_sources: async (args) => {
-      const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus);
+      const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus, recheck);
       const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
       return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: result };
     },
     profession_path: (args) => {
       // The same defaults the text handler applies: from 1, to the start when no end is given.
       const query = { profession: professionArg(args.profession), fromSkill: args.fromSkill ?? 1, toSkill: args.toSkill ?? args.fromSkill ?? 1 };
-      return readPage("profession_path", options.corpus, (facts: ReturnType<typeof pathFactsFromRecords>) => {
+      return readPageIn("profession_path", (facts: ReturnType<typeof pathFactsFromRecords>) => {
         const page = professionPath(facts.sightings, facts.prices, query, facts.derived, facts.vendorPrices);
         const url = page.steps.length ? professionsUrl(query.profession, query.fromSkill, query.toSkill) : undefined;
         return { text: formatProfessionPath(page), page, url };
@@ -584,7 +603,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
     },
     recipe_thresholds: (args) => {
       const profession = professionArg(args.profession);
-      return readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => {
+      return readPageIn("recipe_thresholds", (facts: ReturnType<typeof recipeFactsFromRecords>) => {
         const page = recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices);
         return {
           text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
@@ -594,7 +613,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       });
     },
     item_page: async (args) => {
-      const answer = await readPage("item_page", options.corpus, (facts: ReturnType<typeof itemToolFactsFromRecords>, dataAsOf) => {
+      const answer = await readPageIn("item_page", (facts: ReturnType<typeof itemToolFactsFromRecords>, dataAsOf) => {
         const reported = reportedItemFacts(facts.numbers.get(args.itemId), new Date(dataAsOf ?? NaN));
         const page = { ...itemPage(args.itemId, facts), reported };
         return { text: `${formatItemPage(page)}\n${formatItemNumbers(reported)}\nItem-number data as of ${dataAsOf ?? "[?]"}.`, page, url: itemPageUrl(page, inGameFiles(page.itemId)) };
@@ -602,23 +621,23 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       if ("connected" in answer.structured && !answer.structured.connected) answer.text += "\nItem numbers: [?]; no corpus read. Agreeing installs [?], last seen [?], build [?], data as of [?].";
       return answer;
     },
-    npc_page: (args) => readPage("npc_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+    npc_page: (args) => readPageIn("npc_page", (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = npcPage(args.npcId, facts);
       return { text: formatNpcPage(page), page, url: npcPageUrl(page) };
     }),
-    object_page: (args) => readPage("object_page", options.corpus, (facts: ObjectFacts) => {
+    object_page: (args) => readPageIn("object_page", (facts: ObjectFacts) => {
       const page = objectPage(args.objectId, facts);
       return { text: formatObjectPage(page), page, url: objectPageUrl(page) };
     }),
-    quest_page: (args) => readPage("quest_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+    quest_page: (args) => readPageIn("quest_page", (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = questPage(args.questId, facts);
       return { text: formatQuestPage(page), page, url: questPageUrl(page) };
     }),
-    vendor_page: (args) => readPage("vendor_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+    vendor_page: (args) => readPageIn("vendor_page", (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = vendorPage(args.vendorNpcId, facts);
       return { text: formatVendorPage(page), page, url: vendorPageUrl(page) };
     }),
-    world_map_near: (args) => readPage("world_map_near", options.corpus, (facts: ReturnType<typeof mapFactsFromRecords>) => {
+    world_map_near: (args) => readPageIn("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => {
       const page = nearResult(args, WORLD_MAP_DATA, facts);
       // An answer from an NPC links that NPC's page (it has an agreed pin); one from a spot, the map there.
       const spot = page.ok && args.npcId === undefined ? nearZoneSpot(args, WORLD_MAP_DATA) : null;
@@ -626,8 +645,8 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       return { text: handleWorldMapNear(args, WORLD_MAP_DATA, facts), page, url };
     }),
     entity_relations: async (args) => {
-      const url = await entityPageUrl(args.kind, args.id, options.corpus);
-      return readPage("entity_relations", options.corpus, (observed: Edge[]) => ({
+      const url = await entityPageUrl(args.kind, args.id, options.corpus, recheck);
+      return readPageIn("entity_relations", (observed: Edge[]) => ({
         text: handleEntityRelations(args, observed, CLIENT_EDGES),
         page: entityRelationsStructured(args, observed, CLIENT_EDGES),
         url,
@@ -644,23 +663,23 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
     },
     talent_tree: (args) => handleTalentTree(args),
     talent_plan: (args) => handleTalentPlan(args),
-    collection_gap: (args) => readPage("collection_gap", options.corpus, (facts: ReturnType<typeof collectionFactsFromRecords>) => {
+    collection_gap: (args) => readPageIn("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => {
       const page = collectionGap(args.collection, args.ownerInstallId, facts);
       const url = page.groups.length ? collectionsUrl({ collection: args.collection, install: args.ownerInstallId }) : undefined;
       return { text: handleCollectionGap(args, facts), page, url };
     }),
     completion_progress: (args) => completionProgressAnswer(args, options.completion),
-    guild_board: (args) => readPage("guild_board", options.corpus, (facts: ReturnType<typeof guildFactsFromRecords>) => {
+    guild_board: (args) => readPageIn("guild_board", (facts: ReturnType<typeof guildFactsFromRecords>) => {
       const page = guildBoard(args.guildName, args.realm, facts);
       const published = page.roster.length || page.progression.length || page.loot.length;
       return { text: handleGuildBoard(args, facts), page, url: published ? guildBoardUrl(page.guildName, page.realm) : undefined };
     }),
-    auction_history: (args) => readPage("auction_history", options.corpus, (facts: ReturnType<typeof auctionSightingsFromRecords>) => {
+    auction_history: (args) => readPageIn("auction_history", (facts: ReturnType<typeof auctionSightingsFromRecords>) => {
       const page = auctionHistory(args.realm, args.itemId, facts);
       return { text: handleAuctionHistory(args, facts), page, url: page.points.length ? marketItemUrl(args.realm, args.itemId) : undefined };
     }),
     market_value: (args) => marketValueAnswer(args, options.market),
-    gold_ledger: (args) => readPage("gold_ledger", options.corpus, (facts: ReturnType<typeof goldFactsFromRecords>) => {
+    gold_ledger: (args) => readPageIn("gold_ledger", (facts: ReturnType<typeof goldFactsFromRecords>) => {
       const page = goldLedger(args.character, args.realm, facts.snapshots, facts.events);
       return {
         text: handleGoldLedger(args, facts.snapshots, facts.events),

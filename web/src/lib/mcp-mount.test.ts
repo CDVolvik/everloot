@@ -13,6 +13,7 @@ vi.mock("./usage-metrics", async (importActual) => ({ ...(await importActual<typ
 
 import { createMount, toolLoaders } from "./mcp-mount";
 import { loadCoverage } from "./coverage-compute";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { readSettledList } from "./settled-store";
 import { emptySettledList } from "../../../kb/src/settled-list";
 
@@ -29,6 +30,10 @@ it("lends only the persisted settled list's count and date, never its identifier
 it("lends MCP and HTTP tools the public coverage page's reader", async () => {
   expect(await toolLoaders().coverage!()).toBeNull();
   expect(loadCoverage).toHaveBeenCalledOnce();
+});
+
+it("lends the curated recheck scopes, so the page tools honour the coverage cut-off", () => {
+  expect(toolLoaders().recheck).toBe(RECHECK_SCOPES);
 });
 
 const call = (name: string) => ({ jsonrpc: "2.0", method: "tools/call", params: { name } });
