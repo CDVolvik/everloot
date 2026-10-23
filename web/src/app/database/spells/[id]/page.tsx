@@ -7,9 +7,10 @@ import { entitySummary, evidenceLine } from "@/lib/evidence";
 import { loadEdges } from "@/lib/edges";
 import { loadSiteAssets, loadSpellNames } from "@/lib/game-assets";
 import { CLIENT_LAYER } from "@/lib/items";
-import { edgesFrom, type Edge, type Rel } from "../../../../../../kb/src/edges";
+import { edgesFrom, edgesTo, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { entityLabel } from "../../../../../../kb/src/edges";
 import { trailFor } from "@/lib/breadcrumbs";
+import { spellIndexable } from "@/lib/indexable";
 
 /**
  * A spell page. The spell is the game's own data: its name, its text and its relations all come
@@ -41,13 +42,35 @@ const relationColumns: Column<Edge>[] = [
   { key: "build", header: "Build", cell: (e) => e.build ?? "—" },
 ];
 
+/**
+ * What the page reads about one spell. The spell is unknown, a 404 rather than an empty page, when the game
+ * files' spell names are loaded and do not hold it, it has no tooltip and no relation points from or to it.
+ * Without the names file, or with upload storage out of reach, nothing can be ruled out.
+ */
+async function loadSpell(spellId: number) {
+  const [edges, assets, spellNames] = await Promise.all([
+    loadEdges(),
+    loadSiteAssets(),
+    loadSpellNames(CLIENT_LAYER.build.version),
+  ]);
+  const both = [...edges.observed, ...edges.client];
+  const all = edgesFrom(both, "spell", spellId);
+  const name = spellNames?.names.get(spellId);
+  const tip = assets?.spellTips.get(spellId);
+  const unknown = spellNames !== null && !edges.unreachable && name === undefined && !tip && !all.length && !edgesTo(both, "spell", spellId).length;
+  return { edges, assets, all, name, tip, unknown };
+}
+
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
+  const { all, name, tip, unknown } = await loadSpell(Number(params.id));
+  if (unknown) notFound();
   return {
     title: `Spell ${params.id} · Everloot`,
     description: `Spell ${params.id} from the WoW: Forever client files: what it creates, what it costs and which talent teaches it, with the build it was read from.`,
     alternates: { canonical: `/database/spells/${params.id}` },
+    robots: { index: spellIndexable({ named: Boolean(name ?? tip?.name), text: Boolean(tip?.text), relations: all.length }), follow: true },
   };
 }
 
@@ -55,15 +78,9 @@ export default async function SpellPage(props: Props) {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const spellId = Number(params.id);
-  const [edges, assets, spellNames] = await Promise.all([
-    loadEdges(),
-    loadSiteAssets(),
-    loadSpellNames(CLIENT_LAYER.build.version),
-  ]);
-  const all = edgesFrom([...edges.observed, ...edges.client], "spell", spellId);
+  const { edges, assets, all, name, tip, unknown } = await loadSpell(spellId);
+  if (unknown) notFound();
   const rel = (r: Rel) => all.filter((e) => e.rel === r);
-  const name = spellNames?.names.get(spellId);
-  const tip = assets?.spellTips.get(spellId);
   const icon = assets?.spellIcons.get(spellId);
   const title = name ?? tip?.name ?? `Spell ${spellId}`;
   const build = edges.client.find((e) => e.fromId === spellId || e.toId === spellId)?.build ?? CLIENT_LAYER.build.version;
