@@ -16,6 +16,7 @@ export const REPAIRED_TEMPLATES = [
   "horde icon", "horde icon small", "alliance icon", "alliance icon small", "neutral icon", "neutral icon small",
   "alliance", "horde", "neutral",
   "wp", "wplink", "au", "alternate universe", "loot", "coppercost", "cv-ah",
+  "co", "coords", "reputation", "quality", "costitem",
   "ss", "for", "stub", "removed",
 ];
 
@@ -54,6 +55,53 @@ function money(parts: string[]): string {
   return out.length > 0 ? out.join(" ") : (g || s || c ? "0c" : "");
 }
 
+/**
+ * {{cost}}'s other currencies in the template's own order: the named argument(s), then the article the
+ * icon links to. Read from Template:Cost in the 2023-11-13 dump; `eots` wins over its older name `es`.
+ */
+const CURRENCIES: Array<[string[], string]> = [
+  [["ach"], "Achievement point"], [["cs"], "Champion's Seal"], [["djt"], "Dalaran Jewelcrafter's Token"], [["ea"], "Epicurean's Award"],
+  [["tbc"], "Tol Barad Commendation"], [["ijt"], "Illustrious Jewelcrafter's Token"], [["mwt"], "Mark of the World Tree"], [["dpt"], "Darkmoon Prize Ticket"],
+  [["it"], "Ironpaw Token"], [["lcgf"], "Lesser Charm of Good Fortune"], [["ecgf"], "Elder Charm of Good Fortune"], [["mrf"], "Mogu Rune of Fate"],
+  [["ws"], "Warforged Seal"], [["tc"], "Timeless Coin"], [["bc"], "Bloody Coin"], [["twb"], "Timewarped Badge"],
+  [["ss"], "Spirit Shard"], [["conq"], "Conquest"], [["hon"], "Honor"], [["diak"], "Dragon Isles Alchemy Knowledge"],
+  [["dibk"], "Dragon Isles Blacksmithing Knowledge"], [["dienck"], "Dragon Isles Enchanting Knowledge"], [["diengk"], "Dragon Isles Engineering Knowledge"], [["dihk"], "Dragon Isles Herbalism Knowledge"],
+  [["diik"], "Dragon Isles Inscription Knowledge"], [["dijk"], "Dragon Isles Jewelcrafting Knowledge"], [["dilk"], "Dragon Isles Leatherworking Knowledge"], [["dimk"], "Dragon Isles Mining Knowledge"],
+  [["disk"], "Dragon Isles Skinning Knowledge"], [["ditk"], "Dragon Isles Tailoring Knowledge"], [["bt"], "Bloody Tokens"], [["dge"], "Dragon Glyph Embers"],
+  [["dis"], "Dragon Isles Supplies"], [["efa"], "Effigy Adornments"], [["eo"], "Elemental Overflow"], [["sts"], "Storm Sigil"],
+  [["pae"], "Purified Arcane Energy"], [["fs"], "Flightstones"], [["pf"], "Paracausal Flakes"], [["roab"], "Riders of Azeroth Badge"],
+  [["arc"], "Argent Commendation"], [["cr"], "Cataloged Research"], [["cf"], "Cosmic Flux"], [["cfo"], "Cyphers of the First Ones"],
+  [["go"], "Grateful Offering"], [["ir"], "Infused Ruby"], [["ph"], "Phantasma"], [["ra"], "Reservoir Anima"],
+  [["rs"], "Redeemed Soul"], [["sf"], "Sinstone Fragments"], [["sa"], "Soul Ash"], [["sc"], "Soul Cinders"],
+  [["st"], "Stygia"], [["7sm"], "7th Legion Service Medal"], [["cv"], "Coalescing Visions"], [["cm"], "Corrupted Mementos"],
+  [["eon"], "Echoes of Ny'alotha"], [["hsm"], "Honorbound Service Medal"], [["pm"], "Prismatic Manapearl"], [["sd"], "Seafarer's Dubloon"],
+  [["tr"], "Titan Residuum"], [["wr"], "War Resources"], [["am"], "Ancient Mana"], [["bg"], "Brawler's Gold"],
+  [["ca"], "Coins of Air"], [["cc"], "Curious Coin"], [["moh"], "Mark of Honor"], [["ns"], "Nethershard"],
+  [["or"], "Order Resources"], [["sbf"], "Seal of Broken Fate"], [["se"], "Sightless Eye"], [["ta"], "Timeworn Artifact"],
+  [["tst"], "Trial of Style Token"], [["lws"], "Legionfall War Supplies"], [["va"], "Veiled Argunite"], [["eob"], "Echoes of Battle"],
+  [["eod"], "Echoes of Domination"], [["we"], "Wakening Essence"], [["ac"], "Apexis Crystal"], [["af"], "Artifact Fragment"],
+  [["gr"], "Garrison Resources"], [["oil"], "Oil (currency)"], [["stf"], "Seal of Tempered Fate"], [["sif"], "Seal of Inevitable Fate"],
+  [["dic"], "Dingy Iron Coins"], [["v"], "Valor"], [["dca"], "Epicurean's Award"], [["h"], "Honor Points"],
+  [["h-h"], "Honor Points"], [["a-h"], "Honor Points"], [["wsg"], "Warsong Gulch Mark of Honor"], [["ab"], "Arathi Basin Mark of Honor"],
+  [["av"], "Alterac Valley Mark of Honor"], [["eots", "es"], "Eye of the Storm Mark of Honor"], [["sota"], "Strand of the Ancients Mark of Honor"], [["ic"], "Isle of Conquest Mark of Honor"],
+  [["w"], "Wintergrasp Mark of Honor"], [["a"], "Arena point"], [["sks"], "Stone Keeper's Shard"], [["vc"], "Venture Coin"],
+  [["boj"], "Badge of Justice"], [["eoh"], "Emblem of Heroism"], [["eov"], "Emblem of Valor"], [["eoc"], "Emblem of Conquest"],
+  [["eot"], "Emblem of Triumph"], [["eof"], "Emblem of Frost"], [["vp"], "Valor Points"], [["jp"], "Justice Points"],
+  [["hp"], "Honor Points"], [["h-hp"], "Honor Points"], [["a-hp"], "Honor Points"], [["cp"], "Conquest Points"],
+  [["h-cp"], "Conquest Points"], [["a-cp"], "Conquest Points"],
+];
+
+/** {{cost}}: gold, silver and copper (named g/s/c win over 1/2/3), then each other currency as "amount Name", then a custom name=/cost= pair. */
+function cost(positional: string[], named: Record<string, string>): string {
+  const out = [money([named.g ?? positional[0], named.s ?? positional[1], named.c ?? positional[2]])];
+  for (const [codes, currency] of CURRENCIES) {
+    const amount = codes.map((k) => named[k]).find((v) => v !== undefined);
+    if (amount) out.push(`${amount} ${currency}`);
+  }
+  if (named.name) out.push(`${named.cost ?? ""} ${named.name}`.trim());
+  return out.filter(Boolean).join(" ");
+}
+
 const capitalise = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** The rendering for one template (its inner text, nested templates already rendered), or null when it is not ours. */
@@ -66,7 +114,8 @@ function render(inner: string): string | null {
   ) as Record<string, string>;
 
   if (name === "g" || name === "s" || name === "c") return name;
-  if (name === "cost" || name === "money") return money(positional);
+  if (name === "cost") return cost(positional, named);
+  if (name === "money") return money(positional);
   if (name === "rep" || name === "faction standing") return capitalise(positional[0] ?? "");
   if (name === "race") return positional[0] ?? "";
   if (/^patch \d/.test(name)) return `${capitalise(args[0].trim())}${named.note ? `: ${named.note}` : ""}`;
@@ -90,6 +139,16 @@ function render(inner: string): string | null {
   }
   // {{cv-AH|Alliance text|Horde text}}: the wiki shows one side by the reader's faction, "A or H" without it.
   if (name === "cv-ah") return [positional[0], positional[1]].filter(Boolean).join(" or ");
+  // {{co|47|78|Arathi Highlands}} (a redirect to {{coords}}) shows the map coordinates as "[47, 78]".
+  if (name === "co" || name === "coords") return `[${positional[0] || "0"}, ${positional[1] || "0"}]`;
+  // {{reputation|Revered}}, {{quality|epic|Item|label}}: the label, else the link, else the standing or quality as written.
+  if (name === "reputation" || name === "quality") return positional[2] || positional[1] || positional[0] || "";
+  // {{costitem|8|Bolt of Embersilk Cloth}} is the count and the item's icon; the item name stands in for the icon.
+  if (name === "costitem") {
+    const count = positional[0] || "1";
+    const shown = /^\d+$/.test(count) ? Number(count).toLocaleString("en-US") : count;
+    return positional[1] ? `${shown}${named.numsep ?? " "}${positional[1]}` : shown;
+  }
   // {{Alliance}}, {{Horde}}, {{Neutral}} are the small faction icon alone.
   if (/^(horde|alliance|neutral)( icon( small)?)?$/.test(name)) return REMOVED;
   if (name === "ss" || name === "for" || name === "removed" || name.startsWith("stub")) return REMOVED;
