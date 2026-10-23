@@ -9,7 +9,7 @@ import DocPage from "@/components/docs/DocPage";
 import { toolFromSlug, toolHref } from "@/lib/docs/nav";
 import { toolSamples } from "@/lib/docs/examples";
 import { toolDocs } from "@/lib/protocol-docs";
-import { pageMetadata } from "@/lib/seo";
+import { DESCRIPTION_MAX, pageMetadata } from "@/lib/seo";
 
 /** One page per MCP tool, generated from the protocol's tool definitions (MCP_TOOLS). */
 
@@ -86,7 +86,18 @@ export async function generateMetadata({ params }: { params: Promise<{ tool: str
   const name = toolFromSlug((await params).tool);
   const doc = name && toolDocs().find((d) => d.name === name);
   if (!doc) return {};
-  return pageMetadata({ title: `${doc.name}: ${doc.title} · MCP tool`, description: doc.description.split(/(?<=\.)\s/)[0] ?? doc.title, path: toolHref(doc.name) });
+  return pageMetadata({ title: `${doc.name}: ${doc.title} · MCP tool`, description: metaDescription(doc.description), path: toolHref(doc.name) });
+}
+
+/** The tool's description in whole sentences while they fit DESCRIPTION_MAX; a first sentence too long on its own is cut at a word. */
+function metaDescription(text: string): string {
+  let out = "";
+  for (const sentence of text.split(/(?<=\.)\s/)) {
+    const next = out ? `${out} ${sentence}` : sentence;
+    if (next.length > DESCRIPTION_MAX) break;
+    out = next;
+  }
+  return out || `${text.slice(0, DESCRIPTION_MAX - 1).replace(/\s+\S*$/, "")}…`;
 }
 
 export default async function ToolPage({ params }: { params: Promise<{ tool: string }> }) {
