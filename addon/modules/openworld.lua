@@ -245,7 +245,15 @@ local function castSent(unit, a2, a3, a4)
   if not NAMED_KINDS[kind] or type(target) ~= "string" or target == "" or #target > 120 or targetPlayerNamed(target) then
     target = nil
   end
-  lastCast = { gatherKind = kind, lootKind = lootKind, itemId = itemId, name = target, at = now() }
+  lastCast = { gatherKind = kind, lootKind = lootKind, itemId = itemId, name = target, at = now(),
+    castGuid = spellId and type(a3) == "string" and a3 or nil }
+end
+
+-- True when a cast event is for the pending cast: by cast GUID where both have one, else any cast of the player's.
+local function pendingCast(castGuid)
+  if not lastCast then return false end
+  if lastCast.castGuid and type(castGuid) == "string" and castGuid:find("^Cast%-") then return lastCast.castGuid == castGuid end
+  return true
 end
 
 local function gatherContext()
@@ -255,6 +263,11 @@ local function gatherContext()
   local t = now()
   local window = cast.gatherKind == "fishing" and FISHING_WINDOW or GATHER_WINDOW
   if cast.at and t and t - cast.at > window then return nil end
+  -- A creature or item type needs the cast to have succeeded; an instant Pick Pocket may also count for 2 seconds
+  -- after it was sent. A cast that failed or was interrupted never gets here (it clears lastCast).
+  if cast.lootKind and not cast.succeeded and not (cast.lootKind == "pickpocket" and cast.at and t and t - cast.at <= 2) then
+    cast.lootKind, cast.itemId = nil, nil
+  end
   return cast
 end
 
@@ -618,7 +631,7 @@ E:RegisterModule("openworld", function()
   if EverlootDB.paused then EverlootDB.paused.npc_sighting, EverlootDB.paused.loot = nil, nil end
   for event in pairs(WINDOW_ROLES) do pcall(function() f:RegisterEvent(event) end) end
   for _, event in ipairs({ "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_FAILED",
-    "UNIT_SPELLCAST_INTERRUPTED", "LOOT_CLOSED", "VIGNETTE_MINIMAP_UPDATED", "VIGNETTES_UPDATED", "PLAYER_LEAVING_WORLD",
+    "UNIT_SPELLCAST_FAILED_QUIET", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_INTERRUPTED", "LOOT_CLOSED", "VIGNETTE_MINIMAP_UPDATED", "VIGNETTES_UPDATED", "PLAYER_LEAVING_WORLD",
     "PLAYER_ENTERING_WORLD", "ENCOUNTER_END" }) do
     pcall(function() f:RegisterEvent(event) end)
   end
@@ -628,7 +641,11 @@ E:RegisterModule("openworld", function()
     elseif event == "LOOT_OPENED" then lootCapture()
     elseif event == "QUEST_ACCEPTED" then questCapture(arg1, arg2)
     elseif event == "UNIT_SPELLCAST_SENT" then pcall(castSent, arg1, arg2, arg3, arg4)
-    elseif (event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED") and arg1 == "player" then lastCast = nil
+    elseif (event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_FAILED_QUIET" or event == "UNIT_SPELLCAST_INTERRUPTED")
+      and arg1 == "player" then
+      if pendingCast(arg2) then lastCast = nil end
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" and arg1 == "player" then
+      if pendingCast(arg2) then lastCast.succeeded = true end
     elseif event == "LOOT_CLOSED" then lastCast = nil
     elseif event == "VIGNETTE_MINIMAP_UPDATED" then if arg2 then pcall(vignetteSighting, arg1) end
     elseif event == "VIGNETTES_UPDATED" then pcall(vignettesUpdated)

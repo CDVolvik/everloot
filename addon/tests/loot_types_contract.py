@@ -56,6 +56,7 @@ local corpse = 'Creature-0-1-2-3-299-0000000001'
 window(corpse, { { 2589, 2 } })
 assert(#rows() == 1 and last().lootType == 'kill' and last().sourceNpcId == 299)
 event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-1', 8613)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-1', 8613)
 window(corpse, { { 783, 1 } })
 assert(#rows() == 2 and last().lootType == 'skinning' and last().sourceNpcId == 299 and last().gatherKind == nil)
 event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-2', 921)
@@ -73,6 +74,7 @@ event('UNIT_SPELLCAST_SENT', 'player', 'Pick Pocket', 'Rank 1', 'Bob')
 window('Creature-0-1-2-3-300-0000000001', { { 4306, 1 } })
 assert(last().lootType == 'pickpocket' and last().sourceNpcId == 300)
 event('UNIT_SPELLCAST_SENT', 'player', 'Skinning', 'Rank 1', 'Bob')
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Rank 1', 8613)
 clock = clock + 20
 window('Creature-0-1-2-3-301-0000000001', { { 783, 1 } })
 assert(last().lootType == 'kill', 'a cast 20 seconds ago is not this window')
@@ -94,6 +96,7 @@ assert(last().lootType == 'gather', 'an object window with no cast is a gather w
 GetItemInfoInstant = function(name) if name == 'Green Iron Bracers' then return 3835 end end
 local before = #rows()
 event('UNIT_SPELLCAST_SENT', 'player', 'Green Iron Bracers', 'Cast-7', 13262)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-7', 13262)
 window('Item-4372-0-4000000000000001', { { 10940, 2 } })
 assert(#rows() == before + 1 and last().lootType == 'disenchant' and last().sourceItemId == 3835)
 assert(last().sourceNpcId == nil and last().sourceObjectId == nil and last().items[1].itemId == 10940)
@@ -114,6 +117,7 @@ assert(last().lootType == 'container' and last().sourceItemId == 5524)
 -- A lockbox picked: the cast names the item.
 GetItemInfoInstant = function() return 4632 end
 event('UNIT_SPELLCAST_SENT', 'player', 'Ornate Bronze Lockbox', 'Cast-9', 1804)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-9', 1804)
 window('Item-4372-0-4000000000000005', { { 2589, 1 } })
 assert(last().lootType == 'container' and last().sourceItemId == 4632)
 GetItemInfoInstant, C_Item = nil, nil
@@ -156,8 +160,54 @@ count = #rows()
 window('Creature-0-1-2-3-500-0000000001', { { 2589, 1 } })
 assert(#rows() == count, 'an old key still covers the kill window')
 event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-10', 8613)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-10', 8613)
 window('Creature-0-1-2-3-500-0000000001', { { 783, 1 } })
 assert(#rows() == count + 1 and last().lootType == 'skinning', 'but a skinning window on it is new')
+
+-- A cast that did not succeed never types the next window: failed, quiet-failed or interrupted, by cast GUID.
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-20', 921)
+event('UNIT_SPELLCAST_FAILED', 'player', 'Cast-20', 921)
+clock = clock + 5
+window('Creature-0-1-2-3-700-0000000001', { { 4306, 1 } })
+assert(last().lootType == 'kill' and last().sourceNpcId == 700, 'a failed Pick Pocket leaves a kill window')
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-21', 8613)
+event('UNIT_SPELLCAST_INTERRUPTED', 'player', 'Cast-21', 8613)
+window('Creature-0-1-2-3-701-0000000001', { { 783, 1 } })
+assert(last().lootType == 'kill' and last().sourceNpcId == 701, 'an interrupted Skinning leaves a kill window')
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-22', 921)
+event('UNIT_SPELLCAST_FAILED_QUIET', 'player', 'Cast-22', 921)
+window('Creature-0-1-2-3-702-0000000001', { { 4306, 1 } })
+assert(last().lootType == 'kill', 'a quiet failure too')
+-- Another cast's events do not stand in for this one; Skinning is cast-time, so it needs its own SUCCEEDED.
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-23', 8613)
+event('UNIT_SPELLCAST_FAILED', 'player', 'Cast-99', 2050)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-99', 2050)
+window('Creature-0-1-2-3-703-0000000001', { { 783, 1 } })
+assert(last().lootType == 'kill', 'another spell succeeding is not this cast')
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-24', 8613)
+event('UNIT_SPELLCAST_FAILED', 'player', 'Cast-98', 2050)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-24', 8613)
+window('Creature-0-1-2-3-704-0000000001', { { 783, 1 } })
+assert(last().lootType == 'skinning', 'an unrelated failure does not cancel the cast')
+-- An instant Pick Pocket counts for 2 seconds without waiting for SUCCEEDED; later, only a succeeded one does.
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-25', 921)
+clock = clock + 3
+window('Creature-0-1-2-3-705-0000000001', { { 4306, 1 } })
+assert(last().lootType == 'kill', 'an unconfirmed Pick Pocket older than 2 seconds')
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-28', 921)
+window('Creature-0-1-2-3-706-0000000001', { { 4306, 1 } })
+assert(last().lootType == 'pickpocket', 'within 2 seconds of the cast')
+-- A pending Pick Pocket on an object or an item types nothing: the source decides.
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-26', 921)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-26', 921)
+window('GameObject-0-1-2-3-1618-0000000050', { { 2447, 1 } })
+assert(last().lootType == 'gather')
+C_Item = { GetItemIDByGUID = function() return 5523 end }
+event('UNIT_SPELLCAST_SENT', 'player', 'Wolf', 'Cast-27', 921)
+event('UNIT_SPELLCAST_SUCCEEDED', 'player', 'Cast-27', 921)
+window('Item-4372-0-4000000000000050', { { 5498, 1 } })
+assert(last().lootType == 'container')
+C_Item = nil
 
 -- Missing APIs never error.
 GetLootSlotType = nil
@@ -165,4 +215,4 @@ window('Creature-0-1-2-3-600-0000000001', { { 2589, 1 } })
 assert(last().sourceNpcId == 600 and last().copper == nil)
 """)
 counts = check_all(lua)
-assert counts == {"loot": 24}, counts
+assert counts == {"loot": 33}, counts
