@@ -411,8 +411,8 @@ assert(#events() == 3 and button.text == 'Collect all')
 check_all(lua)
 
 # Stop and Collect all again while a money take still waits for its gold change. The server settles a letter's
-# money once: a repeated take of the same letter pays nothing. The server answers the take before the gold
-# change reaches the client, so the letter can already show no money while that change is on its way. Either
+# money once: a repeated take of the same letter pays nothing. Probe a reply-before-gold ordering too: the
+# letter can already show no money while that change is on its way; this order is not observed in Forever. Either
 # way, a new take before the old change lands is a second call or overwrites the invoice the gold module is
 # about to match. The click waits instead; once the change lands, Collect all again finishes the rest.
 ONCE = """
@@ -473,7 +473,7 @@ runTimers() -- the wait times out
 assert(table.concat(taken, ',') == 'money3', 'got ' .. table.concat(taken, ','))
 button.scripts.OnClick()
 assert(table.concat(taken, ',') == 'money3,money2', 'a new collection after the timeout, got ' .. table.concat(taken, ','))
-runTimers() -- nothing left from the old take may move the new collection on
+runTimers() -- includes the new take's timeout; no old step may take money1 while that timer only queues its next step
 assert(table.concat(taken, ',') == 'money3,money2', 'got ' .. table.concat(taken, ','))
 drive()
 assert(table.concat(taken, ',') == 'money3,money2,money1', 'got ' .. table.concat(taken, ','))
