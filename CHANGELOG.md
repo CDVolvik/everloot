@@ -15,9 +15,6 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Added
-- Addon: a Talents / Raid workspace opened from `/everloot` or the minimap. Import website talent or raid
-  plans, compare your build and class counts by group, and copy plans or the current raid back to the site.
-  Display only; the workspace saves plans locally and never applies talent points or moves players.
 - Site: **Copy for addon** on both planners, exporting the selected talent set or planned raid code.
 - Site: a news section. Posts are Markdown files under `kb/news/` with front matter (`npm run kb -- news-check`
   runs in CI), written in the wiki's syntax so they link database entities and wiki pages the same way. Published
@@ -128,6 +125,26 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
 - Desktop app: on the Chat page, a screen reader hears "Copied" or "Copy failed" after Copy, and the button keeps
   saying it for the full second and a half even when the thread is redrawn, as when a new question goes out.
   Clear is off while an answer is being written, so the question can no longer be cleared out from under it.
+
+## [0.3.11] - 2026-10-24
+
+Release channel: Alpha
+
+Live-client verification is pending. This is a pre-release for WoW: Forever 1.60.1, not a verified stable build.
+
+### Added
+- A Talents / Raid workspace opened with `/everloot` or the minimap. Build on the website, choose
+  **Copy for addon**, then paste into the matching tab and choose **Import**.
+- Talent progress, next-point guidance and click-through highlights, with one Everloot window at a time.
+- Raid plan imports compare class counts by group beside the current roster's buff check. Plans stay local;
+  the addon cannot identify players from a plan or verify their talent choices. No points are spent or players moved.
+- Copy imported plans or the current raid back to the website. Right-click the minimap button for settings.
+
+### Fixed
+- Mail collection stops retain an unresolved money transfer until its event or timeout clears it. An early
+  restart asks for another click rather than automatically taking the same pending money again.
+- Planner links handle saved builds, second-set-only links and differing game builds; damaged imports keep
+  the last valid plan. Workspace preference survives reloads without opening a second guide panel.
 
 ## [0.3.10] - 2026-10-23
 
