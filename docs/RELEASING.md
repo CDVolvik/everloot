@@ -74,6 +74,8 @@ The nightly workflow runs daily at 06:17 UTC and on demand (Actions, Nightly, Ru
 - It runs the addon tests on `main` as committed, then stamps the version into the TOC and
   `core.lua` of the runner's copy only. Nothing is committed. `core.lua` gets the short form
   (`0.3.1-nightly`) because the upload intake accepts at most 20 characters in `addonVersion`.
+- The build checks out trusted `main` directly and refuses to continue if it moved after planning.
+  Re-run the workflow to plan a fresh revision; never publish an archive under a mismatched commit.
 - Assets: the addon zip and `SHA256SUMS`. A knowledge-base release is not attached: building one
   needs the 600 MB wiki dump, which is not cheap in CI.
 - The notes are GitHub's generated list since the previous nightly (or the last stable tag).

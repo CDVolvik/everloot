@@ -8,6 +8,9 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 source = (root / '.github/workflows/release.yml').read_text(encoding='utf-8')
+nightly = (root / '.github/workflows/nightly.yml').read_text(encoding='utf-8')
+assert 'ref: ${{ needs.plan.outputs.sha }}' not in nightly, 'nightly checks out trusted main, not an output-controlled ref'
+assert 'test "$(git rev-parse HEAD)" = "${PLANNED_SHA}"' in nightly, 'main must still match the planned source revision'
 publish = source.split('      - name: Create the release\n', 1)[1].split('        run: |\n', 1)[1]
 script = textwrap.dedent(publish)
 bash = shutil.which('bash') if os.name != 'nt' else 'C:/Program Files/Git/bin/bash.exe'

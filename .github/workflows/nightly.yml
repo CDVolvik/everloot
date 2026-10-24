@@ -60,7 +60,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.plan.outputs.sha }}
+          ref: main
+      - name: Main still matches the planned source revision
+        env:
+          PLANNED_SHA: ${{ needs.plan.outputs.sha }}
+        run: test "$(git rev-parse HEAD)" = "${PLANNED_SHA}"
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
