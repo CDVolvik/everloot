@@ -40,6 +40,9 @@ type Params = { q?: string | string[]; page?: string | string[]; type?: string |
 /** Rows a scoped search (`in=item`) lists; the overview lists 8 per type. */
 const SCOPED_LIMIT = 50;
 
+/** The paginated database list that takes the same `?q=`, for the scopes that have one (objects have no list). */
+const DATABASE_LIST = { item: "items", npc: "npcs", quest: "quests" } as const;
+
 export default async function SearchPage(props: { searchParams: Promise<Params> }) {
   const params = await props.searchParams;
   const q = (first(params.q) ?? "").trim().slice(0, MAX_QUERY);
@@ -92,6 +95,7 @@ export default async function SearchPage(props: { searchParams: Promise<Params> 
 function ResultTable({ group, q, scoped, icons }: { group: SearchGroup; q: string; scoped: boolean; icons: Map<number, string> }) {
   const more = group.total > group.results.length;
   const all = isScope(group.type) ? `/search?q=${encodeURIComponent(q)}&in=${group.type}` : group.type === "lore" ? `/search?q=${encodeURIComponent(q)}&in=lore` : null;
+  const list = more && scoped && group.type in DATABASE_LIST ? `/database/${DATABASE_LIST[group.type as keyof typeof DATABASE_LIST]}?q=${encodeURIComponent(q)}` : null;
   const name = (r: SearchResult) => {
     const colour = group.type === "item" && typeof r.quality === "number" && r.quality <= 5 ? QUALITY_TEXT[qualityOf(r.quality)] : "text-accent";
     const link = <Link href={r.href} className={`${colour} hover:underline underline-offset-4`}>{r.label}</Link>;
@@ -121,7 +125,11 @@ function ResultTable({ group, q, scoped, icons }: { group: SearchGroup; q: strin
         rows={group.results}
         rowKey={(r) => r.href}
         meta={(r) => (group.type === "item" ? [r.meta, r.id !== undefined && `ID ${r.id}`] : [r.id !== undefined ? `ID ${r.id}` : r.note]).filter(Boolean).join(" · ")}
-        footer={more && all && !scoped ? <Link href={all} className={link}>All {group.total} {group.type === "lore" ? "lore results" : group.heading.toLowerCase()}</Link> : undefined}
+        footer={
+          more && all && !scoped ? <Link href={all} className={link}>All {group.total} {group.type === "lore" ? "lore results" : group.heading.toLowerCase()}</Link>
+          : list ? <>{`Showing ${group.results.length} of ${group.total}. `}<Link href={list} className={link}>See every match in the database</Link></>
+          : undefined
+        }
       />
     </section>
   );

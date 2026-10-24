@@ -78,6 +78,40 @@ test("item hits lead with the game icon and the quality colour, and no hit carri
   siteSearch.groups = [];
 });
 
+const manyResults = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `Potion ${i}`, href: `/database/items/${i + 1}`, exact: false, id: i + 1, quality: 1 }));
+
+test("a scoped search that found more than it lists says how many it shows and links to the full database list", async () => {
+  siteSearch.groups = [{ type: "item", heading: "Items", total: 222, results: manyResults(50) }];
+  const html = await render({ q: "potion & elixir", in: "item" });
+  expect(html).toContain("Showing 50 of 222");
+  expect(html).toContain('href="/database/items?q=potion%20%26%20elixir"');
+  siteSearch.groups = [{ type: "quest", heading: "Quests", total: 1221, results: manyResults(50) }];
+  expect(await render({ q: "the", in: "quest" })).toContain('href="/database/quests?q=the"');
+  siteSearch.groups = [{ type: "npc", heading: "NPCs", total: 318, results: manyResults(50) }];
+  expect(await render({ q: "cloth", in: "npc" })).toContain('href="/database/npcs?q=cloth"');
+  siteSearch.groups = [];
+});
+
+test("a scoped search that lists every match, or has no database list to open, adds no footer", async () => {
+  siteSearch.groups = [{ type: "item", heading: "Items", total: 3, results: manyResults(3) }];
+  expect(await render({ q: "potion", in: "item" })).not.toContain("Showing");
+  siteSearch.groups = [{ type: "object", heading: "Objects", total: 2, results: manyResults(1) }];
+  const objects = await render({ q: "chest", in: "object" });
+  expect(objects).not.toContain("Showing");
+  expect(objects).not.toContain("/database/objects");
+  siteSearch.groups = [];
+});
+
+test("the overview keeps its All-N link into the scoped search, not the database list", async () => {
+  siteSearch.groups = [{ type: "item", heading: "Items", total: 222, results: manyResults(8) }];
+  const html = await render({ q: "potion" });
+  expect(html).toContain('href="/search?q=potion&amp;in=item"');
+  expect(html).toContain("All 222 items");
+  expect(html).not.toContain("Showing");
+  expect(html).not.toContain('href="/database/items?q=');
+  siteSearch.groups = [];
+});
+
 test("the search is a plain GET form, so it works without JavaScript", async () => {
   const html = await render({ q: "thrall" });
   expect(html).toMatch(/<form[^>]*action="\/search"[^>]*method="get"/);
