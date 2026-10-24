@@ -164,7 +164,9 @@ export async function browseView({ slug, search }: { slug: string | null; search
     { key: "change", header: "7 days", numeric: true, sortable: true, cell: ({ move }) => (move ? <span className={move.change > 0 ? "text-accent" : "text-fg"}>{percent(move.change)}</span> : <span className="text-muted">—</span>) },
     { key: "trend", header: <span className="sr-only">Trend</span>, cell: ({ row }) => <Sparkline points={row.points} now={now} /> },
   ];
-  const sort = q.sort ?? (q.moved ? { key: "change" as AhSort, desc: true } : DEFAULT_SORT);
+  // What the URL means with no sort: the week's movers lead by change, everything else by units.
+  const fallback = q.moved ? { key: "change" as AhSort, desc: true } : DEFAULT_SORT;
+  const sort = q.sort ?? fallback;
 
   const tree = categoryTree(rows, q, path);
   const categoryLabel = [q.cls?.label, q.sub ? q.sub.name ?? `Subclass ${q.sub.id}` : null, q.slot ? tree.flatMap((n) => n.children ?? []).flatMap((n) => n.children ?? []).find((n) => n.on)?.label : null]
@@ -210,7 +212,7 @@ export async function browseView({ slug, search }: { slug: string | null; search
         rows={shown}
         rowKey={({ row }) => `${row.realm.key}:${row.value.itemId}`}
         sort={{ key: sort.key, direction: sort.desc ? "desc" : "asc" }}
-        sortHref={(key, dir) => here({ sort: key === DEFAULT_SORT.key && dir === "desc" ? undefined : { key: key as AhSort, desc: dir === "desc" } })}
+        sortHref={(key, dir) => here({ sort: key === fallback.key && (dir === "desc") === fallback.desc ? undefined : { key: key as AhSort, desc: dir === "desc" } })}
         meta={({ row, move }) => [showRealm ? row.realm.name : null, money(row.value.market), `${row.value.quantity.toLocaleString("en-US")} units`, move ? percent(move.change) : null].filter(Boolean).join(" · ")}
         empty={empty}
       />
