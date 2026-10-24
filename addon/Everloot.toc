@@ -31,5 +31,6 @@ modules\prices.lua
 modules\drops.lua
 modules\auctiontab.lua
 modules\gph.lua
+modules\conveniences.lua
 modules\options.lua
 modules\minimap.lua

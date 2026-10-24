@@ -251,6 +251,12 @@ SlashCmdList["EVERLOOT"] = function(msg)
     EverlootDB.scanPrompt = (msg == "scanprompt on")
     print("Everloot: the scan prompt at the auction house is " .. (EverlootDB.scanPrompt and "on" or "off")
       .. ". The Everloot scan button and /everloot scan still work.")
+  elseif msg == "vendor on" or msg == "vendor off" then
+    EverlootDB.autoVendor = (msg == "vendor on")
+    print("Everloot: at a merchant, " .. (EverlootDB.autoVendor and "sell grey items and repair with your own gold is on. Guild-bank repair is never used." or "selling grey items and repairing is off."))
+  elseif msg == "mail on" or msg == "mail off" then
+    EverlootDB.mailCollect = (msg == "mail on")
+    print("Everloot: the Collect all button at the mailbox is " .. (EverlootDB.mailCollect and "on. It takes money and items from auction letters only, never cash on delivery." or "off."))
   elseif msg == "scan" then
     if E.StartScan then E:StartScan() else print("Everloot: full scans are not available in this client.") end
   elseif msg == "addons on" or msg == "addons off" then
@@ -265,6 +271,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot options, /everloot status, /everloot auctions on|off, /everloot scan, /everloot scanprompt on|off, /everloot price [item], /everloot gph [start|pause|stop|reset|show|history], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan [share code|number], /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot options, /everloot status, /everloot auctions on|off, /everloot scan, /everloot scanprompt on|off, /everloot vendor on|off, /everloot mail on|off, /everloot price [item], /everloot gph [start|pause|stop|reset|show|history], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan [share code|number], /everloot raid [code], /ask <question>")
   end
 end

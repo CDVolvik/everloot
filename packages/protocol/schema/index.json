@@ -1,5 +1,5 @@
 {
-  "protocol": "1.8.0",
+  "protocol": "1.9.0",
   "kinds": [
     "achievement_catalog",
     "achievement_owned",
