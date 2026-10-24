@@ -5,6 +5,7 @@ import { latestAddonRelease } from "@/lib/addon-release";
 import { addonReleaseFor, fetchReleases, fileSize, newestDesktopRelease, RELEASES_PAGE, servedFile } from "@/lib/everloot-releases";
 import { REPO_URL } from "@/lib/source";
 import JsonLd from "@/components/JsonLd";
+import TrackedDownload from "@/components/TrackedDownload";
 import { softwareApplicationJsonLd } from "@/lib/jsonld";
 import { Badge, Card, Container, Disclosure, PageHeader, SectionHeading } from "@/components/ui";
 
@@ -79,9 +80,9 @@ export default async function AddonPage() {
             </SectionHeading>
             {addon ? (
               <>
-                <a className="btn btn-primary" href={zipHref} download>
+                <TrackedDownload className="btn btn-primary" href={zipHref} addon="everloot" to="site" download>
                   Download addon {addon.version}{served ? ` (.zip, ${fileSize(served.size)})` : ""}
-                </a>
+                </TrackedDownload>
                 <div>
                   <SectionHeading as="h3">Install</SectionHeading>
                   <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-2">

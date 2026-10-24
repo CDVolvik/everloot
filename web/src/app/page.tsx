@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AdSlot from "@/components/AdSlot";
 import type { Metadata } from "next";
+import TrackedDownload from "@/components/TrackedDownload";
 import JsonLd from "@/components/JsonLd";
 import GlintHero from "@/components/glint/GlintHero";
 import LoreSearchForm from "@/components/LoreSearchForm";
@@ -267,7 +268,7 @@ export default async function Home() {
         </SectionHeading>
         <div className="flex flex-wrap items-center gap-3">
           {addon
-            ? <a href={addon.downloadPath} download className="btn btn-primary">Download addon {addon.version}</a>
+            ? <TrackedDownload href={addon.downloadPath} addon="everloot" to="site" download className="btn btn-primary">Download addon {addon.version}</TrackedDownload>
             : <Link href="/addon" className="btn btn-primary">Get the addon</Link>}
           <Link href="/addon" className="btn">Desktop app</Link>
         </div>
