@@ -34,6 +34,20 @@ afterEach(async () => {
 
 const render = (initialCode?: string) => act(async () => root.render(<RaidBuilder initialCode={initialCode} />));
 
+test("copies a bare raid code for importing into the addon", async () => {
+  await render();
+  expect([...container.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Copy for addon"))?.disabled).toBe(true);
+  await click(tile("Mage"));
+  await click(slot(0));
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  const copy = [...container.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Copy for addon"));
+  expect(copy).toBeDefined();
+  await click(copy!);
+  expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^ELR1-20-[\d.]+-/));
+  expect(container.textContent).toContain("Raid tab");
+});
+
 test("counts a shared raid only when copying succeeds", async () => {
   await render();
   await click(tile("Mage"));

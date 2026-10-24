@@ -480,4 +480,24 @@ assert(string.find(table.concat(printed, '\\n'), 'no saved builds here yet. Sync
 assert(EverlootDB.plan == nil)
 """)
 
+# Workspace imports retain the existing click-through talent highlights without the old panel.
+lua = fresh("""
+BUTTONS = { [90001] = { name = 'b1' }, [90003] = { name = 'b3' } }
+PlayerSpellsFrame = {
+ IsShown = function() return true end,
+ HookScript = function(self, kind, f) self[kind] = f end,
+ TalentsFrame = { IsShown = function() return true end, GetTalentButtonByNodeID = function(self, id) return BUTTONS[id] end },
+}
+""")
+lua.execute(f"""
+Everloot.Planner = {{tab='talents', frame={{IsShown=function() return true end}}}}
+assert(Everloot.Plan.Load('{CODE}', true))
+assert(not panel(), 'workspace import does not create the legacy panel')
+local found = false
+for _, f in ipairs(frames) do if f.target == BUTTONS[90001] and f.shown then found = true end end
+assert(found, 'next point is still highlighted for the visible workspace')
+Everloot.Plan.HideMarks()
+for _, f in ipairs(frames) do if f.target then assert(not f.shown) end end
+""")
+
 print("Lua 5.1 plan: EL1 share code (independent base64url check), next point and mismatches, panel, display only, saved builds list")

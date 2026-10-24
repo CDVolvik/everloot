@@ -15,6 +15,10 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Added
+- Addon: a Talents / Raid workspace opened from `/everloot` or the minimap. Import website talent or raid
+  plans, compare your build and class counts by group, and copy plans or the current raid back to the site.
+  Display only; the workspace saves plans locally and never applies talent points or moves players.
+- Site: **Copy for addon** on both planners, exporting the selected talent set or planned raid code.
 - Site: a news section. Posts are Markdown files under `kb/news/` with front matter (`npm run kb -- news-check`
   runs in CI), written in the wiki's syntax so they link database entities and wiki pages the same way. Published
   posts appear at `/news` and `/news/<slug>` with Article structured data, in the `/news/feed.xml` RSS feed, in the

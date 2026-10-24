@@ -507,6 +507,11 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
         )}
 
         {!readOnly && <section aria-label="Share" className="grid gap-3 border-t border-line p-4 md:grid-cols-2">
+          <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+            <CopyButton className="btn text-sm" text={codes[active] ?? ""} label="Copy for addon" disabled={!codes[active]}
+              onResult={(ok) => setMessage(ok ? `${setName} copied. Open /everloot, choose the Talents tab, then Import.` : "Copy failed. Select and copy the share link instead.")} />
+            <p className="text-sm text-fg-2">Copies {setName} only. In the addon: <code>/everloot</code> → Talents tab → paste → Import. Spend each point yourself.</p>
+          </div>
           <div className="min-w-0 space-y-1">
             <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to this build, both sets (game build {catalog.build})</label>
             <div className="flex gap-2">

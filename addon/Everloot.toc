@@ -33,4 +33,5 @@ modules\auctiontab.lua
 modules\gph.lua
 modules\conveniences.lua
 modules\options.lua
+modules\planner.lua
 modules\minimap.lua

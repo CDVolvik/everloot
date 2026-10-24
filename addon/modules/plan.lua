@@ -320,6 +320,12 @@ local function clearMarks()
   if nextMark then nextMark:Hide() end
   for _, mark in ipairs(flagMarks) do mark:Hide() end
 end
+P.HideMarks = clearMarks
+
+local function workspaceVisible()
+  local workspace = E.Planner
+  return workspace and workspace.tab == "talents" and workspace.frame and workspace.frame:IsShown()
+end
 
 local function mark()
   clearMarks()
@@ -387,6 +393,12 @@ local function buildPanel()
   return panel
 end
 
+function P.UseWorkspace()
+  userHidden = true
+  EverlootDB.planView = "workspace"
+  if panel then panel:Hide() end
+end
+
 --- Read the active spec group and recompute the plan. Safe to call at any time.
 function P.Refresh()
   if not current then last = nil; clearMarks(); return end
@@ -398,13 +410,15 @@ function P.Refresh()
   last = state and { configID = active.configID, state = state, result = P.Evaluate(current, state) } or nil
   if panel and panel:IsShown() then
     panel.body:SetText(table.concat(lines(), "\n"))
-    pcall(mark)
   end
+  if (panel and panel:IsShown()) or workspaceVisible() then pcall(mark) else clearMarks() end
 end
 
 --- Show the panel, beside the talent window when it is open.
 function P.Show()
   userHidden = false
+  EverlootDB.planView = "guide"
+  if E.Planner and E.Planner.frame then E.Planner.frame:Hide() end
   local frame = buildPanel()
   if not frame then
     P.Refresh()
@@ -425,7 +439,7 @@ function P.Show()
 end
 
 --- Load a share code. Returns true, or false and the reason (also printed).
-function P.Load(code)
+function P.Load(code, embedded)
   local plan, reason = P.Decode(code)
   if not plan then print("Everloot: " .. reason); return false, reason end
   local class = T.Player()
@@ -441,7 +455,10 @@ function P.Load(code)
   end
   current = plan
   EverlootDB.plan = P.Encode(plan)
-  P.Show()
+  if embedded then
+    P.UseWorkspace()
+    P.Refresh()
+  else P.Show() end
   if not panel then return true end
   print("Everloot: plan loaded (" .. #plan.entries .. " talents). It only shows; it never spends points.")
   return true
@@ -494,7 +511,10 @@ end
 local function hookTalentFrame()
   local frame = PlayerSpellsFrame
   if not (frame and type(frame.HookScript) == "function") or P.hooked == frame then return end
-  local hooked = pcall(frame.HookScript, frame, "OnShow", function() if current and not userHidden then P.Show() end end)
+  local hooked = pcall(frame.HookScript, frame, "OnShow", function()
+    if not current then return end
+    if workspaceVisible() then P.Refresh() elseif not userHidden then P.Show() end
+  end)
   -- Overlays belong to the talent window: take them off when it closes.
   pcall(frame.HookScript, frame, "OnHide", clearMarks)
   if hooked then P.hooked = frame end
@@ -515,6 +535,7 @@ end
 
 E:RegisterModule("plan", function()
   if not (T and T.HasTraitApi()) then error("trait API unavailable", 0) end
+  userHidden = EverlootDB.planView == "workspace"
   if EverlootDB.plan then
     local plan = P.Decode(EverlootDB.plan)
     if plan then current = plan else EverlootDB.plan = nil end
