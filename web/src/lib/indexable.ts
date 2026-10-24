@@ -10,9 +10,9 @@ import type { ShownItemName } from "./items";
  * reach a page has no player facts to show, so only an item named under the item name rule stays indexed.
  */
 
-/** Players reported the item (an agreed name, a public drop or a pin), or its name shows from the game files and the wiki. */
+/** Players reported the item (an agreed name, a public drop or a pin), or a source names it in the current build. */
 export const itemIndexable = (page: ItemPage, unreachable: boolean, name: ShownItemName | null): boolean =>
-  (!unreachable && itemHasFacts(page)) || name?.source === "wiki";
+  (!unreachable && itemHasFacts(page)) || name?.source === "wiki" || name?.source === "files";
 
 export const npcIndexable = (page: NpcPage, unreachable: boolean): boolean => !unreachable && npcHasFacts(page);
 

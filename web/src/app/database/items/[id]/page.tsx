@@ -68,7 +68,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   });
   return {
     ...pageMetadata({ title: entityTitle(name?.name ?? `Item ${itemId}`, "item"), description, path: `/database/items/${itemId}` }),
-    // Indexed once players have reported the item, or once its name is shown from the game files and the wiki.
+    // Indexed once players have reported the item, or a source names it in the current build.
     robots: { index: itemIndexable(page, facts.unreachable, name), follow: true },
   };
 }
