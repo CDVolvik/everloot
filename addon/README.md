@@ -261,6 +261,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/completion_contract.py
     python addon/tests/census_contract.py
     python addon/tests/players_contract.py
+    python addon/tests/conveniences_contract.py
 
 Run them from the repository root. CI also rebuilds the zip. For a version that is not released yet it
 fails if the zip differs from the one committed in `web/public/downloads/`, so commit the rebuilt zip
@@ -294,7 +295,8 @@ addon/
 │   ├── raid.lua        /everloot raid: buffs missing per group, and a raid share code; display only
 │   ├── prices.lua      item tooltips: your latest scan and the companion's community prices
 │   ├── drops.lua       item tooltips: where an item drops, from the public rates in the same file
-│   └── gph.lua         gold per hour sessions, kept in your file only
+│   ├── gph.lua         gold per hour sessions, kept in your file only
+│   └── conveniences.lua  sell greys and repair at a merchant, Collect all at the mailbox; each off until enabled, no records
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```
 
