@@ -66,7 +66,7 @@ export default function CookieConsent({ adsenseClient, analytics = {} }: { adsen
     window.addEventListener(OPEN_PREFERENCES, reopen);
     return () => window.removeEventListener(OPEN_PREFERENCES, reopen);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adsenseClient, categoryKey, analytics.gaId, analytics.posthogKey, analytics.posthogHost, analytics.cfBeaconToken]);
+  }, [adsenseClient, categoryKey, analytics.gaId, analytics.posthogKey, analytics.posthogHost, analytics.cfBeaconToken, analytics.metricoolHash]);
 
   useEffect(() => {
     if (visible && trigger.current) heading.current?.focus();

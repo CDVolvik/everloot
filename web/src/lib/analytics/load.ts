@@ -16,6 +16,11 @@ export const optedOutBySignal = (s: PrivacySignals) => dntOn(s.doNotTrack) || s.
 
 const CF_ID = "everloot-cf-beacon";
 const GA_ID = "everloot-ga";
+const METRICOOL_ID = "everloot-metricool";
+
+declare global {
+  interface Window { beTracker?: { t: (options: { hash: string }) => void } }
+}
 
 /** Cloudflare Web Analytics: no cookies, no consent needed, skipped when the browser asks not to be tracked. */
 export function loadCookieless(config: AnalyticsConfig, signals: PrivacySignals, doc: Document): void {
@@ -28,7 +33,7 @@ export function loadCookieless(config: AnalyticsConfig, signals: PrivacySignals,
   doc.head.appendChild(script);
 }
 
-/** Google Analytics 4 and PostHog use cookies or storage, so they start only after "accepted". */
+/** Optional analytics start only after "accepted". */
 export function loadConsented(config: AnalyticsConfig, win: Window, doc: Document): void {
   if (config.gaId && !doc.getElementById(GA_ID)) {
     const w = win as Window & { dataLayer?: unknown[] };
@@ -45,6 +50,19 @@ export function loadConsented(config: AnalyticsConfig, win: Window, doc: Documen
     doc.head.appendChild(script);
   }
   if (config.posthogKey) void startPosthog(config, win);
+  if (config.metricoolHash && !doc.getElementById(METRICOOL_ID)) {
+    const started = generation;
+    const script = doc.createElement("script");
+    script.id = METRICOOL_ID;
+    script.async = true;
+    script.src = "https://tracker.metricool.com/resources/be.js";
+    script.onload = () => {
+      if (started === generation && doc.getElementById(METRICOOL_ID) === script) {
+        win.beTracker?.t({ hash: config.metricoolHash! });
+      }
+    };
+    doc.head.appendChild(script);
+  }
 }
 
 // Bumped on every withdrawal, so an import that was already in flight can tell consent was taken back.
@@ -74,6 +92,8 @@ async function startPosthog(config: AnalyticsConfig, win: Window): Promise<void>
 export function unloadConsented(doc: Document, win: Window): void {
   generation++;
   doc.getElementById(GA_ID)?.remove();
+  doc.getElementById(METRICOOL_ID)?.remove();
+  delete win.beTracker;
   delete win.gtag;
   delete (win as Window & { dataLayer?: unknown }).dataLayer;
   win.posthog?.opt_out_capturing?.();

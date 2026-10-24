@@ -10,6 +10,7 @@ import { track } from "./track";
 const GA = "G-ABCD1234";
 const PH = "phc_abcdefghij1234567890";
 const CF = "0123456789abcdef0123456789abcdef";
+const METRICOOL = "424c5c3857a5c9d4bfab8635880f0e69";
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -19,9 +20,17 @@ afterEach(() => {
   document.head.innerHTML = "";
   delete window.gtag;
   delete window.posthog;
+  delete window.beTracker;
 });
 
 describe("analyticsConfig", () => {
+  it("validates the Metricool hash and requires analytics consent", () => {
+    expect(analyticsConfig({}).metricoolHash).toBeUndefined();
+    expect(analyticsConfig({ NEXT_PUBLIC_METRICOOL_HASH: "<script>" }).metricoolHash).toBeUndefined();
+    const config = analyticsConfig({ NEXT_PUBLIC_METRICOOL_HASH: ` ${METRICOOL} ` });
+    expect(config.metricoolHash).toBe(METRICOOL);
+    expect(needsAnalyticsConsent(config)).toBe(true);
+  });
   it("has every tool off when no variable is set", () => {
     const c = analyticsConfig({});
     expect(c.gaId).toBeUndefined();
@@ -46,6 +55,29 @@ describe("analyticsConfig", () => {
 });
 
 describe("script loading", () => {
+  it("loads Metricool once after consent and sends the supplied hash when ready", () => {
+    const t = vi.fn();
+    window.beTracker = { t };
+    loadConsented({ metricoolHash: METRICOOL }, window, document);
+    loadConsented({ metricoolHash: METRICOOL }, window, document);
+    const scripts = document.querySelectorAll<HTMLScriptElement>('script[src="https://tracker.metricool.com/resources/be.js"]');
+    expect(scripts).toHaveLength(1);
+    expect(t).not.toHaveBeenCalled();
+    scripts[0].dispatchEvent(new Event("load"));
+    expect(t).toHaveBeenCalledExactlyOnceWith({ hash: METRICOOL });
+  });
+
+  it("does not send a visit if consent is withdrawn before Metricool finishes loading", () => {
+    const t = vi.fn();
+    loadConsented({ metricoolHash: METRICOOL }, window, document);
+    const script = document.querySelector<HTMLScriptElement>('script[src="https://tracker.metricool.com/resources/be.js"]')!;
+    expect(script).not.toBeNull();
+    unloadConsented(document, window);
+    window.beTracker = { t };
+    script.dispatchEvent(new Event("load"));
+    expect(t).not.toHaveBeenCalled();
+    expect(document.getElementById("everloot-metricool")).toBeNull();
+  });
   it("loads nothing without env vars, even after consent", () => {
     loadCookieless({}, {}, document);
     loadConsented({}, window, document);

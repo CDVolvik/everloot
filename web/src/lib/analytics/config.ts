@@ -6,6 +6,8 @@
 export interface AnalyticsConfig {
   /** Cookie-based: loads only after the visitor accepts analytics. */
   gaId?: string;
+  /** Loads only after the visitor accepts analytics. */
+  metricoolHash?: string;
   /** Cookie and storage based: loads only after the visitor accepts analytics. */
   posthogKey?: string;
   posthogHost?: string;
@@ -25,14 +27,16 @@ export function analyticsConfig(env: Record<string, string | undefined> = proces
   const posthogKey = clean(env.NEXT_PUBLIC_POSTHOG_KEY);
   const host = clean(env.NEXT_PUBLIC_POSTHOG_HOST)?.replace(/\/$/, "");
   const cf = clean(env.NEXT_PUBLIC_CF_BEACON_TOKEN);
+  const metricool = clean(env.NEXT_PUBLIC_METRICOOL_HASH);
   return {
     gaId: gaId && GA_ID.test(gaId) ? gaId : undefined,
     posthogKey: posthogKey && POSTHOG_KEY.test(posthogKey) ? posthogKey : undefined,
     // Unset or unknown host falls back to the EU cloud, the safer default for EU visitors.
     posthogHost: host && POSTHOG_HOSTS.includes(host) ? host : POSTHOG_HOSTS[1],
     cfBeaconToken: cf && CF_TOKEN.test(cf) ? cf : undefined,
+    metricoolHash: metricool && /^[a-f0-9]{32}$/.test(metricool) ? metricool : undefined,
   };
 }
 
 /** True when at least one tool needs the analytics consent choice. */
-export const needsAnalyticsConsent = (c: AnalyticsConfig) => Boolean(c.gaId || c.posthogKey);
+export const needsAnalyticsConsent = (c: AnalyticsConfig) => Boolean(c.gaId || c.posthogKey || c.metricoolHash);
