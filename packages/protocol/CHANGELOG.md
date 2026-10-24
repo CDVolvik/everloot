@@ -15,6 +15,11 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.18.0 (record protocol 1.9.0), for loot tables by source type: the `loot` record gains three optional fields.
+  `lootType` (`LOOT_TYPES`: kill, pickpocket, skinning, gather, disenchant, container, fishing) says what opened
+  the window; `sourceItemId` names the item that was disenchanted or opened, and counts as a source beside
+  `sourceNpcId` and `sourceObjectId`; `copper` is the coin in the window. Windows without them stay valid and are
+  never sorted into a type by guessing. MCP tools are unchanged.
 - 1.17.0 (record protocol unchanged, 1.8.0): optional `itemPage.reported` holds agreed item numbers with
   installs, build and last seen, plus contested line keys without values. Tool inputs are unchanged.
   `item_page` and `coverage` descriptions now document item-number evidence, scoped coverage totals and

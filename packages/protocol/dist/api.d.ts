@@ -449,6 +449,17 @@ export declare const intakeRequest: z.ZodObject<{
         kind: z.ZodLiteral<"loot">;
         sourceNpcId: z.ZodOptional<z.ZodNumber>;
         sourceObjectId: z.ZodOptional<z.ZodNumber>;
+        sourceItemId: z.ZodOptional<z.ZodNumber>;
+        lootType: z.ZodOptional<z.ZodEnum<{
+            container: "container";
+            disenchant: "disenchant";
+            fishing: "fishing";
+            gather: "gather";
+            kill: "kill";
+            pickpocket: "pickpocket";
+            skinning: "skinning";
+        }>>;
+        copper: z.ZodOptional<z.ZodNumber>;
         sourceEvidence: z.ZodOptional<z.ZodLiteral<"loot-api">>;
         items: z.ZodArray<z.ZodObject<{
             itemId: z.ZodNumber;
@@ -1522,6 +1533,17 @@ export declare const API_SCHEMAS: {
             kind: z.ZodLiteral<"loot">;
             sourceNpcId: z.ZodOptional<z.ZodNumber>;
             sourceObjectId: z.ZodOptional<z.ZodNumber>;
+            sourceItemId: z.ZodOptional<z.ZodNumber>;
+            lootType: z.ZodOptional<z.ZodEnum<{
+                container: "container";
+                disenchant: "disenchant";
+                fishing: "fishing";
+                gather: "gather";
+                kill: "kill";
+                pickpocket: "pickpocket";
+                skinning: "skinning";
+            }>>;
+            copper: z.ZodOptional<z.ZodNumber>;
             sourceEvidence: z.ZodOptional<z.ZodLiteral<"loot-api">>;
             items: z.ZodArray<z.ZodObject<{
                 itemId: z.ZodNumber;
