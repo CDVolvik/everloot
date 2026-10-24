@@ -14,6 +14,12 @@ build that has a zip in the repository. Earlier builds have none.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
+### Added
+- Site: a news section. Posts are Markdown files under `kb/news/` with front matter (`npm run kb -- news-check`
+  runs in CI), written in the wiki's syntax so they link database entities and wiki pages the same way. Published
+  posts appear at `/news` and `/news/<slug>` with Article structured data, in the `/news/feed.xml` RSS feed, in the
+  sitemap and in llms.txt; a draft is built nowhere. Blizzard's own posts stay on `/changes`, which the hub links.
+
 ### Changed
 - Knowledge base: `entities.name_norm` stores each name's words as the search re-rank reads them, with an index on
   `(name_norm, kind)`. The exact-name lookup reads it instead of scanning every row through `lower(replace(...))`,

@@ -20,6 +20,12 @@ vi.mock("@/lib/database-hubs", async (importOriginal) => {
 const blue = vi.hoisted(() => ({ writeups: new Map<string, { postId: string; reviewed: { by: string; on: string }; body: string }>() }));
 vi.mock("@/lib/changes", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/changes")>()), loadWriteups: () => blue.writeups }));
 
+const news = vi.hoisted(() => ({ posts: new Map<string, unknown>() }));
+vi.mock("@/lib/news", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/news")>();
+  return { ...real, loadNews: () => news.posts };
+});
+
 const entries = await sitemap();
 const byPath = new Map(entries.map((e) => [new URL(e.url).pathname, e]));
 
@@ -42,6 +48,19 @@ test("a blue post's page is listed only once it has a reviewed write-up, dated b
     expect(listed(withOne)).not.toContain(postPath(second));
   } finally {
     blue.writeups = new Map();
+  }
+});
+
+test("the news hub and its posts are listed only once a post is published, dated by its last change", async () => {
+  const listed = (all: typeof entries) => all.map((e) => new URL(e.url).pathname).filter((p) => p === "/news" || p.startsWith("/news/"));
+  expect(listed(entries)).toEqual([]);
+  try {
+    news.posts = new Map([["launch", { slug: "launch", title: "Launch", summary: "s", author: "a", published: "2026-10-24", updated: "2026-10-25", tags: [], sources: [], status: "published", blocks: [] }]]);
+    const withOne = await sitemap();
+    expect(listed(withOne)).toEqual(["/news", "/news/launch"]);
+    expect(withOne.find((e) => e.url.endsWith("/news/launch"))?.lastModified).toEqual(new Date("2026-10-25"));
+  } finally {
+    news.posts = new Map();
   }
 });
 

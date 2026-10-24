@@ -22,6 +22,7 @@ const NAMES: Record<string, string> = {
   "/census": "Census",
   "/rankings": "Rankings",
   "/wiki": "Wiki",
+  "/news": "News",
   "/lore": "Lore archive",
   "/lore/coverage": "What the archive covers",
   "/lore/npcs": "NPCs",

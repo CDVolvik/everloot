@@ -26,6 +26,7 @@ const PAGES: { title: string; path: string; text: string }[] = [
   { title: "Census", path: "/census", text: "Who plays what: factions, races, classes, race and class, and level bands, from players who turned the census on. Each character counts once; a count shows from 10 characters reported by 3 installs, rounded to the nearest 5." },
   { title: "Rankings", path: "/rankings", text: "WoW: Forever week by week from the census: the top classes, races and the faction balance, each with its change against last week." },
   ...RANKINGS.map((r) => ({ title: `Rankings: ${r.title}`, path: rankingPath(r.slug), text: `${r.lede} Ranked by census counts under the same rule, with a weekly chart.` })),
+  { title: "Everloot news", path: "/news", text: "What is new on Everloot and what it means for players, in Everloot's own words, newest first. Blizzard's own posts are on /changes." },
   { title: "Patch notes and Blizzard posts", path: "/changes", text: "New game builds, hotfixes and Blizzard blue posts, newest first, with links to Blizzard's originals. A build's date is when Everloot first saw it." },
   { title: "World map", path: "/map", text: "Zones, dungeon and raid entrances, flight masters and flight paths read from the game files (found in game files, unconfirmed), and NPCs players saw." },
   { title: "Addons", path: "/addons", text: "Addons and tools made for WoW: Forever, ranked by GitHub stars, as a leaderboard or cards." },
@@ -142,6 +143,7 @@ function connect(): string[] {
     bullet("MCP docs", "/docs/mcp", "Setup for Claude Code and other MCP clients, and a page for every tool, with examples."),
     bullet("API reference", "/docs/api", "Every endpoint with its parameters, answers and examples."),
     bullet("Changes feed (RSS)", "/changes/feed.xml", "The newest 50 WoW: Forever builds and Blizzard posts."),
+    bullet("News feed (RSS)", "/news/feed.xml", "Everloot's own news posts, newest first."),
     "",
   ];
 }

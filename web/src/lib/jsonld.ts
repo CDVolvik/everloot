@@ -280,6 +280,27 @@ export function wikiArticleJsonLd(page: { title: string; summary: string; path: 
   };
 }
 
+/**
+ * A news post: Everloot's own text, so its CC BY-SA licence may be stated. The author is named in the visible
+ * byline only; here the organization stands as author and publisher, as on every other page (no Person).
+ */
+export function newsArticleJsonLd(page: { title: string; description: string; path: string; published: string; modified: string; author: string }): JsonLd {
+  return {
+    "@context": CONTEXT,
+    "@type": "Article",
+    headline: page.title,
+    description: page.description,
+    url: absoluteUrl(page.path),
+    mainEntityOfPage: absoluteUrl(page.path),
+    isPartOf: { "@id": WEBSITE_ID },
+    datePublished: page.published,
+    dateModified: page.modified,
+    author: publisher,
+    publisher,
+    license: CC_BY_SA.url,
+  };
+}
+
 export function aboutPageJsonLd(page: { name: string; description: string; path: string }): JsonLd {
   return {
     "@context": CONTEXT,

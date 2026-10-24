@@ -102,8 +102,8 @@ test("is compact: two rows, no four-column block", () => {
 test("keeps every link the four-column footer had", () => {
   const markup = html();
   const before = [
-    "/database", "/map", "/changes", "/lore", "/addons",
-    "/addon", "/upload", "/docs", "/methodology", "https://github.com/Everloot/everloot/blob/main/docs/DATA_POLICY.md", "/changes/feed.xml",
+    "/database", "/map", "/changes", "/news", "/lore", "/addons",
+    "/addon", "/upload", "/docs", "/methodology", "https://github.com/Everloot/everloot/blob/main/docs/DATA_POLICY.md", "/changes/feed.xml", "/news/feed.xml",
     "/about", "/contact", "https://discord.gg/9CKsbHTRu3", "https://github.com/Everloot/everloot",
     "https://github.com/Everloot/everloot/blob/main/CONTRIBUTING.md", "/security",
     "/privacy", "/terms", "/privacy#choices", "/terms#takedown", "/terms#trademarks", "/accessibility",
@@ -120,6 +120,7 @@ test("Glint perches on the footer's edge as a labelled button, his drawing hidde
 
 test("says when the beta ends and when the game launches", () => {
   const t = text();
-  expect(t).toContain("The beta runs until October 21, 2026");
+  // The beta's last day has passed, so the sentence is in the past; the launch is still ahead.
+  expect(t).toContain("The beta ran until October 21, 2026");
   expect(t).toContain("the game launches November 4, 2026");
 });
