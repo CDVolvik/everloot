@@ -410,6 +410,101 @@ assert(#events() == 3 and button.text == 'Collect all')
 """)
 check_all(lua)
 
+# Stop and Collect all again while a money take still waits for its gold change. The server settles a letter's
+# money once: a repeated take of the same letter pays nothing. Probe a reply-before-gold ordering too: the
+# letter can already show no money while that change is on its way; this order is not observed in Forever. Either
+# way, a new take before the old change lands is a second call or overwrites the invoice the gold module is
+# about to match. The click waits instead; once the change lands, Collect all again finishes the rest.
+ONCE = """
+inbox = {
+  { invoice = 'seller', buyer = 'Jaina', money = 500, bid = 500, deposit = 0, cut = 0 },
+  { invoice = 'seller', buyer = 'Jaina', money = 600, bid = 600, deposit = 0, cut = 0 },
+  { invoice = 'seller', buyer = 'Jaina', money = 700, bid = 700, deposit = 0, cut = 0 },
+}
+TakeInboxMoney = function(i)
+  taken[#taken + 1] = 'money' .. i
+  local m = inbox[i]
+  if not m or m.settling or not m.money then return end
+  m.settling = true
+  local amount = m.money
+  if headerFirst then server[#server + 1] = function() m.money = nil end end
+  server[#server + 1] = function() m.money = nil; money = money + amount; fire('PLAYER_MONEY') end
+end
+-- Delivers only the server's next message.
+function answer() table.remove(server, 1)() end
+"""
+for header_first in (False, True):
+    lua = fresh(True, ONCE + f"headerFirst = {'true' if header_first else 'false'}")
+    lua.execute(COMMON)
+    lua.execute("""
+SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')
+local button = Everloot.Conveniences.button
+button.scripts.OnClick()
+if headerFirst then answer() end -- the letter shows no money now
+button.scripts.OnClick() -- Stop
+button.scripts.OnClick() -- Collect all again, money3's gold change still on its way
+assert(table.concat(taken, ',') == 'money3', 'no take before the last one settles, got ' .. table.concat(taken, ','))
+assert(button.text == 'Collect all' and said('click Collect all again'), table.concat(printed, ' | '))
+drive() -- the change lands; nothing runs on its own
+assert(table.concat(taken, ',') == 'money3', 'a stopped collection does not restart, got ' .. table.concat(taken, ','))
+button.scripts.OnClick()
+drive()
+assert(table.concat(taken, ',') == 'money3,money2,money1', 'got ' .. table.concat(taken, ','))
+local amounts = {}
+for _, row in ipairs(events('auction')) do amounts[#amounts + 1] = row.copper end
+table.sort(amounts)
+assert(table.concat(amounts, ',') == '500,600,700', 'every sale reached the ledger, got ' .. table.concat(amounts, ','))
+assert(#events() == 3 and button.text == 'Collect all')
+""")
+    check_all(lua)
+
+# A gold change that never comes: the wait ends after its timeout, and the old take's timer does not act for the
+# collection started after it.
+lua = fresh(True, ONCE + "headerFirst = true")
+lua.execute(COMMON)
+lua.execute("""
+SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')
+local button = Everloot.Conveniences.button
+button.scripts.OnClick()
+answer()
+button.scripts.OnClick() -- Stop
+server = {} -- money3's gold change is lost
+runTimers() -- the wait times out
+assert(table.concat(taken, ',') == 'money3', 'got ' .. table.concat(taken, ','))
+button.scripts.OnClick()
+assert(table.concat(taken, ',') == 'money3,money2', 'a new collection after the timeout, got ' .. table.concat(taken, ','))
+runTimers() -- includes the new take's timeout; no old step may take money1 while that timer only queues its next step
+assert(table.concat(taken, ',') == 'money3,money2', 'got ' .. table.concat(taken, ','))
+drive()
+assert(table.concat(taken, ',') == 'money3,money2,money1', 'got ' .. table.concat(taken, ','))
+""")
+check_all(lua)
+
+# The mailbox closes, or the option goes off, while a money take waits: no take follows its gold change, and a
+# click before that change lands still waits. Closing the mailbox also ends the gold module's wait for that
+# letter's change, so only the option going off leaves that sale recorded.
+for stop, recorded in (("fire('MAIL_CLOSED'); fire('MAIL_SHOW')", 0), ("SlashCmdList.EVERLOOT('mail off')", 1)):
+    lua = fresh(True, ONCE + "headerFirst = true")
+    lua.execute(COMMON)
+    lua.execute("""
+SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')
+local button = Everloot.Conveniences.button
+button.scripts.OnClick()
+answer()
+""" + stop + """
+button.scripts.OnClick()
+assert(table.concat(taken, ',') == 'money3', 'got ' .. table.concat(taken, ','))
+drive()
+assert(table.concat(taken, ',') == 'money3', 'got ' .. table.concat(taken, ','))
+assert(#events('auction') == RECORDED and #events() == RECORDED, 'got ' .. #events())
+SlashCmdList.EVERLOOT('mail on')
+button.scripts.OnClick()
+drive()
+assert(table.concat(taken, ',') == 'money3,money2,money1', 'got ' .. table.concat(taken, ','))
+assert(#events('auction') == RECORDED + 2)
+""".replace("RECORDED", str(recorded)))
+    check_all(lua)
+
 # Switching the option off during a run stops the run before its next take (the options only say "reload",
 # but /everloot mail off confirms "off" at once, so a queued take must not follow).
 lua = fresh(True, """
