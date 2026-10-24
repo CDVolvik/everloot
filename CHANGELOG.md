@@ -203,6 +203,12 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   the census box ticked on its setup screen, or turns it on in Settings; a setup finished before this keeps
   it off. Still never names, guilds, gear or places, and the site shows only totals.
 
+## [desktop-v0.1.7] - 2026-10-24
+
+### Security
+- Update Electron to 44.9.1, including its compromised-certificate mitigation.
+- Update the locked body-parser and fast-uri dependencies to their patched releases.
+
 ## [desktop-v0.1.6] - 2026-10-21
 
 ### Added
