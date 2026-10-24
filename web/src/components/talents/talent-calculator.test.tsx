@@ -27,6 +27,26 @@ afterEach(async () => {
 
 const render = () => act(async () => root.render(<TalentCalculator catalog={fixture} />));
 
+test("copies only the active talent set for the addon and disables empty sets", async () => {
+  await render();
+  let copy = button(/^Copy for addon/);
+  expect(copy).toBeDefined();
+  expect(copy.disabled).toBe(true);
+  await click(node(11));
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  copy = button(/^Copy for addon/);
+  await click(copy);
+  expect(writeText).toHaveBeenCalledWith(encodeBuild({ classSlug: fixture.classSlug, specId: fixture.specId, build: fixture.build, ranks: { 11: { rank: 1 } } }));
+  expect(container.textContent).toContain("Talents tab");
+  await click(button(/^Set 2$/));
+  expect(button(/^Copy for addon/).disabled).toBe(true);
+  await click(node(11));
+  await click(node(11));
+  await click(button(/^Copy for addon/));
+  expect(writeText).toHaveBeenLastCalledWith(encodeBuild({ classSlug: fixture.classSlug, specId: fixture.specId, build: fixture.build, ranks: { 11: { rank: 2 } } }));
+});
+
 test("counts actual build use once, ignoring refused clicks, and counts only successful shares", async () => {
   await render();
   await click(node(21));

@@ -703,6 +703,11 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
 
       <section aria-labelledby="raid-share" className="space-y-2">
         <SectionHeading id="raid-share" note="Anyone with the link sees the same raid.">Share</SectionHeading>
+        <div className="flex flex-wrap items-center gap-3 rounded-control border border-line bg-canvas p-3">
+          <CopyButton className={`btn shrink-0 ${compact}`} text={code} label="Copy for addon" disabled={!slots.some(Boolean)}
+            onResult={(ok) => setMessage(ok ? "Raid code copied. Open /everloot, choose the Raid tab, then Import." : "Copy failed. Copy the share link instead; the addon accepts it too.")} />
+          <p className="text-sm text-fg-2">In the addon: <code>/everloot</code> → Raid tab → paste → Import. Compare classes by group; arrange players yourself.</p>
+        </div>
         <div className="grid gap-2 lg:grid-cols-2">
           <div className="flex gap-2">
             <label className="sr-only" htmlFor="raid-link">Share link</label>

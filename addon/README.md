@@ -193,6 +193,27 @@ whether it is on and how many characters it holds; `/everloot players off` stops
 
 ## Talents, selftest and the plan panel
 
+### Bring a website plan into the game
+
+Open `/everloot` or left-click its minimap button for the **Talents / Raid** workspace.
+Right-click the minimap button, or use `/everloot options`, for collection settings.
+`/everloot status` still prints the collector status.
+
+1. Make a build on everloot.app's talent calculator or raid planner and choose **Copy for addon**.
+2. Open the matching tab in the addon, paste the code, and click **Import** (or press Enter).
+3. Talents shows your progress and next planned point. Raid compares class counts per group and
+   checks buffs on the current roster. Apply points and arrange players yourself.
+
+Talent export copies the selected set only. Raid codes preserve planned talent trees for the website,
+but the addon cannot verify another player's talent choices or identify players from a class-only code.
+Differences in game build remain visible. Imports stay in your local SavedVariables file; roster names
+are never saved by this workspace. **Copy plan link** returns an imported plan to the website;
+**Copy current raid** opens your actual roster there. Use Ctrl+C in the selected field.
+
+The window is created when opened, refreshes on relevant character/group changes while visible, and
+uses no polling loop. Escape closes it. This workspace still needs a live-client layout and behavior
+check; a passing Lua contract is not an in-game test.
+
 - **Talents** (on by default). Reads your build through `C_Traits` and `C_ClassTalents`: the active spec
   group and, once dual spec is unlocked at level 40, the second one. Each build is one
   `talent_snapshot` record: class, level, spec group, config id, tree id, every spent node with its ranks

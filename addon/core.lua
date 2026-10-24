@@ -196,10 +196,14 @@ SlashCmdList["EVERLOOT"] = function(msg)
   -- An item name or link keeps its case too: the price of an item, from the files already in the game.
   local item = type(msg) == "string" and msg:match("^%s*[Pp][Rr][Ii][Cc][Ee]%s*(.-)%s*$")
   if item and E.PriceCommand and msg:lower():match("^%s*price%f[%s%z]") then return E.PriceCommand(item) end
+  local workspace = type(msg) == "string" and msg:lower():match("^%s*planner%f[%s%z]%s*(.-)%s*$")
+  if workspace and E.Planner then return E.Planner.Open(workspace) end
   msg = msg and msg:lower():gsub("^%s+", "") or ""
   local gph = msg:match("^gph%f[%s%z]%s*(.-)%s*$")
   if gph and E.GphCommand then return E.GphCommand(gph) end
-  if msg == "status" or msg == "" then
+  if msg == "" and E.Planner then
+    E.Planner.Open()
+  elseif msg == "status" or msg == "" then
     print(E:Status())
   elseif (msg == "options" or msg == "settings" or msg == "config") and E.Options then
     E.Options.Open()

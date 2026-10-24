@@ -405,6 +405,7 @@ end
 --- Show the panel, beside the talent window when it is open.
 function P.Show()
   userHidden = false
+  EverlootDB.planView = "guide"
   local frame = buildPanel()
   if not frame then
     P.Refresh()
@@ -425,7 +426,7 @@ function P.Show()
 end
 
 --- Load a share code. Returns true, or false and the reason (also printed).
-function P.Load(code)
+function P.Load(code, embedded)
   local plan, reason = P.Decode(code)
   if not plan then print("Everloot: " .. reason); return false, reason end
   local class = T.Player()
@@ -441,7 +442,12 @@ function P.Load(code)
   end
   current = plan
   EverlootDB.plan = P.Encode(plan)
-  P.Show()
+  if embedded then
+    userHidden = true
+    EverlootDB.planView = "workspace"
+    if panel then panel:Hide() end
+    P.Refresh()
+  else P.Show() end
   if not panel then return true end
   print("Everloot: plan loaded (" .. #plan.entries .. " talents). It only shows; it never spends points.")
   return true
@@ -515,6 +521,7 @@ end
 
 E:RegisterModule("plan", function()
   if not (T and T.HasTraitApi()) then error("trait API unavailable", 0) end
+  userHidden = EverlootDB.planView == "workspace"
   if EverlootDB.plan then
     local plan = P.Decode(EverlootDB.plan)
     if plan then current = plan else EverlootDB.plan = nil end
