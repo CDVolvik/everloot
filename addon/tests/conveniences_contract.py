@@ -121,6 +121,12 @@ inbox = {
 }
 free = 5
 taken = {}
+-- The server deletes an emptied auction letter; the letters after it slide down one position.
+autoDelete = false
+local function dropIfEmpty(m)
+  if not (autoDelete and m.invoice and not m.money and not m.item) then return end
+  for j, other in ipairs(inbox) do if other == m then table.remove(inbox, j) break end end
+end
 GetInboxNumItems = function() return #inbox end
 GetInboxHeaderInfo = function(i)
   local m = inbox[i]
@@ -136,14 +142,18 @@ GetContainerNumFreeSlots = function(bag) if bag == 0 then return free, 0 end ret
 TakeInboxMoney = function(i)
   taken[#taken + 1] = 'money' .. i
   local m = inbox[i]
+  if not m then return end
   -- The letter keeps showing its money until the server answers, as the client does.
-  local amount = m.money
-  server[#server + 1] = function() m.money = nil; money = money + amount; fire('PLAYER_MONEY') end
+  local amount = m.money or 0
+  server[#server + 1] = function() m.money = nil; money = money + amount; dropIfEmpty(m); fire('PLAYER_MONEY') end
 end
 AutoLootMailItem = function(i)
   taken[#taken + 1] = 'item' .. i
-  inbox[i].item = nil
+  local m = inbox[i]
+  if not m then return end
+  m.item = nil
   free = free - 1
+  dropIfEmpty(m)
 end
 """
 
@@ -286,6 +296,62 @@ assert(#taken == 1 and button.text == 'Collect all', 'closing the mailbox stops 
 """)
 
 from protocol_schema import check_all  # noqa: E402
+
+# --- Mailbox where the server deletes an emptied auction letter ---
+# The letters after it slide down one position, so progress kept for "the letter at this position" must not
+# carry over, and no letter is taken from unless it is an auction invoice without cash on delivery right now.
+def run_mail(extra, check):
+    lua = fresh(True, extra)
+    lua.execute(COMMON)
+    lua.execute("SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')")
+    lua.execute("Everloot.Conveniences.button.scripts.OnClick(); drive()")
+    lua.execute(check)
+    return lua
+
+lua = run_mail("autoDelete = true", """
+assert(table.concat(taken, ',') == 'money5,item4,money1', 'deleted letters: only auction invoices, got ' .. table.concat(taken, ','))
+assert(#inbox == 3 and inbox[1].money == 700 and inbox[2].cod == 500 and inbox[2].item and inbox[3].cod == 100 and inbox[3].item,
+  'player mail and COD letters untouched')
+assert(said('3 skipped') and said('from 3 letters') and said('39s 0c'), table.concat(printed, ' | '))
+assert(Everloot.Conveniences.button.text == 'Collect all', 'finished')
+local sales = events('auction')
+assert(#sales == 2 and sales[1].copper == 855 and sales[2].copper == 2750 and #events() == 2, 'two sales recorded, nothing else')
+""")
+check_all(lua)
+
+# An item letter that vanishes leaves a player's letter with gold in its place: that gold is not taken.
+run_mail("""autoDelete = true
+inbox = { { invoice = 'buyer', buyer = 'Jaina', item = true }, { money = 700, sender = 'Jaina' } }""", """
+assert(table.concat(taken, ',') == 'item1', 'a slid letter is not taken from, got ' .. table.concat(taken, ','))
+assert(#inbox == 1 and inbox[1].money == 700 and said('1 skipped') and said('from 1 letter'), table.concat(printed, ' | '))
+""")
+
+# A player's letter with an item takes the place of a vanished gold letter: not taken either.
+run_mail("""autoDelete = true
+inbox = { { invoice = 'seller', buyer = 'Jaina', money = 500, bid = 500, deposit = 0, cut = 0 }, { item = true, sender = 'Jaina' } }""", """
+assert(table.concat(taken, ',') == 'money1', 'got ' .. table.concat(taken, ','))
+assert(#inbox == 1 and inbox[1].item and said('1 skipped'), table.concat(printed, ' | '))
+""")
+
+# The inbox changing under a run (new mail) is not guessed at: the run stops instead of trusting positions.
+lua = fresh(True)
+lua.execute(COMMON)
+lua.execute("""
+inbox = { { invoice = 'seller', buyer = 'Jaina', money = 500, bid = 500, deposit = 0, cut = 0 }, { invoice = 'seller', buyer = 'Jaina', money = 600, bid = 600, deposit = 0, cut = 0 } }
+SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')
+Everloot.Conveniences.button.scripts.OnClick()
+table.insert(inbox, 1, { money = 40, sender = 'Jaina' })
+drive()
+assert(table.concat(taken, ',') == 'money2', 'the run stopped, got ' .. table.concat(taken, ','))
+assert(said('the inbox changed') and Everloot.Conveniences.button.text == 'Collect all', table.concat(printed, ' | '))
+""")
+
+# Safety is judged again on every take: a letter that turns into cash on delivery mid-run is left alone.
+run_mail("""local real = AutoLootMailItem
+AutoLootMailItem = function(i) real(i); inbox[i].item = true; inbox[i].cod = 100 end
+inbox = { { invoice = 'buyer', buyer = 'Jaina', item = true } }""", """
+assert(table.concat(taken, ',') == 'item1', 'one take, then the letter is unsafe: ' .. table.concat(taken, ','))
+""")
 check_all(lua)
 
 # The source never takes the guild bank's side, never writes a record, never reads a letter's text or sender.
