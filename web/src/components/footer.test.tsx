@@ -15,6 +15,13 @@ import { TRADEMARK_LINE } from "@/lib/jsonld";
 afterEach(() => { vi.unstubAllEnvs(); });
 
 const html = () => renderToStaticMarkup(<Footer />);
+
+test("links the four verified social profiles on desktop and mobile", () => {
+  const markup = html();
+  for (const href of ["https://x.com/WowEverloot", "https://www.facebook.com/WowEverloot", "https://www.instagram.com/woweverloot/", "https://www.pinterest.com/woweverloot/"]) {
+    expect(markup.split(`href="${href}"`).length - 1, href).toBe(2);
+  }
+});
 const text = () => html().replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
 function sourceHref(): string | undefined {

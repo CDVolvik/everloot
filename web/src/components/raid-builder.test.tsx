@@ -5,6 +5,9 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CURRENT_BUILD } from "@/data/game-data/raid";
 import { emptySlots, encodeRaid } from "@/lib/raid";
 import RaidBuilder from "./RaidBuilder";
+import { track } from "@/lib/analytics/track";
+
+vi.mock("@/lib/analytics/track", () => ({ track: vi.fn() }));
 
 let container: HTMLDivElement;
 let root: Root;
@@ -12,6 +15,7 @@ let root: Root;
 let under: Element | null = null;
 
 beforeEach(() => {
+  vi.mocked(track).mockClear();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   window.history.replaceState(null, "", "/tools/raid");
   document.elementFromPoint = () => under;
@@ -29,6 +33,20 @@ afterEach(async () => {
 });
 
 const render = (initialCode?: string) => act(async () => root.render(<RaidBuilder initialCode={initialCode} />));
+
+test("counts a shared raid only when copying succeeds", async () => {
+  await render();
+  await click(tile("Mage"));
+  await click(slot(0));
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  const copy = [...container.querySelectorAll("button")].find((b) => b.textContent?.startsWith("Copy link"))!;
+  await click(copy);
+  expect(track).toHaveBeenCalledExactlyOnceWith("raid_comp_shared", { via: "copy" });
+  vi.mocked(track).mockClear();
+  vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error("denied"));
+  await click(copy);
+  expect(track).not.toHaveBeenCalled();
+});
 const palette = () => container.querySelector('[role="group"][aria-label="Classes"]')!;
 const tile = (name: string) => [...palette().querySelectorAll("button")].find((b) => b.textContent?.startsWith(name))!;
 const slot = (i: number) => container.querySelector<HTMLButtonElement>(`[data-drop-slot="${i}"]`)!;

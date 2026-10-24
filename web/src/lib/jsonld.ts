@@ -1,6 +1,7 @@
 import { postPath } from "../../../kb/src/blue-pages";
 import type { ChangeEntry } from "./changes";
 import { REPO_URL } from "./source";
+import { SOCIAL_PROFILES } from "./social";
 import { absoluteUrl, SITE_NAME, SITE_URL } from "./seo";
 
 /**
@@ -49,7 +50,7 @@ export function organizationJsonLd(): JsonLd {
     description: `${SITE_BLURB} ${NON_AFFILIATION}`,
     // The company the footer's copyright line and /about name.
     parentOrganization: { "@type": "Organization", name: OPERATOR },
-    sameAs: [REPO_URL, DISCORD_INVITE],
+    sameAs: [REPO_URL, DISCORD_INVITE, ...SOCIAL_PROFILES.map((profile) => profile.href)],
     publishingPrinciples: `${SITE_URL}/methodology`,
   };
 }
