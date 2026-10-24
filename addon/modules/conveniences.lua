@@ -119,7 +119,8 @@ local function vendorVisit(run)
   local sold, earned = sellGreys()
   local function finish()
     if run ~= vendorRun or not merchantOpen then return end
-    summary(sold, earned, repairAll())
+    -- Switched off while the repair waited: the sales are made and still reported; no gold is spent.
+    summary(sold, earned, vendorOn() and repairAll() or nil)
   end
   -- The sales' gold change must reach the ledger before the repair's: a merged change would hide a sale.
   local pending = { finish = finish }
@@ -132,7 +133,7 @@ end
 
 -- Mailbox --------------------------------------------------------------------------------------
 
-local mailRun = 0 -- which collection a pending step belongs to; 0 when none runs
+local mailRun = 0 -- which collection a pending step belongs to; only ever counts up, so a step left over from a stopped run never matches a later one
 local mail = nil -- { index, count, takes, letters, copper, skipped, items }
 local awaiting = nil -- the money take waiting for its gold change: { run }
 
@@ -151,7 +152,7 @@ end
 
 local function mailFinish(reason)
   local m = mail
-  mail, mailRun, awaiting = nil, 0, nil
+  mail, awaiting = nil, nil
   if C.button then C.button:SetText("Collect all") end
   if not m then return end
   local text = string.format("Everloot: mail collected %s from %d letter%s", E.Coins(m.copper), m.letters, m.letters == 1 and "" or "s")
@@ -169,6 +170,7 @@ end
 
 function mailStep(run)
   if run ~= mailRun or not mail then return end
+  if not mailOn() then return mailFinish("switched off") end -- the option was turned off since the last take
   if mail.index < 1 then return mailFinish() end
   -- The server deletes a letter once it is empty and the ones after it slide down a position, so a position
   -- is trusted only while the inbox is the size it was. Losing one letter right after a take means that

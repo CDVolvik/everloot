@@ -236,6 +236,29 @@ for modern in (True, False):
     assert(EverlootDB.autoVendor == false)
     fire('MERCHANT_SHOW'); fire('MERCHANT_CLOSED'); runTimers(); flush()
     assert(#repairCalls == 2)
+
+    -- Switched off before the settle timer: nothing is sold.
+    local soldBefore = #sold
+    SlashCmdList.EVERLOOT('vendor on')
+    fire('MERCHANT_SHOW')
+    SlashCmdList.EVERLOOT('vendor off')
+    runTimers(); flush()
+    assert(#sold == soldBefore and #repairCalls == 2, 'off before the settle timer: nothing sold or repaired')
+    fire('MERCHANT_CLOSED')
+
+    -- Switched off while the repair waits for the sales' gold change: the sales are made and reported, the
+    -- repair, which spends gold, is not.
+    bags[0][1] = { quality = 0, count = 3, link = 'grey-a', price = 10 }
+    bags[1][1] = { quality = 0, count = 1, link = 'grey-b', price = 5 }
+    printed = {}
+    SlashCmdList.EVERLOOT('vendor on')
+    fire('MERCHANT_SHOW'); runTimers()
+    assert(#sold == soldBefore + 2 and #repairCalls == 2, 'greys sold, repair waiting')
+    SlashCmdList.EVERLOOT('vendor off')
+    flush(); runTimers(); flush()
+    assert(#repairCalls == 2, 'off before the delayed repair: no gold spent')
+    assert(said('sold 2 grey items for 35c') and not said('repaired'), 'the sales are still summarised: ' .. table.concat(printed, ' | '))
+    fire('MERCHANT_CLOSED')
     """)
 
 # --- Mailbox ---
@@ -352,6 +375,76 @@ run_mail("""local real = AutoLootMailItem
 AutoLootMailItem = function(i) real(i); inbox[i].item = true; inbox[i].cod = 100 end
 inbox = { { invoice = 'buyer', buyer = 'Jaina', item = true } }""", """
 assert(table.concat(taken, ',') == 'item1', 'one take, then the letter is unsafe: ' .. table.concat(taken, ','))
+""")
+check_all(lua)
+
+# Stop and Collect all again before the old run's pending step fires: that step belongs to the old run and must
+# not take a letter while the new run waits for its own gold change (a second take would overwrite the invoice
+# the gold module is about to match).
+lua = fresh(True, """
+inbox = {
+  { invoice = 'seller', buyer = 'Jaina', money = 500, bid = 500, deposit = 0, cut = 0 },
+  { invoice = 'seller', buyer = 'Jaina', money = 600, bid = 600, deposit = 0, cut = 0 },
+  { invoice = 'seller', buyer = 'Jaina', money = 700, bid = 700, deposit = 0, cut = 0 },
+}""")
+lua.execute(COMMON)
+lua.execute("""
+SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')
+local button = Everloot.Conveniences.button
+button.scripts.OnClick()
+assert(table.concat(taken, ',') == 'money3')
+flush() -- the gold change arrives: the next step of this run is queued
+button.scripts.OnClick() -- Stop
+assert(button.text == 'Collect all')
+button.scripts.OnClick() -- Collect all again, before the queued step fires
+assert(table.concat(taken, ',') == 'money3,money2', 'the new run took the next letter, got ' .. table.concat(taken, ','))
+runTimers() -- the old run's step fires now
+assert(table.concat(taken, ',') == 'money3,money2', 'a stopped run\\'s step took a letter: ' .. table.concat(taken, ','))
+drive()
+assert(table.concat(taken, ',') == 'money3,money2,money1', 'got ' .. table.concat(taken, ','))
+local amounts = {}
+for _, row in ipairs(events('auction')) do amounts[#amounts + 1] = row.copper end
+table.sort(amounts)
+assert(table.concat(amounts, ',') == '500,600,700', 'every sale reached the ledger, got ' .. table.concat(amounts, ','))
+assert(#events() == 3 and button.text == 'Collect all')
+""")
+check_all(lua)
+
+# Switching the option off during a run stops the run before its next take (the options only say "reload",
+# but /everloot mail off confirms "off" at once, so a queued take must not follow).
+lua = fresh(True, """
+inbox = { { invoice = 'buyer', buyer = 'Jaina', item = true }, { invoice = 'buyer', buyer = 'Jaina', item = true }, { invoice = 'buyer', buyer = 'Jaina', item = true } }""")
+lua.execute(COMMON)
+lua.execute("""
+SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')
+local button = Everloot.Conveniences.button
+button.scripts.OnClick()
+assert(table.concat(taken, ',') == 'item3')
+SlashCmdList.EVERLOOT('mail off')
+drive()
+assert(table.concat(taken, ',') == 'item3', 'no take after mail off, got ' .. table.concat(taken, ','))
+assert(button.text == 'Collect all', 'the run ended')
+assert(said('from 1 letter') and said('stopped: switched off'), table.concat(printed, ' | '))
+""")
+
+# Off while a money take waits for its gold change: that take is already made and stays recorded; no further take follows.
+lua = fresh(True, """
+inbox = {
+  { invoice = 'seller', buyer = 'Jaina', money = 500, bid = 500, deposit = 0, cut = 0 },
+  { invoice = 'seller', buyer = 'Jaina', money = 600, bid = 600, deposit = 0, cut = 0 },
+}""")
+lua.execute(COMMON)
+lua.execute("""
+SlashCmdList.EVERLOOT('mail on'); fire('MAIL_SHOW')
+local button = Everloot.Conveniences.button
+button.scripts.OnClick()
+assert(table.concat(taken, ',') == 'money2')
+SlashCmdList.EVERLOOT('mail off')
+drive()
+assert(table.concat(taken, ',') == 'money2', 'no take after mail off, got ' .. table.concat(taken, ','))
+local sales = events('auction')
+assert(#sales == 1 and sales[1].copper == 600 and #events() == 1, 'the take already made is recorded')
+assert(button.text == 'Collect all' and said('stopped: switched off'), table.concat(printed, ' | '))
 """)
 check_all(lua)
 
