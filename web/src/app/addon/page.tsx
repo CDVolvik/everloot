@@ -48,6 +48,9 @@ export default async function AddonPage() {
   const served = addon ? servedFile(zipHref) : null;
   const releases = await fetchReleases();
   const addonRelease = addon ? addonReleaseFor(releases, addon.version) : null;
+  const addonSums = served && addonRelease?.files.some((file) =>
+    file.name === zipName && file.size === served.size && file.sha256 === served.sha256,
+  ) ? addonRelease.sums : null;
   const desktop = newestDesktopRelease(releases);
   const desktopFiles = desktop
     ? DESKTOP_KINDS.flatMap((kind) => {
@@ -103,7 +106,7 @@ export default async function AddonPage() {
                 {served && (
                   <Disclosure summary="SHA-256 checksum">
                     <ul className="text-sm"><Checksum name={zipName} sha256={served.sha256} /></ul>
-                    {addonRelease?.sums && <p className="text-sm"><a className={link} href={addonRelease.sums} rel={EXT}>SHA256SUMS</a></p>}
+                    {addonSums && <p className="text-sm"><a className={link} href={addonSums} rel={EXT}>SHA256SUMS</a></p>}
                   </Disclosure>
                 )}
                 <p className="text-sm text-fg-2">
