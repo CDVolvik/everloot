@@ -48,7 +48,7 @@ again; it will say so.
 | 4 | Carlos | Addon: confirm the CurseForge upload is done and the Wago upload is done or scheduled (target in the readiness notes was about 10/24 for CurseForge; 10/30 for both is the current target, **[unverified]** in the repository). The current stable zip is 0.3.10 (`addon/Everloot.toc`, `CHANGELOG.md`). | The listing is public and its version matches the zip on `/upload`. | A zip can always be downloaded from `/upload` and the GitHub release; the listing is not on the critical path for the site. |
 | 5 | Carlos | Weapon damage check: the six-weapon card in the owner notes (also steps 18 to 23 of `docs/2026-10-21-addon-0.3.10-launch-checklist.md`). The result becomes entries in `CHECKED_WEAPONS` in `kb/src/assets/weapon-damage.ts`. | Until it is filled, item pages print `[?] - [?]` and say why. This is allowed at launch. | Leave the array empty. No range is printed. |
 | 6 | Carlos | Upload the counts-only expected-counts file the owner notes call `coverage-expected.json`, so `/database/coverage` has a denominator. The upload procedure is **[unverified]** here. | `/database/coverage` shows an expected count instead of "No expected count". | The page keeps saying it has none. Not a launch blocker. |
-| 7 | Carlos | Confirm the Desktop App finds the launch client's folder. The code looks for `_classic_beta_` today (`desktop/src/main/game-folder.ts`); the launch folder name is **[unverified]**. | The app lists the launch folder on a machine with the launch client. | Needs a code change; do it before L. |
+| 7 | Carlos | Confirm the Desktop App finds the launch client's folder. The app lists any `_<product>_` folder under the install root (`desktop/src/main/game-folder.ts`); the launch folder name is **[unverified]**. | The app lists the launch folder on a machine with the launch client. | |
 
 ## T-1 day (2026-11-03)
 
@@ -144,8 +144,8 @@ For code: `cd kb && npm test -- --maxWorkers=2 && npm run typecheck`; `cd web &&
 - **The asset upload for a new build.** `docs/ASSETS.md` has the commands. The owner notes mention a card
   for build 70532; it was not found, so the steps above come from the repository docs only.
 - **CurseForge and Wago upload.** Only the readiness notes mention it. No repository doc covers the listing.
-- **Desktop App on the launch client.** The folder name `_classic_beta_` is hard-coded; the launch folder
-  name is not known.
+- **Desktop App on the launch client.** The app detects any `_<product>_` folder, so no code change is
+  expected, but nobody has seen it pick up the launch folder, and that folder's name is not known.
 - **Launch realms and build in the intake.** No document says what the intake does with a build it has not
   seen. Treat step 27 as an observation, not a test.
 - **Weapon damage gate, expected counts file, settled-tally migration.** Owned by Carlos; not blockers.
