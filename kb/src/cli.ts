@@ -55,6 +55,8 @@ import { openPublicSnapshot } from "./public-snapshot.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
 import { validate } from "./validate.js";
+import { checkNews } from "./news/check.js";
+import { NEWS_DIR, publishedWikiSlugs, readNewsPosts } from "./news/data.js";
 import { checkWiki } from "./wiki/check.js";
 import { loadCategories, loadKnownData, loadPrivatePathPattern, readWikiPages, WIKI_DIR } from "./wiki/data.js";
 
@@ -206,6 +208,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     (the wiki's page check: front matter, ids and slugs, categories, bindings and tokens against the committed
     game data and the shown id ranges, [[links]], hand-typed gameplay numbers, section order, credit fields,
     the index bar for published pages, private paths and AI credits. Exits 1 on any problem. See wiki/README.md)
+  news-check [--dir <kb>/news]
+    (the news posts' check: front matter, slugs, dates, [[links]] against the published wiki pages, tokens, the
+    prose bar for published posts, private paths and AI credits. Exits 1 on any problem. See news/README.md)
 
   A source database and a public release are different artifacts. The serve commands accept only a
   release: an existing file plus its <release>.manifest.json, opened read-only and checked against
@@ -777,6 +782,14 @@ async function main(): Promise<number> {
       const published = result.pages.filter((p) => p.fm.status === "published").length;
       console.log(`${result.pages.length} pages (${published} published, ${result.pages.length - published} draft), ${result.problems.length} problems`);
       console.log("checked against the game files: items, zones, entrances, item sets, /changes entries; npc, quest, faction, race, class, event and LFG dungeon ids by shape and shown range only");
+      return result.problems.length ? 1 : 0;
+    }
+    case "news-check": {
+      const dir = flags.get("dir") || NEWS_DIR;
+      const result = checkNews(readNewsPosts(dir), { wikiPages: publishedWikiSlugs(), privatePaths: loadPrivatePathPattern(), today: new Date().toISOString().slice(0, 10) });
+      for (const p of result.problems) console.error(`${p.file}${p.line ? `:${p.line}` : ""}: ${p.message}`);
+      const published = result.posts.filter((p) => p.fm.status === "published").length;
+      console.log(`${result.posts.length} posts (${published} published, ${result.posts.length - published} draft), ${result.problems.length} problems`);
       return result.problems.length ? 1 : 0;
     }
     case "snapshot":

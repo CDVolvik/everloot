@@ -15,6 +15,7 @@ import { achievementHref, chainHref, factionHref, loadCatalog, titleHref } from 
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { RANKINGS, hubIndexable, loadRankingWeeks, rankingIndexable, rankingPath, rankingView } from "@/lib/rankings";
 import { hasContent, publicZones, zoneContents, zoneHref } from "@/lib/zones";
+import { loadNews, newsSitemapPaths } from "@/lib/news";
 import { wikiSitemapPaths } from "@/lib/wiki";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
@@ -82,5 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...FAMILIES.map((family) => ({ url: `${baseUrl}/guilds/${family.slug}` })),
     // The wiki hub and each indexable wiki page, dated by the day a maintainer reviewed it.
     ...wikiSitemapPaths().map(({ path, lastModified }) => ({ url: `${baseUrl}${path}`, ...(lastModified ? { lastModified } : {}) })),
+    // The news hub and each published post, dated by the day the post last changed.
+    ...newsSitemapPaths(loadNews()).map(({ path, lastModified }) => ({ url: `${baseUrl}${path}`, ...(lastModified ? { lastModified } : {}) })),
   ];
 }
