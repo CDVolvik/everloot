@@ -14,7 +14,7 @@ import { validRealm } from "./realm.js";
  * the generated JSON Schema's description, so a reader of the schema files knows the server checks them.
  */
 export const RULES = {
-  loot: ["loot needs a source: npc or object", "a loot position needs mapId, x and y together"],
+  loot: ["loot needs a source: npc, object or item", "a loot position needs mapId, x and y together"],
   achievement_catalog: ["criteria cannot outnumber criteriaCount"],
   achievement_owned: [
     "quantity and required come together",
@@ -54,6 +54,8 @@ export const QUEST_TAGS = ["group", "dungeon", "raid", "pvp"] as const;
 export const NPC_ROLES = ["vendor", "trainer", "questgiver", "flightmaster", "banker", "auctioneer", "stablemaster", "innkeeper", "repair"] as const;
 /** How an object was opened, from the spell the player cast on it. */
 export const GATHER_KINDS = ["herb", "ore", "chest", "fishing", "other"] as const;
+/** What opened a loot window, from the spell cast just before it and the kind of source (loot tables spec, section 4). */
+export const LOOT_TYPES = ["kill", "pickpocket", "skinning", "gather", "disenchant", "container", "fishing"] as const;
 
 export const npcSighting = base.extend({
   kind: z.literal("npc_sighting"),
@@ -74,6 +76,9 @@ export const lootWindow = base.extend({
   kind: z.literal("loot"),
   sourceNpcId: z.number().int().positive().optional(),
   sourceObjectId: z.number().int().positive().optional(),
+  sourceItemId: z.number().int().positive().optional().describe("The item that was disenchanted or opened (a lockbox, a clam, a bag). Older addons send none."),
+  lootType: z.enum(LOOT_TYPES).optional().describe("What opened the window, from the spell cast just before it (`LOOT_TYPES`). Absent on windows from older addons and converted Recorder files; those are never sorted into a type by guessing."),
+  copper: z.number().int().min(1).max(10_000_000_000).optional().describe("The coin in the window, in copper. Absent when the window held none or the addon could not read it."),
   sourceEvidence: z.literal("loot-api").optional().describe("Legacy target guesses are withheld from public loot observations."),
   items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).max(50),
   mapId: z.number().int().nonnegative().optional().describe("With an object source: the map the player stood on when the object was opened. Older addons send none."),
@@ -81,7 +86,7 @@ export const lootWindow = base.extend({
   y: z.number().min(0).max(100).optional().describe("The player's y on that map, 0 to 100."),
   gatherKind: z.enum(GATHER_KINDS).optional().describe("How the object was opened, from the spell cast on it (`GATHER_KINDS`); `other` when the spell is not one the addon knows."),
   sourceObjectName: z.string().min(1).max(120).optional().describe("The object's name as the game showed it. Public only when 3 installs agree on it."),
-}).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined, {
+}).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined || r.sourceItemId !== undefined, {
   message: RULES.loot[0],
 }).refine((r) => (r.mapId === undefined) === (r.x === undefined) && (r.x === undefined) === (r.y === undefined), {
   message: RULES.loot[1],

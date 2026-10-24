@@ -95,6 +95,22 @@ describe("POST /api/intake", () => {
     }, []);
   });
 
+  test("a disenchant window with the item it came from is accepted and stored whole", async () => {
+    const POST = await freshPost();
+    const disenchant = {
+      kind: "loot", installId: "install-1234", capturedAt, sourceEvidence: "loot-api",
+      sourceItemId: 2455, lootType: "disenchant", copper: 12, items: [{ itemId: 10940, count: 2 }],
+    };
+    const response = await POST(request({ addonVersion: "0.3.11", records: [disenchant, { ...disenchant, lootType: "mining" }] }));
+
+    expect(response.status).toBe(200);
+    expect(store.putUpload).toHaveBeenCalledWith(expect.any(String), "install-1234", {
+      addonVersion: "0.3.11",
+      records: [disenchant],
+    }, []);
+    expect(await response.json()).toMatchObject({ ok: true, persisted: true, accepted: [{ index: 0, kind: "loot" }] });
+  });
+
   test("two accepted install ids reject the whole submission and write nothing", async () => {
     const POST = await freshPost();
     const response = await POST(request({ addonVersion: "0.1.0", records: [loot("install-aaaa"), loot("install-bbbb")] }));

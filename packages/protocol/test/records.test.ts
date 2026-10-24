@@ -54,7 +54,7 @@ describe("intake contract", () => {
     expect(r.accepted).toHaveLength(0);
     expect(r.rejected.map((x) => x.reason)).toEqual([
       "unknown kind: flying_mounts",
-      "loot needs a source: npc or object",
+      "loot needs a source: npc, object or item",
       expect.stringContaining(">0"),
     ]);
   });
@@ -256,6 +256,27 @@ describe("intake contract", () => {
     expect(result.receipt.rejected[0]!.reason).toBe("a loot position needs mapId, x and y together");
   });
 
+  test("a loot window may carry its type, the item it came from and its coin, and old windows stay valid", () => {
+    const kill = { ...base, kind: "loot", sourceEvidence: "loot-api", sourceNpcId: 1234, items: [{ itemId: 2589, count: 1 }] };
+    const disenchant = { ...base, kind: "loot", sourceEvidence: "loot-api", sourceItemId: 2455, lootType: "disenchant", items: [{ itemId: 10940, count: 2 }] };
+    const result = parseRecords([
+      kill,
+      { ...kill, lootType: "pickpocket", copper: 154 },
+      disenchant,
+      { ...disenchant, sourceItemId: undefined },
+      { ...kill, lootType: "mining" },
+      { ...kill, copper: 0 },
+      { ...kill, sourceItemId: 0 },
+    ]);
+    expect(result.records).toEqual([
+      expect.not.objectContaining({ lootType: expect.anything() }),
+      expect.objectContaining({ sourceNpcId: 1234, lootType: "pickpocket", copper: 154 }),
+      expect.objectContaining({ sourceItemId: 2455, lootType: "disenchant" }),
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([3, 4, 5, 6]);
+    expect(result.receipt.rejected[0]!.reason).toBe("loot needs a source: npc, object or item");
+  });
+
   test("a trainer row may name the trainer", () => {
     const row = { ...base, kind: "trainer_seen", profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 55 };
     const result = parseRecords([{ ...row, trainerNpcId: 3347 }, row, { ...row, trainerNpcId: 0 }]);
@@ -275,7 +296,7 @@ describe("intake contract", () => {
       records: [{ ...base, kind: "loot", items: [] }],
     });
     expect(bare.accepted).toHaveLength(0);
-    expect(bare.rejected.map((row) => row.reason)).toContain("loot needs a source: npc or object");
+    expect(bare.rejected.map((row) => row.reason)).toContain("loot needs a source: npc, object or item");
   });
 
   test("accepts a gold snapshot and a loot money event", () => {
