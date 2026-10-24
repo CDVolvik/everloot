@@ -133,7 +133,7 @@ end
 -- Mailbox --------------------------------------------------------------------------------------
 
 local mailRun = 0 -- which collection a pending step belongs to; 0 when none runs
-local mail = nil -- { index, eligible, takes, letters, copper, skipped, items }
+local mail = nil -- { index, count, takes, letters, copper, skipped, items }
 local awaiting = nil -- the money take waiting for its gold change: { run }
 
 --- Letters the safe rule allows: an auction invoice (the game issues it only for a sold or won auction, so a
@@ -170,15 +170,27 @@ end
 function mailStep(run)
   if run ~= mailRun or not mail then return end
   if mail.index < 1 then return mailFinish() end
+  -- The server deletes a letter once it is empty and the ones after it slide down a position, so a position
+  -- is trusted only while the inbox is the size it was. Losing one letter right after a take means that
+  -- letter went; any other change is not guessed at.
+  local okCount, count = pcall(GetInboxNumItems)
+  if not okCount or type(count) ~= "number" then return mailFinish("cannot read the inbox") end
+  if count ~= mail.count then
+    if mail.takes < 1 or count ~= mail.count - 1 then return mailFinish("the inbox changed") end
+    mail.index, mail.count, mail.takes, mail.moneyTaken = mail.index - 1, count, 0, nil
+    return mailStep(run)
+  end
   local money, hasItem, safe = letterInfo(mail.index)
-  if money == nil then mail.index, mail.eligible, mail.takes, mail.moneyTaken = mail.index - 1, nil, 0, nil; return mailStep(run) end
-  if mail.eligible == nil then
-    mail.eligible = safe
-    if not safe then mail.skipped = mail.skipped + 1 end
+  if money == nil then mail.index, mail.takes, mail.moneyTaken = mail.index - 1, 0, nil; return mailStep(run) end
+  -- Judged again on every step, never remembered: what sits at this position is only what the game says now.
+  if not safe then
+    if mail.takes < 1 then mail.skipped = mail.skipped + 1 end
+    mail.index, mail.takes, mail.moneyTaken = mail.index - 1, 0, nil
+    return mailStep(run)
   end
   if mail.moneyTaken then money = 0 end -- taken once; money still showing is not retried
-  if not mail.eligible or mail.takes >= MAX_TAKES_PER_LETTER or (money < 1 and not hasItem) then
-    mail.index, mail.eligible, mail.takes, mail.moneyTaken = mail.index - 1, nil, 0, nil
+  if mail.takes >= MAX_TAKES_PER_LETTER or (money < 1 and not hasItem) then
+    mail.index, mail.takes, mail.moneyTaken = mail.index - 1, 0, nil
     return mailStep(run)
   end
   mail.takes = mail.takes + 1
@@ -210,7 +222,7 @@ local function mailStart()
   if not ok or type(count) ~= "number" or count < 1 then print("Everloot: the inbox is empty.") return end
   mailRun = mailRun + 1
   -- Last letter first: a letter that empties and disappears moves only the ones after it.
-  mail = { index = count, takes = 0, letters = 0, copper = 0, skipped = 0, items = 0 }
+  mail = { index = count, count = count, takes = 0, letters = 0, copper = 0, skipped = 0, items = 0 }
   if C.button then C.button:SetText("Stop") end
   mailStep(mailRun)
 end
