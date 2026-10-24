@@ -235,6 +235,11 @@ export default function PrivacyPage() {
                 <strong>Google Analytics</strong> (consent required) measures page views
                 and visits using cookies.
               </li>
+              <li>
+                <strong>Metricool</strong> (consent required) measures visits and the
+                pages viewed. Its tracker receives the page URL, referrer and browser
+                window size. Metricool states that this tracker uses no cookies.
+              </li>
             </ul>
           </Section>
 

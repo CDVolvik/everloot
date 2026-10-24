@@ -27,6 +27,16 @@ const button = (label: string) => Array.from(container.querySelectorAll("button"
 const scripts = () => Array.from(document.head.querySelectorAll("script"));
 
 describe("CookieConsent categories", () => {
+  it("keeps Metricool off before consent and after rejection, and loads it after acceptance", async () => {
+    await act(async () => root.render(<CookieConsent analytics={{ metricoolHash: "424c5c3857a5c9d4bfab8635880f0e69" }} />));
+    expect(scripts()).toHaveLength(0);
+    expect(container.textContent).toContain("Analytics");
+    await act(async () => button("Reject optional cookies").click());
+    expect(scripts()).toHaveLength(0);
+    await act(async () => window.dispatchEvent(new Event("everloot:cookie-preferences")));
+    await act(async () => button("Accept optional cookies").click());
+    expect(scripts().map((s) => s.src)).toEqual(["https://tracker.metricool.com/resources/be.js"]);
+  });
   it("loads no script and shows no banner when nothing is configured", async () => {
     await act(async () => root.render(<CookieConsent />));
     expect(scripts()).toHaveLength(0);
