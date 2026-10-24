@@ -39,6 +39,14 @@ test("icons, hatnotes and stubs vanish without leaving double spaces", () => {
   expect(repairTemplates("{{for|the achievement|Kirin Tor Offensive (achievement)}}\n{{Removed|patch=4.0.1}}\nBody")).toBe("Body");
 });
 
+test("code tags keep their text, with templates rendered inside them", () => {
+  expect(wtf("Use <code>/run foo</code> now.").text()).toBe("Use  now.");
+  expect(wtf(repairTemplates("Use <code>/run foo</code> now.")).text()).toBe("Use /run foo now.");
+  expect(wtf(repairTemplates("Sold for <code>{{cost|1|50}}</code> by <code>{{npc|Horde|Grex}}</code>.")).text()).toBe("Sold for 1g 50s by Grex.");
+  expect(wtf(repairTemplates('A <CODE class="x"><nowiki>C_Map.GetBestMapForUnit</nowiki></CODE> b')).text()).toBe("A C_Map.GetBestMapForUnit b");
+  expect(repairTemplates("<code>a\nb</code> c")).toBe("a\nb c");
+});
+
 test("unknown templates are left for the converter", () => {
   expect(repairTemplates("{{Companions|Critter}} and {{npcbox|name=x}}")).toBe("{{Companions|Critter}} and {{npcbox|name=x}}");
 });
