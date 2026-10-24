@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SOCIAL_PROFILES } from "@/lib/social";
 import { CONTACT_EMAIL, DISCORD_INVITE, NON_AFFILIATION, OPERATOR, SITE_BLURB, TRADEMARK_LINE } from "@/lib/jsonld";
 import { deployedSha, REPO_URL, sourceUrl } from "@/lib/source";
 import { BETA, LAUNCH, longDate } from "@/data/wow-forever";
@@ -37,6 +38,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { label: "Contact", href: "/contact" },
       { label: "Discord", href: DISCORD_INVITE, external: true },
       { label: "GitHub", href: REPO_URL, external: true },
+      ...SOCIAL_PROFILES.map((profile) => ({ ...profile, external: true })),
       { label: "Contributing", href: `${REPO_URL}/blob/main/CONTRIBUTING.md`, external: true },
       { label: "Security", href: "/security" },
     ],

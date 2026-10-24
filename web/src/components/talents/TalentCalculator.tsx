@@ -9,6 +9,7 @@ import {
 import { hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
 import { HOW_IT_WORKS_ID } from "@/lib/talents/facts";
 import { encodeBuild } from "@/lib/talents/share";
+import { track } from "@/lib/analytics/track";
 import { buildTitle, previewPath, summarizeBuild } from "@/lib/talents/summary";
 import type { Ranks, TalentCatalog } from "@/lib/talents/types";
 import GameIcon from "@/components/game/GameIcon";
@@ -51,6 +52,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
   const [tip, setTip] = useState<{ id: number; mode: TipMode } | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
+  const countedBuild = useRef(false);
   /** The address fragment the page last wrote for the build on screen. */
   const written = useRef<string | null>(null);
 
@@ -170,6 +172,10 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
       return;
     }
     setActiveRanks(next);
+    if (!countedBuild.current) {
+      countedBuild.current = true;
+      track("talent_build_made", { class: catalog.classSlug });
+    }
     const now = next[id]?.rank ?? 0;
     setMessage(`${nameOf(id)}: rank ${now} of ${node.maxRanks}.`);
   }
@@ -225,7 +231,10 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
     setLink(preview ? `${origin}${preview}` : "");
   }, [codes, catalog, readOnly]);
 
-  const onCopied = (ok: boolean) => setMessage(ok ? "Link copied. It opens both sets as they are now." : "Copy failed. Select the link and copy it.");
+  const onCopied = (ok: boolean) => {
+    setMessage(ok ? "Link copied. It opens both sets as they are now." : "Copy failed. Select the link and copy it.");
+    if (ok) track("talent_build_shared", { via: "copy" });
+  };
 
   // Taps add. A long press (touch or pen) takes a point back, as does a right click, the Delete or
   // Backspace key, and the "Take points back" switch. With the game's tooltips on the page, a long

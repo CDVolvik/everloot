@@ -1,4 +1,5 @@
 "use client";
+import { track } from "@/lib/analytics/track";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { CLASSES } from "@/design/tokens";
@@ -380,7 +381,10 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
     setSelected(selected === index ? null : index);
   };
 
-  const onCopied = (ok: boolean) => setMessage(ok ? "Link copied." : "Select the link and copy it.");
+  const onCopied = (ok: boolean) => {
+    setMessage(ok ? "Link copied." : "Select the link and copy it.");
+    if (ok) track("raid_comp_shared", { via: "copy" });
+  };
 
   // The effect's name, with the game's tooltip on hover and keyboard focus when the page has it, and how far it reaches.
   const effectCell = (f: FamilyCoverage) => (

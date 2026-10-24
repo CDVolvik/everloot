@@ -5,11 +5,15 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { fixture } from "@/lib/talents/fixture";
 import { encodeBuild } from "@/lib/talents/share";
 import TalentCalculator from "./TalentCalculator";
+import { track } from "@/lib/analytics/track";
+
+vi.mock("@/lib/analytics/track", () => ({ track: vi.fn() }));
 
 let container: HTMLDivElement;
 let root: Root;
 
 beforeEach(async () => {
+  vi.mocked(track).mockClear();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   window.location.hash = "";
   container = document.createElement("div");
@@ -22,6 +26,22 @@ afterEach(async () => {
 });
 
 const render = () => act(async () => root.render(<TalentCalculator catalog={fixture} />));
+
+test("counts actual build use once, ignoring refused clicks, and counts only successful shares", async () => {
+  await render();
+  await click(node(21));
+  expect(track).not.toHaveBeenCalled();
+  await click(node(11));
+  await click(node(11));
+  expect(track).toHaveBeenCalledExactlyOnceWith("talent_build_made", { class: "mage" });
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  await click(button(/^Copy link/));
+  expect(track).toHaveBeenLastCalledWith("talent_build_shared", { via: "copy" });
+  vi.mocked(track).mockClear();
+  vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error("denied"));
+  await click(button(/^Copy link/));
+  expect(track).not.toHaveBeenCalled();
+});
 const node = (id: number) => container.querySelector<HTMLButtonElement>(`#talent-${id}`)!;
 const status = () => container.querySelector('[role="status"]')!.textContent;
 const button = (label: RegExp) => [...container.querySelectorAll("button")].find((b) => label.test(b.textContent ?? ""))!;
