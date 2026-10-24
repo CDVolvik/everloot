@@ -1,3 +1,4 @@
+import FilterMenus from "./FilterMenus";
 import Link from "./PendingLink";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -101,7 +102,7 @@ function Controls({ search, controls, active, clearHref, phone }: FilterBarProps
 export default function FilterBar(props: FilterBarProps) {
   const { label, active, aside } = props;
   return (
-    <div role="group" aria-label={label} data-filter-bar className="flex flex-wrap items-center gap-2">
+    <FilterMenus label={label} className="flex flex-wrap items-center gap-2">
       <details className="w-full sm:hidden">
         <summary className={`${control} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${active ? lit : idle}`}>
           Filters{active > 0 && <span className="tabular-nums"> ({active})</span>}<Chevron />
@@ -114,6 +115,6 @@ export default function FilterBar(props: FilterBarProps) {
         <Controls {...props} phone={false} />
       </div>
       {aside && <div className="ml-auto min-w-0 max-sm:w-full">{aside}</div>}
-    </div>
+    </FilterMenus>
   );
 }
