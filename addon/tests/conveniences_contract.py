@@ -296,6 +296,7 @@ assert(#taken == 1 and button.text == 'Collect all', 'closing the mailbox stops 
 """)
 
 from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 
 # --- Mailbox where the server deletes an emptied auction letter ---
 # The letters after it slide down one position, so progress kept for "the letter at this position" must not
