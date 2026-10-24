@@ -184,8 +184,19 @@ function render(inner: string): string | null {
   return null;
 }
 
+/**
+ * The converter drops everything inside `<code>`, which loses lore lines like `<code>{{api|C_Map}}</code>`.
+ * Unwraps the tag and any `<nowiki>` inside it, keeping the text as written.
+ */
+function keepCodeText(wikitext: string): string {
+  return wikitext
+    .replace(/<code\b[^>]*>([\s\S]*?)<\/code\s*>/gi, (_, body: string) => body.replace(/<\/?nowiki\s*>/gi, ""))
+    .replace(/<code\b[^>]*\/>/gi, "");
+}
+
 /** Renders the handled templates to text in one pass, leaving unknown templates and all line structure untouched. */
-export function repairTemplates(wikitext: string): string {
+export function repairTemplates(rawWikitext: string): string {
+  const wikitext = keepCodeText(rawWikitext);
   const stack: string[] = [];
   let cur = "";
   let literal = 0; // opens past MAX_DEPTH, kept as text along with their closes
