@@ -70,6 +70,7 @@ function W.Import()
   local f = W.frame
   if not f then return end
   local input = f.box:GetText():match("^%s*(.-)%s*$")
+  local isLink = input:match("^https?://") ~= nil
   local ok, reason
   if W.tab == "talents" and not hasTalents() then
     notice("Talent import is unavailable: this client's trait API is missing."); return
@@ -81,7 +82,7 @@ function W.Import()
       or input:match("^https?://[^/]+/tools/talents/%a+/b/%-/([^/?#]+)")
     if first == "-" then first = nil end
     if first or second then input = first or second end
-    if not input:match("^EL%d+%-") and f.box:GetText():match("^https?://") then
+    if not input:match("^EL%d+%-") and isLink then
       notice("Open this link on the website and use Copy for addon for the set you want."); return
     end
     ok, reason = E.Plan.Load(input, true)
@@ -91,8 +92,9 @@ function W.Import()
   if ok then
     f.box:SetText("")
     f.box:ClearFocus()
-    notice(W.tab == "talents" and "Plan loaded. Talent links use the first available set; Copy for addon selects the set you want."
-      or "Plan loaded. Compare class counts by group below; arrange players yourself.")
+    if W.tab == "raid" then notice("Plan loaded. Compare class counts by group below; arrange players yourself.")
+    elseif isLink then notice("Plan loaded. Talent links use the first available set; Copy for addon selects the set you want.")
+    else notice("Plan loaded. Compare your build and next planned point below.") end
     W.Refresh()
     f.scroll:SetVerticalScroll(0)
   else
@@ -227,6 +229,7 @@ function W.Open(tab)
   local previous, wasShown = W.tab, W.frame and W.frame:IsShown()
   W.tab = tab == "raid" and "raid" or tab == "talents" and "talents" or W.tab
   local f = build()
+  if E.Plan and E.Plan.UseWorkspace then E.Plan.UseWorkspace() end
   local raid = W.tab == "raid"
   f.heading:SetText(raid and "Bring your raid plan" or "Follow your talent plan")
   f.hint:SetText(raid and "Website > Copy for addon > Import here. Compare class counts, then arrange your raid."

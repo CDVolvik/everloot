@@ -393,6 +393,12 @@ local function buildPanel()
   return panel
 end
 
+function P.UseWorkspace()
+  userHidden = true
+  EverlootDB.planView = "workspace"
+  if panel then panel:Hide() end
+end
+
 --- Read the active spec group and recompute the plan. Safe to call at any time.
 function P.Refresh()
   if not current then last = nil; clearMarks(); return end
@@ -412,6 +418,7 @@ end
 function P.Show()
   userHidden = false
   EverlootDB.planView = "guide"
+  if E.Planner and E.Planner.frame then E.Planner.frame:Hide() end
   local frame = buildPanel()
   if not frame then
     P.Refresh()
@@ -449,9 +456,7 @@ function P.Load(code, embedded)
   current = plan
   EverlootDB.plan = P.Encode(plan)
   if embedded then
-    userHidden = true
-    EverlootDB.planView = "workspace"
-    if panel then panel:Hide() end
+    P.UseWorkspace()
     P.Refresh()
   else P.Show() end
   if not panel then return true end

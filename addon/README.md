@@ -215,6 +215,7 @@ are never saved by this workspace. **Copy plan link** returns an imported plan t
 The window is created when opened, refreshes on relevant character/group changes while visible, and
 uses no polling loop. Escape closes it. This workspace still needs a live-client layout and behavior
 check; a passing Lua contract is not an in-game test.
+Drag its header beside the game's talent window to keep the next-point highlights visible.
 
 - **Talents** (on by default). Reads your build through `C_Traits` and `C_ClassTalents`: the active spec
   group and, once dual spec is unlocked at level 40, the second one. Each build is one
