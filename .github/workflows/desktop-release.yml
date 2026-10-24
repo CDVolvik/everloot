@@ -43,12 +43,16 @@ jobs:
           cache: npm
           cache-dependency-path: |
             web/package-lock.json
+            kb/package-lock.json
             companion/package-lock.json
             desktop/package-lock.json
       # The desktop bundle takes only JavaScript modules from web/ (zod, the save-file parser); its
       # native better-sqlite3 is never loaded, and compiling it fails on the Windows runner.
       - run: npm ci --ignore-scripts
         working-directory: web
+      # The settled-list helpers import the protocol through kb; only their JavaScript is bundled.
+      - run: npm ci --ignore-scripts
+        working-directory: kb
       - run: npm ci
         working-directory: companion
       - run: npm ci

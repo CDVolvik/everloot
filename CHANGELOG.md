@@ -71,9 +71,6 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
-- Desktop app: a Stop button on the Chat page while an answer is being written. It ends the request to the
-  provider (Anthropic or an OpenAI-compatible server) and any tool calls still to come; the question and the text
-  that had arrived stay in the transcript, marked "Stopped", and a screen reader hears "Stopped".
 - Site: the open data export, at `/database/download`. The published data as NDJSON files anyone can download
   and build on, under CC BY-SA 4.0: what three installs agree on, and the game files' own layer, with a
   manifest that says the build, the date the data was current, the method, the row count of every file and
@@ -91,8 +88,7 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   are uploaded, never the rows.
 - Knowledge base: the settled list, one list per client build of the facts three players confirmed and two
   more agreed on, and the uploaders that stop sending what is already settled. The site's copy is served at
-  `/api/coverage/settled`; the Desktop App keeps it beside its sent log, refreshes it once a day, and says
-  how many rows it skipped. The server-side tally of the extra agreement is behind a switch that stays off
+  `/api/coverage/settled`. The server-side tally of the extra agreement is behind a switch that stays off
   until the data policy says how it is published.
 - Site and MCP server: a `coverage` tool, the same counts as the coverage page as text, per zone and per
   type. The public tool list is 29 tools; the directory submissions carry the older count until they are
@@ -123,11 +119,6 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   agree. Fishing (the bobber, or an object installs agree is fished) is never a pin. An upload of an event
   that only adds fields to an earlier copy, as when an older Desktop App had dropped them, replaces that copy
   instead of withdrawing the event as a conflict. The map shows none of this yet.
-
-### Fixed
-- Desktop app: on the Chat page, a screen reader hears "Copied" or "Copy failed" after Copy, and the button keeps
-  saying it for the full second and a half even when the thread is redrawn, as when a new question goes out.
-  Clear is off while an answer is being written, so the question can no longer be cleared out from under it.
 
 ## [0.3.10] - 2026-10-23
 
@@ -202,6 +193,28 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   off until `/everloot census on`. The Desktop App sends census rows with its uploads when the player leaves
   the census box ticked on its setup screen, or turns it on in Settings; a setup finished before this keeps
   it off. Still never names, guilds, gear or places, and the site shows only totals.
+
+## [desktop-v0.1.7] - 2026-10-24
+
+### Added
+- A Stop button ends the current chat request and any tool calls still to come. The question and text already
+  received stay in the transcript, marked "Stopped", and a screen reader hears "Stopped".
+- Chat shares the site's provider and model catalogue, reads model lists from the configured provider, and
+  falls back to the catalogue when that provider cannot be reached.
+- The prices file includes public drop rates beside market prices, refreshed at most once a day. With that
+  file in the game, addon tooltips can show up to three sources under the usual three-install agreement rule.
+
+### Changed
+- The app keeps the settled-facts list beside its sent log, refreshes it once a day, skips rows that are already
+  settled, and reports how many it skipped.
+
+### Fixed
+- A screen reader hears "Copied" or "Copy failed" after Copy. The button keeps its feedback for the full second
+  and a half even when the thread redraws. Clear is disabled while an answer is being written.
+
+### Security
+- Update Electron to 44.9.1, including its compromised-certificate mitigation.
+- Update the locked body-parser and fast-uri dependencies to their patched releases.
 
 ## [desktop-v0.1.6] - 2026-10-21
 
