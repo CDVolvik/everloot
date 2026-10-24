@@ -150,9 +150,10 @@ local function letterInfo(index)
   return type(money) == "number" and money or 0, (hasItem == true or (type(hasItem) == "number" and hasItem > 0)) and true or false, safe
 end
 
+--- A money take still waiting for its gold change is left waiting: its change or its timeout ends the wait.
 local function mailFinish(reason)
   local m = mail
-  mail, awaiting = nil, nil
+  mail = nil
   if C.button then C.button:SetText("Collect all") end
   if not m then return end
   local text = string.format("Everloot: mail collected %s from %d letter%s", E.Coins(m.copper), m.letters, m.letters == 1 and "" or "s")
@@ -219,6 +220,8 @@ end
 
 local function mailStart()
   if mail or not mailOn() then return end
+  -- A new take before the last one's gold change lands would overwrite the invoice the gold module matches it to.
+  if awaiting then print("Everloot: the last take's gold has not arrived yet; click Collect all again in a moment.") return end
   if not (C_Timer and C_Timer.After and GetInboxNumItems) then print("Everloot: collecting mail needs timers and the inbox, which this client lacks.") return end
   local ok, count = pcall(GetInboxNumItems)
   if not ok or type(count) ~= "number" or count < 1 then print("Everloot: the inbox is empty.") return end
