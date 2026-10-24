@@ -75,8 +75,15 @@ function W.Import()
     notice("Talent import is unavailable: this client's trait API is missing."); return
   elseif W.tab == "talents" then
     if #input > 16000 then notice("That talent code is too long."); return end
-    input = input:match("^https?://[^/]+/tools/talents/%a+[^#]*#plan=([^&]+)")
-      or input:match("^https?://[^/]+/tools/talents/%a+/b/([^/?#]+)") or input
+    local first = input:match("^https?://[^/]+/tools/talents/%a+[^#]*#plan=([^&]+)")
+      or input:match("^https?://[^/]+/tools/talents/%a+/b/([^/?#]+)")
+    local second = input:match("^https?://[^/]+/tools/talents/%a+[^#]*#plan2=([^&]+)")
+      or input:match("^https?://[^/]+/tools/talents/%a+/b/%-/([^/?#]+)")
+    if first == "-" then first = nil end
+    if first or second then input = first or second end
+    if not input:match("^EL%d+%-") and f.box:GetText():match("^https?://") then
+      notice("Open this link on the website and use Copy for addon for the set you want."); return
+    end
     ok, reason = E.Plan.Load(input, true)
   elseif E.Raid then
     ok, reason = E.Raid.Load(input)
@@ -84,7 +91,8 @@ function W.Import()
   if ok then
     f.box:SetText("")
     f.box:ClearFocus()
-    notice("Plan loaded. Your character and raid are unchanged.")
+    notice(W.tab == "talents" and "Plan loaded. Talent links use the first available set; Copy for addon selects the set you want."
+      or "Plan loaded. Compare class counts by group below; arrange players yourself.")
     W.Refresh()
     f.scroll:SetVerticalScroll(0)
   else
@@ -199,7 +207,10 @@ local function build()
     if code then copy("https://everloot.app/tools/raid#raid=" .. code) else notice(reason) end
   end)
   button(f, "Settings", 610, -478, 86, function() if E.Options then E.Options.Open() end end)
-  f:SetScript("OnHide", function() box:ClearFocus() end)
+  f:SetScript("OnHide", function()
+    box:ClearFocus()
+    if E.Plan and E.Plan.HideMarks then E.Plan.HideMarks() end
+  end)
   -- Changes update a visible window; nothing polls while it is closed.
   for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "TRAIT_CONFIG_UPDATED", "TRAIT_NODE_CHANGED",
     "ACTIVE_PLAYER_SPECIALIZATION_CHANGED", "PLAYER_TALENT_UPDATE" }) do
@@ -213,6 +224,7 @@ local function build()
 end
 
 function W.Open(tab)
+  local previous, wasShown = W.tab, W.frame and W.frame:IsShown()
   W.tab = tab == "raid" and "raid" or tab == "talents" and "talents" or W.tab
   local f = build()
   local raid = W.tab == "raid"
@@ -223,8 +235,11 @@ function W.Open(tab)
     b.text:SetTextColor(unpack(key == W.tab and COLORS.accent or COLORS.muted))
     if key == W.tab then b.selected:Show() else b.selected:Hide() end
   end
-  if raid then f.current:Show() else f.current:Hide() end
-  f.box:SetText(""); f.box:ClearFocus(); notice("")
+  if raid then
+    f.current:Show()
+    if E.Plan and E.Plan.HideMarks then E.Plan.HideMarks() end
+  else f.current:Hide() end
+  if not wasShown or previous ~= W.tab then f.box:SetText(""); f.box:ClearFocus(); notice("") end
   local width = UIParent and UIParent.GetWidth and tonumber(UIParent:GetWidth())
   local height = UIParent and UIParent.GetHeight and tonumber(UIParent:GetHeight())
   if width and height then f:SetScale(math.min(1, (width - 32) / 720, (height - 32) / 530)) end

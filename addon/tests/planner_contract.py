@@ -82,6 +82,16 @@ assert(f.notice:GetText():find('loaded', 1, true), 'website preview links also i
 f.box:SetText('https://everloot.app/tools/talents/mage?saved=example#plan=EL1-mage-0-1.60.1.70532-MTox')
 W.Import()
 assert(f.notice:GetText():find('loaded', 1, true), 'saved build links import')
+for _, link in ipairs({
+ 'https://everloot.app/tools/talents/mage#plan2=EL1-mage-0-1.60.1.70532-MTox',
+ 'https://everloot.app/tools/talents/mage/b/-/EL1-mage-0-1.60.1.70532-MTox'
+}) do
+ f.box:SetText(link); W.Import()
+ assert(f.notice:GetText():find('loaded', 1, true), 'second-set-only links import')
+end
+f.box:SetText('https://everloot.app/tools/talents/mage/b/saved-short-link')
+W.Import()
+assert(f.notice:GetText():find('Copy for addon', 1, true), 'short links explain how to get a code')
 Everloot.Talents.HasTraitApi = function() return false end
 f.box:SetText('EL1-mage-0-1.60.1.70532-MTox')
 W.Import()

@@ -320,6 +320,12 @@ local function clearMarks()
   if nextMark then nextMark:Hide() end
   for _, mark in ipairs(flagMarks) do mark:Hide() end
 end
+P.HideMarks = clearMarks
+
+local function workspaceVisible()
+  local workspace = E.Planner
+  return workspace and workspace.tab == "talents" and workspace.frame and workspace.frame:IsShown()
+end
 
 local function mark()
   clearMarks()
@@ -398,8 +404,8 @@ function P.Refresh()
   last = state and { configID = active.configID, state = state, result = P.Evaluate(current, state) } or nil
   if panel and panel:IsShown() then
     panel.body:SetText(table.concat(lines(), "\n"))
-    pcall(mark)
   end
+  if (panel and panel:IsShown()) or workspaceVisible() then pcall(mark) else clearMarks() end
 end
 
 --- Show the panel, beside the talent window when it is open.
@@ -500,7 +506,10 @@ end
 local function hookTalentFrame()
   local frame = PlayerSpellsFrame
   if not (frame and type(frame.HookScript) == "function") or P.hooked == frame then return end
-  local hooked = pcall(frame.HookScript, frame, "OnShow", function() if current and not userHidden then P.Show() end end)
+  local hooked = pcall(frame.HookScript, frame, "OnShow", function()
+    if not current then return end
+    if workspaceVisible() then P.Refresh() elseif not userHidden then P.Show() end
+  end)
   -- Overlays belong to the talent window: take them off when it closes.
   pcall(frame.HookScript, frame, "OnHide", clearMarks)
   if hooked then P.hooked = frame end

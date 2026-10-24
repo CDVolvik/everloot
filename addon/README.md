@@ -204,8 +204,10 @@ Right-click the minimap button, or use `/everloot options`, for collection setti
 3. Talents shows your progress and next planned point. Raid compares class counts per group and
    checks buffs on the current roster. Apply points and arrange players yourself.
 
-Talent export copies the selected set only. Raid codes preserve planned talent trees for the website,
-but the addon cannot verify another player's talent choices or identify players from a class-only code.
+Talent export copies the selected set only. Talent links with two sets import the first; a second-set-only
+link imports that set. For saved short links, open the website and use **Copy for addon** to choose the set.
+Raid codes preserve planned talent trees for the website. The addon cannot verify another player's talent
+choices or identify players from a class-only code.
 Differences in game build remain visible. Imports stay in your local SavedVariables file; roster names
 are never saved by this workspace. **Copy plan link** returns an imported plan to the website;
 **Copy current raid** opens your actual roster there. Use Ctrl+C in the selected field.
